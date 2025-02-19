@@ -1,0 +1,169 @@
+#include "construction.hh"
+
+MyLightTrapConstruction::MyLightTrapConstruction()
+{
+  fMessenger = new G4GenericMessenger(this, "/detector/", "Light Trap Construction");
+
+  fMessenger->DeclareProperty("nSiPMs", nSiPMs, "Number of SiPMs"); // vary number of photosensors
+  fMessenger->DeclareProperty("pTPlayerthickness", pTPlayerthickness, "thickness of deposited pTP layer");
+  fMessenger->DeclareProperty("pTPsubstratethickness", pTPsubstratethickness, "thickness of pTPsubstrate"); // vary thickness
+  fMessenger->DeclareProperty("LArthickness", LArthickness, "thickness of LAr gap");
+  fMessenger->DeclareProperty("lighttrapsize", lighttrapsize, "length of a square light trap");
+
+  // define initial value
+  nSiPMs = 30;
+  pTPlayerthickness = 0.002*mm;
+  pTPsubstratethickness = 6*mm;
+  LArthickness = 2*mm;
+  lighttrapsize = 50*cm;
+
+  DefineMaterials();
+}
+
+MyLightTrapConstruction::~MyLightTrapConstruction()
+{}
+
+void MyLightTrapConstruction::DefineMaterials()
+{
+  // define det material
+  G4NistManager *nist = G4NistManager::Instance();
+
+  pTP = new G4Material("pTP", 1.23*g/cm3, 2);
+  pTP->AddElement(nist->FindOrBuildElement("C"), 18);
+  pTP->AddElement(nist->FindOrBuildElement("H"), 14);
+
+  acrylicMcMaster = new G4Material("acrylicMcMaster", 1.19*g/cm3, 3);
+  acrylicMcMaster->AddElement(nist->FindOrBuildElement("C"), 5);
+  acrylicMcMaster->AddElement(nist->FindOrBuildElement("H"), 8);
+  acrylicMcMaster->AddElement(nist->FindOrBuildElement("O"), 2);
+
+  bluewlsacrylic = new G4Material("bluewlsacrylic", 1.023*g/cm3, 2); // https://eljentechnology.com/products/wavelength-shifting-plastics/ej-280-ej-282-ej-284-ej-286
+  bluewlsacrylic->AddElement(nist->FindOrBuildElement("C"), 9);
+  bluewlsacrylic->AddElement(nist->FindOrBuildElement("H"), 10);
+
+  G4double energy[8] = {1.239841939*eV/0.53, 1.239841939*eV/0.425, 1.239841939*eV/0.4, 1.239841939*eV/0.34, 1.239841939*eV/0.305, 1.239841939*eV/0.16, 1.239841939*eV/0.128, 1.239841939*eV/0.106}; //wavelength in microns
+  G4double rindexWorld[8] = {1.38, 1.38, 1.38, 1.38, 1.38, 1.38, 1.38, 1.38};
+  G4double ffraction[8] = {0., 0., 0., 0., 0., 0.000238409, 0.0398859, 0.00422473};
+  G4double LArabsorption[8] = {1000.*cm, 1000.*cm, 1000.*cm, 1000.*cm, 1000.*cm, 1000.*cm, 1000.*cm, 1000.*cm};
+  G4double LArRayleigh[8] = {90.*cm, 90.*cm, 90.*cm, 90.*cm, 90.*cm, 90.*cm, 90.*cm, 90.*cm};
+
+  G4double rindexpTP[8] = {1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65}; // refractive index
+  G4double AbspTP[8] = {10*m, 10*m, 10*m, 10*m, 0.1*mm, 0.0005*mm, 0.0005*mm, 0.0005*mm}; // absorption length
+  G4double EmissionpTP[8] = {0., 0.0005, 0.002, 0.022, 0.0005, 0., 0., 0.}; // relative emission spectrum, unitless
+
+  G4double rindexacrylicMcMaster[8] = {1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5};
+
+  G4double rindexbluewlsacrylic[8] = {1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58};
+  G4double Absbluewls[8] = {10*m, 10*m, 1.7*mm, 1*mm, 1.2*mm, 10*m, 10*m, 10*m}; // absorption length
+  G4double Emissionbluewls[8] = {0.0005, 0.02, 0., 0., 0., 0., 0., 0.}; // relative emission spectrum, unitless
+
+  G4double reflectivity[8] = {0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98};
+
+  worldMat = nist->FindOrBuildMaterial("G4_lAr"); // other option: G4_lAr
+
+  G4MaterialPropertiesTable *mptpTP = new G4MaterialPropertiesTable();
+  mptpTP->AddProperty("RINDEX", energy, rindexpTP, 8);
+  mptpTP->AddProperty("WLSABSLENGTH", energy, AbspTP, 8);
+  mptpTP->AddProperty("WLSCOMPONENT", energy, EmissionpTP, 8);
+  mptpTP->AddConstProperty("WLSTIMECONSTANT", 1.136*ns); // Nucl. Instr. Meth. Phys. Res. A 327 (1993) 354.
+
+  G4MaterialPropertiesTable *mptacrylicMcMaster = new G4MaterialPropertiesTable();
+  mptacrylicMcMaster->AddProperty("RINDEX", energy, rindexacrylicMcMaster, 8);
+
+  G4MaterialPropertiesTable *mptbluewlsacrylic = new G4MaterialPropertiesTable();
+  mptbluewlsacrylic->AddProperty("RINDEX", energy, rindexbluewlsacrylic, 8);
+  mptbluewlsacrylic->AddProperty("WLSABSLENGTH", energy, Absbluewls, 8);
+  mptbluewlsacrylic->AddProperty("WLSCOMPONENT", energy, Emissionbluewls, 8);
+  mptbluewlsacrylic->AddConstProperty("WLSTIMECONSTANT", 1.26*ns);
+
+  G4MaterialPropertiesTable *mptWorld = new G4MaterialPropertiesTable();
+  mptWorld->AddProperty("RINDEX", energy, rindexWorld, 8);
+  mptWorld->AddProperty("SCINTILLATIONCOMPONENT1", energy, ffraction, 8);
+  mptWorld->AddProperty("SCINTILLATIONCOMPONENT2", energy, ffraction, 8);
+  mptWorld->AddConstProperty("SCINTILLATIONYIELD", 24000./MeV);
+  mptWorld->AddConstProperty("SCINTILLATIONYIELD1", 0.75);
+  mptWorld->AddConstProperty("SCINTILLATIONYIELD2", 0.25);
+  mptWorld->AddConstProperty("RESOLUTIONSCALE", 1.0); // # of sigma
+  mptWorld->AddConstProperty("SCINTILLATIONTIMECONSTANT1", 7.*ns);
+  mptWorld->AddConstProperty("SCINTILLATIONTIMECONSTANT2", 1400.*ns);
+  mptWorld->AddProperty("ABSLENGTH", energy, LArabsorption, 8);
+  mptWorld->AddProperty("RAYLEIGH", energy, LArRayleigh, 8);
+
+  pTP->SetMaterialPropertiesTable(mptpTP);
+  acrylicMcMaster->SetMaterialPropertiesTable(mptacrylicMcMaster);
+  bluewlsacrylic->SetMaterialPropertiesTable(mptbluewlsacrylic);
+  worldMat->SetMaterialPropertiesTable(mptWorld);
+  worldMat->GetIonisation()->SetBirksConstant(0.694*mm/MeV);
+
+  Vikuiti = new G4OpticalSurface("Vikuiti");
+  Vikuiti->SetType(dielectric_metal);
+  Vikuiti->SetFinish(ground);
+  Vikuiti->SetModel(unified);
+  G4MaterialPropertiesTable *mpt3MVikuiti = new G4MaterialPropertiesTable();
+  mpt3MVikuiti->AddProperty("REFLECTIVITY", energy, reflectivity, 8);
+  Vikuiti->SetMaterialPropertiesTable(mpt3MVikuiti);
+
+}
+
+G4VPhysicalVolume *MyLightTrapConstruction::Construct()
+{
+  solidWorld = new G4Box("solidWorld", lighttrapsize, lighttrapsize, lighttrapsize);
+  logicWorld = new G4LogicalVolume(solidWorld, worldMat, "logicWorld");
+  physWorld = new G4PVPlacement(0, G4ThreeVector(0., 0., 0.), logicWorld, "physWorld", 0, false, 0, true);
+
+  pTPlayer =  new G4Box("pTPlayer", lighttrapsize/2., lighttrapsize/2., pTPlayerthickness/2.);
+  logicpTPlayer = new G4LogicalVolume(pTPlayer, pTP, "logicpTPlayer");
+  physpTPlayer = new G4PVPlacement(0, G4ThreeVector(0., 0., lighttrapsize/2. - pTPsubstratethickness/2. - pTPlayerthickness/2.), logicpTPlayer, "physpTPlayer", logicWorld, false, 0, true);
+
+  pTPsubstrate =  new G4Box("pTPsubstrate", lighttrapsize/2., lighttrapsize/2., pTPsubstratethickness/2.);
+  logicpTPsubstrate = new G4LogicalVolume(pTPsubstrate, acrylicMcMaster, "logicpTPsubstrate");
+  physpTPsubstrate = new G4PVPlacement(0, G4ThreeVector(0., 0., lighttrapsize/2.), logicpTPsubstrate, "physpTPsubstrate", logicWorld, false, 0, true);
+
+  BlueWLSplate =  new G4Box("BlueWLSplate", lighttrapsize/2., lighttrapsize/2., 3*mm);
+  logicBlueWLSplate = new G4LogicalVolume(BlueWLSplate, bluewlsacrylic, "logicBlueWLSplate");
+  physBlueWLSplate = new G4PVPlacement(0, G4ThreeVector(0., 0., lighttrapsize/2. + LArthickness + pTPsubstratethickness/2. + 3*mm), logicBlueWLSplate, "physBlueWLSplate", logicWorld, false, 0, true);
+
+  // photosensors
+  SiPMs = new G4Box("SiPMs", 3*mm, 0.5*mm, 3*mm);
+  logicSiPMs = new G4LogicalVolume(SiPMs, worldMat, "logicSiPMs");
+  // create an array of sensitive det
+  for (G4int i = 0; i < nSiPMs; i++) {
+    physSiPMs = new G4PVPlacement(0, G4ThreeVector(-1*lighttrapsize/2. + lighttrapsize/(nSiPMs+1)/2. + i*lighttrapsize/(nSiPMs+1), lighttrapsize/2. + 1*mm, lighttrapsize/2. + LArthickness + pTPsubstratethickness/2. + 3*mm), logicSiPMs, "physSiPMs", logicWorld, false, i, true);
+  }
+
+  // apply vikuiti to backplane
+  ReflectiveFoilBackPlane =  new G4Box("ReflectiveFoilBackPlane", lighttrapsize/2., lighttrapsize/2., 0.065*mm/2);
+  logicReflectiveFoilBackPlane = new G4LogicalVolume(ReflectiveFoilBackPlane, acrylicMcMaster, "logicReflectiveFoilBackPlane");
+  G4LogicalSkinSurface *skin = new G4LogicalSkinSurface("skin", logicReflectiveFoilBackPlane, Vikuiti);
+  physReflectiveFoilBackPlane = new G4PVPlacement(0, G4ThreeVector(0., 0., lighttrapsize/2. + LArthickness + pTPsubstratethickness/2. + 6.033*mm), logicReflectiveFoilBackPlane, "physReflectiveFoilBackPlane", logicWorld, false, 0, true);
+
+  // apply vikuiti to small edges of bluewlsplate
+  ReflectiveFoilEdgeTop =  new G4Box("ReflectiveFoilEdgeTop", lighttrapsize/2., 0.065*mm/2, 3*mm);
+  ReflectiveFoilEdgeBot =  new G4Box("ReflectiveFoilEdgeBot", lighttrapsize/2., 0.065*mm/2, 3*mm);
+  ReflectiveFoilEdgeLeft  =  new G4Box("ReflectiveFoilEdgeLeft",  0.065*mm/2, lighttrapsize/2., 3*mm);
+  ReflectiveFoilEdgeRight =  new G4Box("ReflectiveFoilEdgeRight", 0.065*mm/2, lighttrapsize/2., 3*mm);
+
+  logicReflectiveFoilEdgeTop = new G4LogicalVolume(ReflectiveFoilEdgeTop, acrylicMcMaster, "logicReflectiveFoilEdgeTop"); // it's actually polymer, not acrylic, but may be not critical as it's reflective
+  logicReflectiveFoilEdgeBot = new G4LogicalVolume(ReflectiveFoilEdgeBot, acrylicMcMaster, "logicReflectiveFoilEdgeBot");
+  logicReflectiveFoilEdgeLeft  = new G4LogicalVolume(ReflectiveFoilEdgeLeft, acrylicMcMaster, "logicReflectiveFoilEdgeLeft");
+  logicReflectiveFoilEdgeRight = new G4LogicalVolume(ReflectiveFoilEdgeRight, acrylicMcMaster, "logicReflectiveFoilEdgeRight");
+
+  G4LogicalSkinSurface *skinedgetop = new G4LogicalSkinSurface("skinedgetop", logicReflectiveFoilEdgeTop, Vikuiti);
+  G4LogicalSkinSurface *skinedgebot = new G4LogicalSkinSurface("skinedgebot", logicReflectiveFoilEdgeBot, Vikuiti);
+  G4LogicalSkinSurface *skinedgeleft  = new G4LogicalSkinSurface("skinedgeleft", logicReflectiveFoilEdgeLeft, Vikuiti);
+  G4LogicalSkinSurface *skinedgeright = new G4LogicalSkinSurface("skinedgeright", logicReflectiveFoilEdgeRight, Vikuiti);
+
+  physReflectiveFoilEdgeTop   = new G4PVPlacement(0, G4ThreeVector(0., lighttrapsize/2. + 1.533*mm, lighttrapsize/2. + LArthickness + pTPsubstratethickness/2. + 3*mm), logicReflectiveFoilEdgeTop, "physReflectiveFoilEdgeTop", logicWorld, false, 0, true);
+  physReflectiveFoilEdgeBot   = new G4PVPlacement(0, G4ThreeVector(0., -(lighttrapsize/2. + 0.033*mm), lighttrapsize/2. + LArthickness + pTPsubstratethickness/2. + 3*mm), logicReflectiveFoilEdgeBot, "physReflectiveFoilEdgeBot", logicWorld, false, 0, true);
+  physReflectiveFoilEdgeLeft  = new G4PVPlacement(0, G4ThreeVector(lighttrapsize/2. + 0.033*mm, 0., lighttrapsize/2. + LArthickness + pTPsubstratethickness/2. + 3*mm), logicReflectiveFoilEdgeLeft, "physReflectiveFoilEdgeLeft", logicWorld, false, 0, true);
+  physReflectiveFoilEdgeRight = new G4PVPlacement(0, G4ThreeVector(-(lighttrapsize/2. + 0.033*mm), 0., lighttrapsize/2. + LArthickness + pTPsubstratethickness/2. + 3*mm), logicReflectiveFoilEdgeRight, "physReflectiveFoilEdgeRight", logicWorld, false, 0, true);
+
+
+  return physWorld;
+}
+
+void MyLightTrapConstruction::ConstructSDandField()
+{
+  MySensitiveDetector *sensDet = new MySensitiveDetector("SensitiveDetector");
+  logicSiPMs->SetSensitiveDetector(sensDet);
+}
