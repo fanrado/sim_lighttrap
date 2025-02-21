@@ -37,10 +37,11 @@ G4bool MySensitiveDetector::ProcessHits(G4Step *aStep, G4TouchableHistory *ROhis
 
   G4ThreeVector posPhoton = preStepPoint->GetPosition();
   G4double time = preStepPoint->GetGlobalTime();
+  G4ThreeVector polarizationPhoton = preStepPoint->GetPolarization();
 
   G4ThreeVector momPhoton = preStepPoint->GetMomentum();
   G4double wl = (1.239841939*eV/momPhoton.mag())*1E+03;
-  G4cout << "Photon wl: " << wl << G4endl;
+  G4cout << "Photon wl: " << wl << ", polarization: "<< polarizationPhoton << G4endl;
 
   //G4cout << "Photon pos: " << posPhoton << G4endl;
 

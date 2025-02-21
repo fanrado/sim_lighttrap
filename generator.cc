@@ -6,8 +6,8 @@ MyPrimaryGenerator::MyPrimaryGenerator()
   G4ParticleTable *particleTable = G4ParticleTable::GetParticleTable();
   G4ParticleDefinition *particle = particleTable->FindParticle("gamma");  // examples: e-, e+, proton, gamma
 
-  G4ThreeVector pos(0., 0., 0.2*m);
-  G4ThreeVector mom(0., 0., 1.);
+  //G4ThreeVector pos(0., 0., 0.2*m);
+  //G4ThreeVector mom(0., 0., 1.);
   //G4ThreeVector momentumUnitVector = G4RandomDirection();
   //fParticleGun->SetParticleMomentumDirection(momentumUnitVector);
 
@@ -30,4 +30,27 @@ void MyPrimaryGenerator::GeneratePrimaries(G4Event *anEvent)
 {
   //fParticleGun->GeneratePrimaryVertex(anEvent);
   fGPS->GeneratePrimaryVertex(anEvent);
+
+  // Generate a random polarization vector for optical photons (default GPS particle)
+  // Retrieve the momentum direction (assumed to be normalized)
+  G4ThreeVector momentumDir = fGPS->GetParticleMomentumDirection();
+
+  // Choose a default vector to help compute a perpendicular vector
+  G4ThreeVector refVec(0,0,1);
+  if (std::fabs(momentumDir.dot(refVec)) > 0.999) {
+      refVec = G4ThreeVector(1,0,0);
+  }
+
+  // Create an initial perpendicular vector
+  G4ThreeVector perp = momentumDir.cross(refVec).unit();
+
+  // Generate a random rotation angle
+  G4double phi = G4UniformRand() * 2.0 * CLHEP::pi;
+
+  // Rotate the perpendicular vector by phi around the momentum direction.
+  // This gives a random polarization vector still perpendicular to momentumDir.
+  G4ThreeVector randomPol = perp * std::cos(phi) + (momentumDir.cross(perp)) * std::sin(phi);
+
+  // Set the random polarization vector for the optical photon
+  fGPS->GetCurrentSource()->SetParticlePolarization(randomPol);
 }
