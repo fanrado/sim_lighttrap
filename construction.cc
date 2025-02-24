@@ -32,7 +32,7 @@ void MyLightTrapConstruction::DefineMaterials()
   pTP->AddElement(nist->FindOrBuildElement("C"), 18);
   pTP->AddElement(nist->FindOrBuildElement("H"), 14);
 
-  acrylicMcMaster = new G4Material("acrylicMcMaster", 1.19*g/cm3, 3);
+  acrylicMcMaster = new G4Material("acrylicMcMaster", 1.19*g/cm3, 3); // https://www.mcmaster.com/8560K224/
   acrylicMcMaster->AddElement(nist->FindOrBuildElement("C"), 5);
   acrylicMcMaster->AddElement(nist->FindOrBuildElement("H"), 8);
   acrylicMcMaster->AddElement(nist->FindOrBuildElement("O"), 2);
@@ -42,24 +42,32 @@ void MyLightTrapConstruction::DefineMaterials()
   bluewlsacrylic->AddElement(nist->FindOrBuildElement("H"), 10);
 
   G4double energy[8] = {1.239841939*eV/0.53, 1.239841939*eV/0.425, 1.239841939*eV/0.4, 1.239841939*eV/0.34, 1.239841939*eV/0.305, 1.239841939*eV/0.16, 1.239841939*eV/0.128, 1.239841939*eV/0.106}; //wavelength in microns
-  G4double rindexWorld[8] = {1.38, 1.38, 1.38, 1.38, 1.38, 1.38, 1.38, 1.38};
-  G4double ffraction[8] = {0., 0., 0., 0., 0., 0.000238409, 0.0398859, 0.00422473};
-  G4double LArabsorption[8] = {1000.*cm, 1000.*cm, 1000.*cm, 1000.*cm, 1000.*cm, 1000.*cm, 1000.*cm, 1000.*cm};
-  G4double LArRayleigh[8] = {90.*cm, 90.*cm, 90.*cm, 90.*cm, 90.*cm, 90.*cm, 90.*cm, 90.*cm};
+  // LAr rindex:
+  // 1) http://dx.doi.org/10.1016/j.nima.2017.06.031
+  // 2) https://github.com/LArSoft/larg4/blob/c8505744f4ed2ddcd5c3f30f6ee4a6ef86dbccce/gdml/simpleLArTPC.gdml#L45
+  G4double rindexWorld[8] = {1.23, 1.23, 1.23, 1.23, 1.235, 1.315, 1.45, 5.45};
+  G4double ffraction[8] = {0., 0., 0., 0., 0., 0.000238409, 0.0398859, 0.00422473}; // source: https://github.com/LArSoft/larg4/blob/c8505744f4ed2ddcd5c3f30f6ee4a6ef86dbccce/gdml/simpleLArTPC.gdml#L18
+  G4double LArabsorption[8] = {1000.*cm, 1000.*cm, 1000.*cm, 1000.*cm, 1000.*cm, 1000.*cm, 1000.*cm, 1000.*cm}; // outside 106-160nm: guess, 106-160nm: https://github.com/LArSoft/larg4/blob/c8505744f4ed2ddcd5c3f30f6ee4a6ef86dbccce/gdml/simpleLArTPC.gdml#L20C23-L20C35
+  G4double LArRayleigh[8] = {90.*cm, 90.*cm, 90.*cm, 90.*cm, 90.*cm, 90.*cm, 90.*cm, 90.*cm}; // outside 106-160nm: guess, 106-160nm: https://github.com/LArSoft/larg4/blob/c8505744f4ed2ddcd5c3f30f6ee4a6ef86dbccce/gdml/simpleLArTPC.gdml#L21
 
-  G4double rindexpTP[8] = {1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65}; // refractive index
-  G4double AbspTP[8] = {10*m, 10*m, 10*m, 10*m, 0.1*mm, 0.0005*mm, 0.0005*mm, 0.0005*mm}; // absorption length
-  G4double EmissionpTP[8] = {0., 0.0005, 0.002, 0.022, 0.0005, 0., 0., 0.}; // relative emission spectrum, unitless
+  G4double rindexpTP[8] = {1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65}; // source: https://indico.fnal.gov/event/63097/contributions/283538/attachments/174977/237339/slides.pdf
+  G4double AbspTP[8] = {10*m, 10*m, 10*m, 10*m, 0.187*mm, 0.0005*mm, 0.0005*mm, 0.0005*mm}; // < 200nm guess, >200nm source: DeVol, T. A., Wehe, D. K., Knoll, G. F. (1993/04/01)."Evaluation of p-terphenyl and 2,2" dimethyl-p-terphenyl as wavelength shifters for barium fluoride." Nuclear Instruments and Methods in Physics Research Section A: Accelerators, Spectrometers, Detectors and Associated Equipment 327(2-3): 354-362.
+  G4double EmissionpTP[8] = {0., 0.0005, 0.002, 0.022, 0.0005, 0., 0., 0.}; // relative emission spectrum, unitless, source: https://iopscience.iop.org/article/10.1088/1748-0221/19/02/C02021
 
-  G4double rindexacrylicMcMaster[8] = {1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5};
+  G4double rindexacrylicMcMaster[8] = {1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5}; // source: https://indico.fnal.gov/event/63097/contributions/283538/attachments/174977/237339/slides.pdf
 
-  G4double rindexbluewlsacrylic[8] = {1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58};
-  G4double Absbluewls[8] = {10*m, 10*m, 1.7*mm, 1*mm, 1.2*mm, 10*m, 10*m, 10*m}; // absorption length
-  G4double Emissionbluewls[8] = {0.0005, 0.02, 0., 0., 0., 0., 0., 0.}; // relative emission spectrum, unitless
+  G4double rindexbluewlsacrylic[8] = {1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58}; // source: https://eljentechnology.com/products/wavelength-shifting-plastics/ej-280-ej-282-ej-284-ej-286
+  // Absorption length:
+  // 200cm @ 430nm (DUNE VD): https://agenda.infn.it/event/37876/contributions/214807/attachments/112678/161089/PhColl_DUNE_IT-1.pdf
+  // 400nm -300nm: using result from DUNE HD small XA: https://indico.cern.ch/event/1485254/contributions/6359507/attachments/3013274/5314283/DRD2_250211-4.pdf
+  // < 300 nm: guesses, VUV should be strongly absorbed - BUT they shouldn't cause reemission - How to code this????
+  // what should we put for 300nm and below??? probably don't matter much since here don't expect much VUV light
+  G4double Absbluewls[8] = {200*cm, 200*cm, 0.8*mm, 0.8*mm, 3*mm, 0.0001*mm, 0.0001*mm, 0.0001*mm};
+  G4double Emissionbluewls[8] = {0.0005, 0.02, 0., 0., 0., 0., 0., 0.}; // relative emission spectrum, unitless, source: https://iopscience.iop.org/article/10.1088/1748-0221/19/02/C02021
 
-  G4double reflectivity[8] = {0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98};
+  G4double reflectivity[8] = {0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98}; // source >98%: https://multimedia.3m.com/mws/media/1245089O/3m-enhanced-specular-reflector-films-3m-esr-tech-data-sheet.pdf
 
-  worldMat = nist->FindOrBuildMaterial("G4_lAr"); // other option: G4_lAr
+  worldMat = nist->FindOrBuildMaterial("G4_lAr");
 
   G4MaterialPropertiesTable *mptpTP = new G4MaterialPropertiesTable();
   mptpTP->AddProperty("RINDEX", energy, rindexpTP, 8);
