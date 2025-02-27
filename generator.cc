@@ -4,10 +4,11 @@ MyPrimaryGenerator::MyPrimaryGenerator()
 {
   //fParticleGun = new G4ParticleGun(1); // particle per event
   G4ParticleTable *particleTable = G4ParticleTable::GetParticleTable();
-  G4ParticleDefinition *particle = particleTable->FindParticle("gamma");  // examples: e-, e+, proton, gamma
+  G4ParticleDefinition *particle = particleTable->FindParticle("opticalphoton");  // examples: e-, e+, proton, gamma
 
-  //G4ThreeVector pos(0., 0., 0.2*m);
-  //G4ThreeVector mom(0., 0., 1.);
+  G4ThreeVector pos(0., 0., 24.5*cm);
+  G4ThreeVector mom(0., 0., 1.);
+  G4double energy = 9.68 * eV;
   //G4ThreeVector momentumUnitVector = G4RandomDirection();
   //fParticleGun->SetParticleMomentumDirection(momentumUnitVector);
 
@@ -17,7 +18,14 @@ MyPrimaryGenerator::MyPrimaryGenerator()
   //fParticleGun->SetParticleDefinition(particle);
 
   fGPS = new G4GeneralParticleSource();
-  fGPS->SetParticleDefinition(particle);
+  fGPS->GetCurrentSource()->SetParticleDefinition(particle);
+  fGPS->GetCurrentSource()->GetPosDist()->SetCentreCoords(pos);
+  fGPS->GetCurrentSource()->GetPosDist()->SetPosDisType("Point");
+  fGPS->GetCurrentSource()->GetAngDist()->SetParticleMomentumDirection(mom);
+  fGPS->GetCurrentSource()->GetEneDist()->SetMonoEnergy(energy);
+
+  // G4cout << "Primary particle generated in Constructor: pol: " << fGPS->GetCurrentSource()->GetParticlePolarization().mag2() << G4endl;
+
 }
 
 MyPrimaryGenerator::~MyPrimaryGenerator()
@@ -53,4 +61,9 @@ void MyPrimaryGenerator::GeneratePrimaries(G4Event *anEvent)
 
   // Set the random polarization vector for the optical photon
   fGPS->GetCurrentSource()->SetParticlePolarization(randomPol);
+
+  G4cout << "Primary particle generated:" 
+  << " pos: " << fGPS->GetCurrentSource()->GetParticlePosition()
+  << " pol: " << fGPS->GetCurrentSource()->GetParticlePolarization()
+  << G4endl;
 }

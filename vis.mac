@@ -1,5 +1,5 @@
 /vis/open OGL
-/vis/viewer/set/viewpointVector 1 1 1
+/vis/viewer/set/viewpointVector -1 0 0
 /vis/drawVolume
 /vis/viewer/set/autoRefresh true
 /vis/scene/add/trajectories smooth
@@ -7,3 +7,17 @@
 /vis/scene/add/axes
 /vis/scene/add/eventID
 /vis/scene/endOfEventAction accumulate
+
+
+# File menu :
+/gui/addMenu file File
+/gui/addButton file Quit exit
+
+# View menu:
+/gui/addMenu view View
+/gui/addButton view "X-Y" "/vis/viewer/set/viewpointVector 0 0 1"
+/gui/addButton view "Y-Z" "/vis/viewer/set/viewpointVector -1 0 0"
+
+# Run menu :
+/gui/addMenu run Run
+/gui/addButton run "beamOn 1" "/run/beamOn 1"
