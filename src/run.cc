@@ -23,6 +23,21 @@ MyRunAction::MyRunAction()
   man->CreateNtuple("Energy", "Energy");
   man->CreateNtupleDColumn("fEdep");
   man->FinishNtuple(2);
+
+
+  // Now add one for Primary particle information:
+  man->CreateNtuple("Primary", "Primary Particle Information");
+  man->CreateNtupleIColumn("eventID");
+  man->CreateNtupleDColumn("posX"); // position
+  man->CreateNtupleDColumn("posY");
+  man->CreateNtupleDColumn("posZ");
+  man->CreateNtupleDColumn("momX"); // momentum
+  man->CreateNtupleDColumn("momY");
+  man->CreateNtupleDColumn("momZ"); 
+  man->CreateNtupleDColumn("wl"); // wavelength
+  man->CreateNtupleIColumn("pdg"); // pdg code
+  man->FinishNtuple(3);
+
 }
 
 MyRunAction::~MyRunAction()
