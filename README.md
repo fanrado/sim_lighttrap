@@ -1,8 +1,69 @@
-# Set up G4 on your local PC (linux/Mac)
+# LightTrapSimulation
+
+LightTrapSimulation is a Geant4-based simulation project designed to model an optical light trap. The simulation includes wavelength-shifting processes in a pTP (p-terphenyl) material and tracks the emission of optical photons that interact with detector elements (e.g., SiPMs). Data such as primary particle information, remitted optical photon angles, and material properties are recorded in ROOT ntuples for analysis.
+
+## Installation and Compilation
+
+1. **Set up Geant4 Environment:**  
+   Source the Geant4 environment script (this might vary by installation):
+   ```bash
+   source /path/to/geant4-install/bin/geant4.sh
+   ```
+
+2. **Create a Build Directory:**
+   ```bash
+   mkdir build
+   cd build
+   ```
+
+3. **Run CMake:**
+   ```bash
+   cmake ..
+   ```
+   This command configures the project and locates all source files under `src/`, headers under `include/`, and copies macro files from `mac/` to the build directory.
+
+4. **Build the Project:**
+   ```bash
+   make
+   ```
+   The executable `sim_lighttrap` will be created.
+
+## Running the Simulation
+
+You can run the simulation in interactive or batch mode:
+
+- **Interactive Mode (with Visualization):**
+  ```bash
+  ./sim_lighttrap
+  ```
+  This will launch the UI session and automatically execute the `vis.mac` macro.
+
+- **Batch Mode:**
+  ```bash
+  ./sim_lighttrap run.mac
+  ```
+  You can also override the run setup by providing other macro files (e.g., `det.mac` or `scandet.mac`).
+
+## Visualization
+
+The `vis.mac` macro provides commands for rendering the simulation:
+- It opens an OpenGL viewer.
+- Sets an initial viewpoint (which can be changed using GUI buttons).
+- Draws volumes, trajectories, axes, and displays event IDs.
+- Allows you to capture snapshots if needed.
+
+
+
+---
+
+
+# Appendix
+
+## Set up G4 on your local PC (linux/Mac)
 Follow: https://www.youtube.com/playlist?list=PLLybgCU6QCGWgzNYOV0SKen9vqg4KXeVL
 
 
-# Usage at PC
+## Usage at PC
 
 ```
 [everytime]
@@ -22,7 +83,7 @@ make     [update changes]
 ```
 
 
-# Set up G4 on dunegpvm (Alma 9)
+## Set up G4 on dunegpvm (Alma 9)
 
 ```
 # dunepgvm alma9 binary 11.3.0
@@ -38,3 +99,5 @@ make -f Makefile
 # may need to enable OpenGL (on Mac terminal and reboot)
 defaults write org.xquartz.X11 enable_iglx -bool true
 ```
+
+---
