@@ -48,6 +48,7 @@ private:
 
   G4OpticalSurface *Vikuiti;
   const G4double EVUM; // eV to microns conversion factor 1.239841939*eV
+  G4double energy[8];
 };
 
 #endif
