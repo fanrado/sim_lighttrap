@@ -31,12 +31,9 @@ void MyEventAction::EndOfEventAction(const G4Event* event)
     G4PrimaryParticle* particle = vertex->GetPrimary();
     
     // Extract momentum information:
-    // G4PrimaryParticle provides the momentum magnitude and momentum direction.
-    // Compute the momentum vector as:
     G4ThreeVector momentum = particle->GetMomentum();
     
     // For optical photons (massless), the momentum magnitude is equal to the energy,
-    // so we can still compute the wavelength as before:
     G4double energy = particle->GetKineticEnergy();
     G4double wavelength = (1.239841939 * eV / energy) * 1E+03;  // wavelength in nm
     

@@ -1,4 +1,9 @@
 #include "action.hh"
+#include "generator.hh"
+#include "run.hh"
+#include "event.hh"
+#include "stepping.hh"
+#include "tracking.hh"
 
 MyActionInitialization::MyActionInitialization()
 {}
@@ -19,4 +24,7 @@ void MyActionInitialization::Build() const
 
   MySteppingAction *steppingAction = new MySteppingAction(eventAction);
   SetUserAction(steppingAction);
+
+  // Register the custom tracking action to record WLS photons.
+  SetUserAction(new MyTrackingAction());
 }
