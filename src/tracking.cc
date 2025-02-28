@@ -36,8 +36,8 @@ void MyTrackingAction::PreUserTrackingAction(const G4Track* track)
           G4Material* material = volume->GetLogicalVolume()->GetMaterial();
           if (material) {
             materialName = material->GetName();
-            G4cout << "WLS photon created in material: " << materialName 
-            << ", volume " << volume->GetName() << G4endl;
+            // G4cout << "WLS photon created in material: " << materialName 
+            // << ", volume " << volume->GetName() << G4endl;
           }
         }
       }

@@ -40,6 +40,11 @@ private:
   G4Material *pTP, *acrylicMcMaster, *bluewlsacrylic,  *worldMat;
 
   void DefineMaterials();
+  void DefinePTPMaterial();
+  void DefineAcrylicMaterial();
+  void DefineBlueWLSMaterial();
+  void DefineWorldMaterial();
+  void DefineOpticalSurface();
 
   G4OpticalSurface *Vikuiti;
 };

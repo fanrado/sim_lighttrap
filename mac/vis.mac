@@ -8,15 +8,16 @@
 /vis/scene/add/eventID
 /vis/scene/endOfEventAction accumulate
 
-
 # File menu :
 /gui/addMenu file File
 /gui/addButton file Quit exit
 
-# View menu:
-/gui/addMenu view View
-/gui/addButton view "X-Y" "/vis/viewer/set/viewpointVector 0 0 1"
-/gui/addButton view "Y-Z" "/vis/viewer/set/viewpointVector -1 0 0"
+# Camera menu:
+/gui/addMenu camera Camera
+/gui/addButton camera "Front" "/vis/viewer/set/viewpointVector 0 0 1"
+/gui/addButton camera "Side"  "/vis/viewer/set/viewpointVector -1 0 0"
+/gui/addButton camera "Top"   "/vis/viewer/set/viewpointVector 0 -1 0"
+/gui/addButton camera "Reset"   "/vis/viewer/set/viewpointVector -1 1 1"
 
 # Run menu :
 /gui/addMenu run Run
