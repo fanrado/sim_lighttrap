@@ -5,6 +5,9 @@
 #include "G4VisManager.hh"
 #include "G4VisExecutive.hh"
 #include "G4UIExecutive.hh"
+#include "G4GDMLParser.hh"
+// #include "G4TransportationManager.hh"
+// #include "G4LogicalVolume.hh"
 
 #include "construction.hh"
 #include "physics.hh"
@@ -38,6 +41,13 @@ int main(int argc, char** argv)
     G4String fileName = argv[1];
     UImanager->ApplyCommand(command + fileName);
   }
+
+
+  // Export the geometry to GDML
+  // G4GDMLParser parser;
+  // G4VPhysicalVolume* worldPhysical = G4TransportationManager::GetTransportationManager()
+  //                                       ->GetNavigatorForTracking()->GetWorldVolume();
+  // parser.Write("detector.gdml", worldPhysical->GetLogicalVolume());
 
   delete runManager;
   delete visManager;
