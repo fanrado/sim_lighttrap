@@ -62,8 +62,8 @@ void MyPrimaryGenerator::GeneratePrimaries(G4Event *anEvent)
   // Set the random polarization vector for the optical photon
   fGPS->GetCurrentSource()->SetParticlePolarization(randomPol);
 
-  G4cout << "Primary particle generated:" 
-  << " pos: " << fGPS->GetCurrentSource()->GetParticlePosition()
-  << " pol: " << fGPS->GetCurrentSource()->GetParticlePolarization()
-  << G4endl;
+  // G4cout << "Primary particle generated:" 
+  // << " pos: " << fGPS->GetCurrentSource()->GetParticlePosition()
+  // << " pol: " << fGPS->GetCurrentSource()->GetParticlePolarization()
+  // << G4endl;
 }

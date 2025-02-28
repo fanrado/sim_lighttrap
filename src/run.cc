@@ -44,12 +44,13 @@ MyRunAction::MyRunAction()
   man->CreateNtupleDColumn("posX");           // Emission position X
   man->CreateNtupleDColumn("posY");           // Emission position Y
   man->CreateNtupleDColumn("posZ");           // Emission position Z
-  man->CreateNtupleDColumn("momX");      // Momentum component X
-  man->CreateNtupleDColumn("momY");      // Momentum component Y
+  man->CreateNtupleDColumn("cosTheta");      // zenith angle
+  man->CreateNtupleDColumn("phi");      // azimuth angle
   man->CreateNtupleDColumn("momZ");      // Momentum component Z
   man->CreateNtupleDColumn("t");     // Global time of emission
   man->CreateNtupleIColumn("pdg");          // PDG code of the photon (typically 22 for optical photons)
   man->CreateNtupleDColumn("wl"); // wavelength
+  man->CreateNtupleIColumn("matName");          // material name
   man->FinishNtuple(4);
 }
 
