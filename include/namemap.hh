@@ -34,8 +34,12 @@ private:
       {"pTP", 1},
       {"acrylicMcMaster", 2},
       {"bluewlsacrylic", 3},
-      {"G4_lAr", 4}
-      // Add additional material names and codes as needed.
+      {"G4_lAr", 4},
+
+      {"Scintillation", 100},
+      {"OpWLS", 101}
+      // Add additional names and codes as needed.
+
     };
     return fixedMap;
   }

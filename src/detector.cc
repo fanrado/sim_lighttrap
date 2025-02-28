@@ -41,7 +41,7 @@ G4bool MySensitiveDetector::ProcessHits(G4Step *aStep, G4TouchableHistory *ROhis
 
   G4ThreeVector momPhoton = preStepPoint->GetMomentum();
   G4double wl = (1.239841939*eV/momPhoton.mag())*1E+03;
-  G4cout << "Photon wl: " << wl << ", polarization: "<< polarizationPhoton << G4endl;
+  // G4cout << "Photon wl: " << wl << ", polarization: "<< polarizationPhoton << G4endl;
 
   //G4cout << "Photon pos: " << posPhoton << G4endl;
 
@@ -52,7 +52,7 @@ G4bool MySensitiveDetector::ProcessHits(G4Step *aStep, G4TouchableHistory *ROhis
 
   G4VPhysicalVolume *physVol = touchable->GetVolume();
   G4ThreeVector posDetector = physVol->GetTranslation();
-  G4cout << "posDetector: " << posDetector << G4endl;
+  // G4cout << "posDetector: " << posDetector << G4endl;
 
   G4int evt = G4RunManager::GetRunManager()->GetCurrentEvent()->GetEventID();
 

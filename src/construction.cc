@@ -1,6 +1,7 @@
 #include "construction.hh"
 
 MyLightTrapConstruction::MyLightTrapConstruction()
+: EVUM(1.239841939*eV)
 {
   fMessenger = new G4GenericMessenger(this, "/detector/", "Light Trap Construction");
 
@@ -28,7 +29,7 @@ void MyLightTrapConstruction::DefinePTPMaterial() {
   pTP = new G4Material("pTP", 1.23*g/cm3, 2);
   pTP->AddElement(nist->FindOrBuildElement("C"), 18);
   pTP->AddElement(nist->FindOrBuildElement("H"), 14);
-  G4double energy[8] = {1.239841939*eV/0.53, 1.239841939*eV/0.425, 1.239841939*eV/0.4, 1.239841939*eV/0.34, 1.239841939*eV/0.305, 1.239841939*eV/0.16, 1.239841939*eV/0.128, 1.239841939*eV/0.106}; //wavelength in microns
+  G4double energy[8] = {EVUM/0.53, EVUM/0.425, EVUM/0.4, EVUM/0.34, EVUM/0.305, EVUM/0.16, EVUM/0.128, EVUM/0.106}; //wavelength in microns
   G4double rindexpTP[8] = {1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65}; // source: https://indico.fnal.gov/event/63097/contributions/283538/attachments/174977/237339/slides.pdf
   G4double AbspTP[8] = {10*m, 10*m, 10*m, 10*m, 0.187*mm, 0.0005*mm, 0.0005*mm, 0.0005*mm}; // < 200nm guess, >200nm source: DeVol, T. A., Wehe, D. K., Knoll, G. F. (1993/04/01)."Evaluation of p-terphenyl and 2,2" dimethyl-p-terphenyl as wavelength shifters for barium fluoride." Nuclear Instruments and Methods in Physics Research Section A: Accelerators, Spectrometers, Detectors and Associated Equipment 327(2-3): 354-362.
   G4double EmissionpTP[8] = {0., 0.0005, 0.002, 0.022, 0.0005, 0., 0., 0.}; // relative emission spectrum, unitless, source: https://iopscience.iop.org/article/10.1088/1748-0221/19/02/C02021
@@ -47,7 +48,7 @@ void MyLightTrapConstruction::DefineAcrylicMaterial() {
   acrylicMcMaster->AddElement(nist->FindOrBuildElement("C"), 5);
   acrylicMcMaster->AddElement(nist->FindOrBuildElement("H"), 8);
   acrylicMcMaster->AddElement(nist->FindOrBuildElement("O"), 2);
-  G4double energy[8] = {1.239841939*eV/0.53, 1.239841939*eV/0.425, 1.239841939*eV/0.4, 1.239841939*eV/0.34, 1.239841939*eV/0.305, 1.239841939*eV/0.16, 1.239841939*eV/0.128, 1.239841939*eV/0.106}; //wavelength in microns
+  G4double energy[8] = {EVUM/0.53, EVUM/0.425, EVUM/0.4, EVUM/0.34, EVUM/0.305, EVUM/0.16, EVUM/0.128, EVUM/0.106}; //wavelength in microns
   G4double rindexacrylicMcMaster[8] = {1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5}; // source: https://indico.fnal.gov/event/63097/contributions/283538/attachments/174977/237339/slides.pdf
 
   G4MaterialPropertiesTable *mptacrylicMcMaster = new G4MaterialPropertiesTable();
@@ -62,7 +63,7 @@ void MyLightTrapConstruction::DefineBlueWLSMaterial() {
   bluewlsacrylic->AddElement(nist->FindOrBuildElement("C"), 9);
   bluewlsacrylic->AddElement(nist->FindOrBuildElement("H"), 10);
 
-  G4double energy[8] = {1.239841939*eV/0.53, 1.239841939*eV/0.425, 1.239841939*eV/0.4, 1.239841939*eV/0.34, 1.239841939*eV/0.305, 1.239841939*eV/0.16, 1.239841939*eV/0.128, 1.239841939*eV/0.106}; //wavelength in microns
+  G4double energy[8] = {EVUM/0.53, EVUM/0.425, EVUM/0.4, EVUM/0.34, EVUM/0.305, EVUM/0.16, EVUM/0.128, EVUM/0.106}; //wavelength in microns
   G4double rindexbluewlsacrylic[8] = {1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58}; // source: https://eljentechnology.com/products/wavelength-shifting-plastics/ej-280-ej-282-ej-284-ej-286
   // Absorption length:
   // 200cm @ 430nm (DUNE VD): https://agenda.infn.it/event/37876/contributions/214807/attachments/112678/161089/PhColl_DUNE_IT-1.pdf
@@ -84,7 +85,7 @@ void MyLightTrapConstruction::DefineWorldMaterial() {
   G4NistManager *nist = G4NistManager::Instance();
   worldMat = nist->FindOrBuildMaterial("G4_lAr");
 
-  G4double energy[8] = {1.239841939*eV/0.53, 1.239841939*eV/0.425, 1.239841939*eV/0.4, 1.239841939*eV/0.34, 1.239841939*eV/0.305, 1.239841939*eV/0.16, 1.239841939*eV/0.128, 1.239841939*eV/0.106}; //wavelength in microns
+  G4double energy[8] = {EVUM/0.53, EVUM/0.425, EVUM/0.4, EVUM/0.34, EVUM/0.305, EVUM/0.16, EVUM/0.128, EVUM/0.106}; //wavelength in microns
   // LAr rindex:
   // 1) http://dx.doi.org/10.1016/j.nima.2017.06.031
   // 2) https://github.com/LArSoft/larg4/blob/c8505744f4ed2ddcd5c3f30f6ee4a6ef86dbccce/gdml/simpleLArTPC.gdml#L45
@@ -112,7 +113,7 @@ void MyLightTrapConstruction::DefineWorldMaterial() {
 }
 
 void MyLightTrapConstruction::DefineOpticalSurface() {
-  G4double energy[8] = {1.239841939*eV/0.53, 1.239841939*eV/0.425, 1.239841939*eV/0.4, 1.239841939*eV/0.34, 1.239841939*eV/0.305, 1.239841939*eV/0.16, 1.239841939*eV/0.128, 1.239841939*eV/0.106}; //wavelength in microns
+  G4double energy[8] = {EVUM/0.53, EVUM/0.425, EVUM/0.4, EVUM/0.34, EVUM/0.305, EVUM/0.16, EVUM/0.128, EVUM/0.106}; //wavelength in microns
   G4double reflectivity[8] = {0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98}; // source >98%: https://multimedia.3m.com/mws/media/1245089O/3m-enhanced-specular-reflector-films-3m-esr-tech-data-sheet.pdf
 
   Vikuiti = new G4OpticalSurface("Vikuiti");

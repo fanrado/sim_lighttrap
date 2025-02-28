@@ -21,4 +21,6 @@
 
 # Run menu :
 /gui/addMenu run Run
+/gui/addButton run "Particle e-" "/gps/particle e-"
+/gui/addButton run "Energy 0.1 MeV" "/gps/energy 0.1 MeV"
 /gui/addButton run "beamOn 1" "/run/beamOn 1"

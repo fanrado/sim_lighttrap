@@ -46,7 +46,7 @@ MyRunAction::MyRunAction()
   man->CreateNtupleDColumn("posZ");           // Emission position Z
   man->CreateNtupleDColumn("cosTheta");      // zenith angle
   man->CreateNtupleDColumn("phi");      // azimuth angle
-  man->CreateNtupleDColumn("momZ");      // Momentum component Z
+  man->CreateNtupleIColumn("processName");      // WLS or Scintillation
   man->CreateNtupleDColumn("t");     // Global time of emission
   man->CreateNtupleIColumn("pdg");          // PDG code of the photon (typically 22 for optical photons)
   man->CreateNtupleDColumn("wl"); // wavelength
