@@ -1,0 +1,47 @@
+  //__________________ PTP parametrisation __________________//
+  
+  const int ptp_e_entries = 22;
+  const int ptp_a_entries = 15;
+  const int ptp_fe_entries = 9;
+  //  const int ptp_ab_entries = 3;
+
+  // Set emission energy range and parameters
+
+  G4double ptp_e_energy[ptp_e_entries] = 
+    {3.06434*eV, 3.1098*eV,3.14086*eV, 3.18325*eV, 3.24903*eV, 
+    3.31176*eV, 3.33517*eV, 3.37092*eV,3.4198*eV, 3.45108*eV, 
+    3.47012*eV, 3.48937*eV, 3.51537*eV, 3.53513*eV, 3.55512*eV, 
+    3.59577*eV, 3.62339*eV, 3.63736*eV, 3.65144*eV, 3.66562*eV, 
+    3.67992*eV, 3.7235*eV};
+
+  G4double ptp_e[ptp_e_entries] = 
+    {0.016285, 0.0520565, 0.0788851, 0.132542, 0.275628, 
+     0.409771, 0.543914, 0.678057, 0.722772, 0.821143, 
+     0.955286, 1, 0.946343, 0.8122, 0.740657, 0.8122, 
+     0.678057, 0.534971, 0.400828, 0.266685, 0.132542, 0.00734215};
+
+  // Set absorption energy range and parameters
+  G4double ptp_a_energy[ptp_a_entries] =
+    {2.0*eV, 3.0*eV, 4.0*eV, 4.5*eV, 5.0*eV, 5.5*eV, 6.0*eV, 6.5*eV, 7.0*eV, 7.5*eV, 8.0*eV, 8.27*eV, 12.40*eV, 24.80*eV, 123.99*eV}; // many divisions to make long absorption length within emission range
+   
+  double c_ptp = 0.3*um; // value without absorption
+  double m_ptp = 1e6;
+
+  G4double ptp_l[ptp_a_entries] =
+    {m_ptp*c_ptp, m_ptp*c_ptp, m_ptp*c_ptp, m_ptp*c_ptp, m_ptp*c_ptp, m_ptp*c_ptp, c_ptp, c_ptp, c_ptp, c_ptp, c_ptp, c_ptp, c_ptp, c_ptp, c_ptp};
+
+  // Set refraction and absorption energy range and parameters
+
+  G4double ptp_fe_energy[ptp_fe_entries] = 
+    {1*eV, 3.0*eV, 3.8*eV, 6.20*eV, 8.27*eV, 12.40*eV, 24.80*eV, 123.99*eV, 200*eV};
+   
+  G4double ptp_n[ptp_e_entries] =
+    {1.35, 1.35, 1.35, 1.35, 1.35, 1.35, 1.35, 1.35, 1.35};
+
+  G4MaterialPropertiesTable* ptp_pt = new G4MaterialPropertiesTable();
+  ptp_pt->AddProperty("RINDEX", ptp_fe_energy, ptp_n, ptp_fe_entries);
+  ptp_pt->AddProperty("WLSABSLENGTH", ptp_a_energy, ptp_l, ptp_a_entries);
+  ptp_pt->AddProperty("WLSCOMPONENT", ptp_e_energy, ptp_e, ptp_e_entries);
+  ptp_pt->AddConstProperty("WLSTIMECONSTANT", 5*ns);
+  ptp_mat->SetMaterialPropertiesTable(ptp_pt); 
+  
