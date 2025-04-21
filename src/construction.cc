@@ -64,10 +64,7 @@ void MyLightTrapConstruction::DefinePTPMaterial() {
   worldMat = nist->FindOrBuildMaterial("G4_lAr"); // other option: G4_lAr
   // worldMat = nist->FindOrBuildMaterial("G4_AIR");
   // 8 wavelengths [nm]: {530, 425, 400, 340, 305, 160, 128, 106}; 
-  G4double rindexpTP[8] = {1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65}; // source: https://indico.fnal.gov/event/63097/contributions/283538/attachments/174977/237339/slides.pdf
-  G4double AbspTP[8] = {10*m, 10*m, 10*m, 10*m, 0.187*mm, 0.0005*mm, 0.0005*mm, 0.0005*mm}; // < 200nm guess, >200nm source: DeVol, T. A., Wehe, D. K., Knoll, G. F. (1993/04/01)."Evaluation of p-terphenyl and 2,2" dimethyl-p-terphenyl as wavelength shifters for barium fluoride." Nuclear Instruments and Methods in Physics Research Section A: Accelerators, Spectrometers, Detectors and Associated Equipment 327(2-3): 354-362.
-  G4double EmissionpTP[8] = {0., 0.0005, 0.002, 0.022, 0.0005, 0., 0., 0.}; // relative emission spectrum, unitless, source: https://iopscience.iop.org/article/10.1088/1748-0221/19/02/C02021
-
+  
   G4MaterialPropertiesTable *mptpTP = new G4MaterialPropertiesTable();
   mptpTP->AddProperty("RINDEX", energy, rindexpTP, 8);
   mptpTP->AddProperty("WLSABSLENGTH", energy, AbspTP, 8);
@@ -180,47 +177,61 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   physpTPlayer = new G4PVPlacement(0, G4ThreeVector(0., 0., lighttrapsize/2. - pTPsubstratethickness/2. - pTPlayerthickness/2.), logicpTPlayer, "physpTPlayer", logicWorld, false, 0, true);
 
   pTPsubstrate =  new G4Box("pTPsubstrate", lighttrapsize/2., lighttrapsize/2., pTPsubstratethickness/2.);
+  pTPsubstrate =  new G4Box("pTPsubstrate", lighttrapsize/2., lighttrapsize/2., pTPsubstratethickness);
   logicpTPsubstrate = new G4LogicalVolume(pTPsubstrate, acrylicMcMaster, "logicpTPsubstrate");
   physpTPsubstrate = new G4PVPlacement(0, G4ThreeVector(0., 0., lighttrapsize/2.), logicpTPsubstrate, "physpTPsubstrate", logicWorld, false, 0, true);
 
-  BlueWLSplate =  new G4Box("BlueWLSplate", lighttrapsize/2., lighttrapsize/2., 3*mm);
-  logicBlueWLSplate = new G4LogicalVolume(BlueWLSplate, bluewlsacrylic, "logicBlueWLSplate");
-  physBlueWLSplate = new G4PVPlacement(0, G4ThreeVector(0., 0., lighttrapsize/2. + LArthickness + pTPsubstratethickness/2. + 3*mm), logicBlueWLSplate, "physBlueWLSplate", logicWorld, false, 0, true);
+  // BlueWLSplate =  new G4Box("BlueWLSplate", lighttrapsize/2., lighttrapsize/2., 3*mm);
+  // logicBlueWLSplate = new G4LogicalVolume(BlueWLSplate, bluewlsacrylic, "logicBlueWLSplate");
+  // physBlueWLSplate = new G4PVPlacement(0, G4ThreeVector(0., 0., lighttrapsize/2. + LArthickness + pTPsubstratethickness/2. + 3*mm), logicBlueWLSplate, "physBlueWLSplate", logicWorld, false, 0, true);
 
+  // // photosensors
+  // SiPMs = new G4Box("SiPMs", 3*mm, 0.5*mm, 3*mm);
+  // logicSiPMs = new G4LogicalVolume(SiPMs, worldMat, "logicSiPMs");
+  // // create an array of sensitive det
+  // for (G4int i = 0; i < nSiPMs; i++) {
+  //   physSiPMs = new G4PVPlacement(0, G4ThreeVector(-1*lighttrapsize/2. + lighttrapsize/(nSiPMs+1)/2. + i*lighttrapsize/(nSiPMs+1), lighttrapsize/2. + 1*mm, lighttrapsize/2. + LArthickness + pTPsubstratethickness/2. + 3*mm), logicSiPMs, "physSiPMs", logicWorld, false, i, true);
+  // }
   // photosensors
   SiPMs = new G4Box("SiPMs", 3*mm, 0.5*mm, 3*mm);
   logicSiPMs = new G4LogicalVolume(SiPMs, worldMat, "logicSiPMs");
   // create an array of sensitive det
   for (G4int i = 0; i < nSiPMs; i++) {
-    physSiPMs = new G4PVPlacement(0, G4ThreeVector(-1*lighttrapsize/2. + lighttrapsize/(nSiPMs+1)/2. + i*lighttrapsize/(nSiPMs+1), lighttrapsize/2. + 1*mm, lighttrapsize/2. + LArthickness + pTPsubstratethickness/2. + 3*mm), logicSiPMs, "physSiPMs", logicWorld, false, i, true);
+    physSiPMs = new G4PVPlacement(0, G4ThreeVector(-1*lighttrapsize/2. + lighttrapsize/(nSiPMs+1)/2. + i*lighttrapsize/(nSiPMs+1), lighttrapsize/2. + 1*mm, lighttrapsize/2. + 1.5*mm), logicSiPMs, "physSiPMs", logicWorld, false, i, true);
   }
 
-  // apply vikuiti to backplane
+  // apply vikuiti to backplane of first acrylic layer
   ReflectiveFoilBackPlane =  new G4Box("ReflectiveFoilBackPlane", lighttrapsize/2., lighttrapsize/2., 0.065*mm/2);
   logicReflectiveFoilBackPlane = new G4LogicalVolume(ReflectiveFoilBackPlane, acrylicMcMaster, "logicReflectiveFoilBackPlane");
   G4LogicalSkinSurface *skin = new G4LogicalSkinSurface("skin", logicReflectiveFoilBackPlane, Vikuiti);
-  physReflectiveFoilBackPlane = new G4PVPlacement(0, G4ThreeVector(0., 0., lighttrapsize/2. + LArthickness + pTPsubstratethickness/2. + 6.033*mm), logicReflectiveFoilBackPlane, "physReflectiveFoilBackPlane", logicWorld, false, 0, true);
+  physReflectiveFoilBackPlane = new G4PVPlacement(0, G4ThreeVector(0., 0., lighttrapsize/2. + pTPsubstratethickness/2. + 6.033/2.*mm), logicReflectiveFoilBackPlane, "physReflectiveFoilBackPlane", logicWorld, false, 0, true);
 
-  // apply vikuiti to small edges of bluewlsplate
-  ReflectiveFoilEdgeTop =  new G4Box("ReflectiveFoilEdgeTop", lighttrapsize/2., 0.065*mm/2, 3*mm);
-  ReflectiveFoilEdgeBot =  new G4Box("ReflectiveFoilEdgeBot", lighttrapsize/2., 0.065*mm/2, 3*mm);
-  ReflectiveFoilEdgeLeft  =  new G4Box("ReflectiveFoilEdgeLeft",  0.065*mm/2, lighttrapsize/2., 3*mm);
-  ReflectiveFoilEdgeRight =  new G4Box("ReflectiveFoilEdgeRight", 0.065*mm/2, lighttrapsize/2., 3*mm);
+  // // apply vikuiti to backplane
+  // ReflectiveFoilBackPlane =  new G4Box("ReflectiveFoilBackPlane", lighttrapsize/2., lighttrapsize/2., 0.065*mm/2);
+  // logicReflectiveFoilBackPlane = new G4LogicalVolume(ReflectiveFoilBackPlane, acrylicMcMaster, "logicReflectiveFoilBackPlane");
+  // G4LogicalSkinSurface *skin = new G4LogicalSkinSurface("skin", logicReflectiveFoilBackPlane, Vikuiti);
+  // physReflectiveFoilBackPlane = new G4PVPlacement(0, G4ThreeVector(0., 0., lighttrapsize/2. + LArthickness + pTPsubstratethickness/2. + 6.033*mm), logicReflectiveFoilBackPlane, "physReflectiveFoilBackPlane", logicWorld, false, 0, true);
 
-  logicReflectiveFoilEdgeTop = new G4LogicalVolume(ReflectiveFoilEdgeTop, acrylicMcMaster, "logicReflectiveFoilEdgeTop"); // it's actually polymer, not acrylic, but may be not critical as it's reflective
-  logicReflectiveFoilEdgeBot = new G4LogicalVolume(ReflectiveFoilEdgeBot, acrylicMcMaster, "logicReflectiveFoilEdgeBot");
-  logicReflectiveFoilEdgeLeft  = new G4LogicalVolume(ReflectiveFoilEdgeLeft, acrylicMcMaster, "logicReflectiveFoilEdgeLeft");
-  logicReflectiveFoilEdgeRight = new G4LogicalVolume(ReflectiveFoilEdgeRight, acrylicMcMaster, "logicReflectiveFoilEdgeRight");
+  // // apply vikuiti to small edges of bluewlsplate
+  // ReflectiveFoilEdgeTop =  new G4Box("ReflectiveFoilEdgeTop", lighttrapsize/2., 0.065*mm/2, 3*mm);
+  // ReflectiveFoilEdgeBot =  new G4Box("ReflectiveFoilEdgeBot", lighttrapsize/2., 0.065*mm/2, 3*mm);
+  // ReflectiveFoilEdgeLeft  =  new G4Box("ReflectiveFoilEdgeLeft",  0.065*mm/2, lighttrapsize/2., 3*mm);
+  // ReflectiveFoilEdgeRight =  new G4Box("ReflectiveFoilEdgeRight", 0.065*mm/2, lighttrapsize/2., 3*mm);
 
-  G4LogicalSkinSurface *skinedgetop = new G4LogicalSkinSurface("skinedgetop", logicReflectiveFoilEdgeTop, Vikuiti);
-  G4LogicalSkinSurface *skinedgebot = new G4LogicalSkinSurface("skinedgebot", logicReflectiveFoilEdgeBot, Vikuiti);
-  G4LogicalSkinSurface *skinedgeleft  = new G4LogicalSkinSurface("skinedgeleft", logicReflectiveFoilEdgeLeft, Vikuiti);
-  G4LogicalSkinSurface *skinedgeright = new G4LogicalSkinSurface("skinedgeright", logicReflectiveFoilEdgeRight, Vikuiti);
+  // logicReflectiveFoilEdgeTop = new G4LogicalVolume(ReflectiveFoilEdgeTop, acrylicMcMaster, "logicReflectiveFoilEdgeTop"); // it's actually polymer, not acrylic, but may be not critical as it's reflective
+  // logicReflectiveFoilEdgeBot = new G4LogicalVolume(ReflectiveFoilEdgeBot, acrylicMcMaster, "logicReflectiveFoilEdgeBot");
+  // logicReflectiveFoilEdgeLeft  = new G4LogicalVolume(ReflectiveFoilEdgeLeft, acrylicMcMaster, "logicReflectiveFoilEdgeLeft");
+  // logicReflectiveFoilEdgeRight = new G4LogicalVolume(ReflectiveFoilEdgeRight, acrylicMcMaster, "logicReflectiveFoilEdgeRight");
 
-  physReflectiveFoilEdgeTop   = new G4PVPlacement(0, G4ThreeVector(0., lighttrapsize/2. + 1.533*mm, lighttrapsize/2. + LArthickness + pTPsubstratethickness/2. + 3*mm), logicReflectiveFoilEdgeTop, "physReflectiveFoilEdgeTop", logicWorld, false, 0, true);
-  physReflectiveFoilEdgeBot   = new G4PVPlacement(0, G4ThreeVector(0., -(lighttrapsize/2. + 0.033*mm), lighttrapsize/2. + LArthickness + pTPsubstratethickness/2. + 3*mm), logicReflectiveFoilEdgeBot, "physReflectiveFoilEdgeBot", logicWorld, false, 0, true);
-  physReflectiveFoilEdgeLeft  = new G4PVPlacement(0, G4ThreeVector(lighttrapsize/2. + 0.033*mm, 0., lighttrapsize/2. + LArthickness + pTPsubstratethickness/2. + 3*mm), logicReflectiveFoilEdgeLeft, "physReflectiveFoilEdgeLeft", logicWorld, false, 0, true);
-  physReflectiveFoilEdgeRight = new G4PVPlacement(0, G4ThreeVector(-(lighttrapsize/2. + 0.033*mm), 0., lighttrapsize/2. + LArthickness + pTPsubstratethickness/2. + 3*mm), logicReflectiveFoilEdgeRight, "physReflectiveFoilEdgeRight", logicWorld, false, 0, true);
+  // G4LogicalSkinSurface *skinedgetop = new G4LogicalSkinSurface("skinedgetop", logicReflectiveFoilEdgeTop, Vikuiti);
+  // G4LogicalSkinSurface *skinedgebot = new G4LogicalSkinSurface("skinedgebot", logicReflectiveFoilEdgeBot, Vikuiti);
+  // G4LogicalSkinSurface *skinedgeleft  = new G4LogicalSkinSurface("skinedgeleft", logicReflectiveFoilEdgeLeft, Vikuiti);
+  // G4LogicalSkinSurface *skinedgeright = new G4LogicalSkinSurface("skinedgeright", logicReflectiveFoilEdgeRight, Vikuiti);
+
+  // physReflectiveFoilEdgeTop   = new G4PVPlacement(0, G4ThreeVector(0., lighttrapsize/2. + 1.533*mm, lighttrapsize/2. + LArthickness + pTPsubstratethickness/2. + 3*mm), logicReflectiveFoilEdgeTop, "physReflectiveFoilEdgeTop", logicWorld, false, 0, true);
+  // physReflectiveFoilEdgeBot   = new G4PVPlacement(0, G4ThreeVector(0., -(lighttrapsize/2. + 0.033*mm), lighttrapsize/2. + LArthickness + pTPsubstratethickness/2. + 3*mm), logicReflectiveFoilEdgeBot, "physReflectiveFoilEdgeBot", logicWorld, false, 0, true);
+  // physReflectiveFoilEdgeLeft  = new G4PVPlacement(0, G4ThreeVector(lighttrapsize/2. + 0.033*mm, 0., lighttrapsize/2. + LArthickness + pTPsubstratethickness/2. + 3*mm), logicReflectiveFoilEdgeLeft, "physReflectiveFoilEdgeLeft", logicWorld, false, 0, true);
+  // physReflectiveFoilEdgeRight = new G4PVPlacement(0, G4ThreeVector(-(lighttrapsize/2. + 0.033*mm), 0., lighttrapsize/2. + LArthickness + pTPsubstratethickness/2. + 3*mm), logicReflectiveFoilEdgeRight, "physReflectiveFoilEdgeRight", logicWorld, false, 0, true);
 
 
   return physWorld;
