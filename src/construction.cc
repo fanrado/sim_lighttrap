@@ -34,6 +34,35 @@ void MyLightTrapConstruction::DefinePTPMaterial() {
   pTP->AddElement(nist->FindOrBuildElement("C"), 18);
   pTP->AddElement(nist->FindOrBuildElement("H"), 14);
 
+  acrylicMcMaster = new G4Material("acrylicMcMaster", 1.19*g/cm3, 3);
+  acrylicMcMaster->AddElement(nist->FindOrBuildElement("C"), 5);
+  acrylicMcMaster->AddElement(nist->FindOrBuildElement("H"), 8);
+  acrylicMcMaster->AddElement(nist->FindOrBuildElement("O"), 2);
+
+  bluewlsacrylic = new G4Material("bluewlsacrylic", 1.023*g/cm3, 2); // https://eljentechnology.com/products/wavelength-shifting-plastics/ej-280-ej-282-ej-284-ej-286
+  bluewlsacrylic->AddElement(nist->FindOrBuildElement("C"), 9);
+  bluewlsacrylic->AddElement(nist->FindOrBuildElement("H"), 10);
+
+  G4double energy[8] = {1.239841939*eV/0.53, 1.239841939*eV/0.425, 1.239841939*eV/0.4, 1.239841939*eV/0.34, 1.239841939*eV/0.305, 1.239841939*eV/0.16, 1.239841939*eV/0.128, 1.239841939*eV/0.106}; //wavelength in microns
+  G4double rindexWorld[8] = {1.38, 1.38, 1.38, 1.38, 1.38, 1.38, 1.38, 1.38};
+  G4double ffraction[8] = {0., 0., 0., 0., 0., 0.000238409, 0.0398859, 0.00422473};
+  G4double LArabsorption[8] = {1000.*cm, 1000.*cm, 1000.*cm, 1000.*cm, 1000.*cm, 1000.*cm, 1000.*cm, 1000.*cm};
+  G4double LArRayleigh[8] = {90.*cm, 90.*cm, 90.*cm, 90.*cm, 90.*cm, 90.*cm, 90.*cm, 90.*cm};
+
+  G4double rindexpTP[8] = {1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65}; // refractive index
+  G4double AbspTP[8] = {10*m, 10*m, 10*m, 10*m, 0.1*mm, 0.0005*mm, 0.0005*mm, 0.0005*mm}; // absorption length
+  G4double EmissionpTP[8] = {0., 0.0005, 0.002, 0.022, 0.0005, 0., 0., 0.}; // relative emission spectrum, unitless
+
+  G4double rindexacrylicMcMaster[8] = {1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5};
+
+  G4double rindexbluewlsacrylic[8] = {1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58};
+  G4double Absbluewls[8] = {10*m, 10*m, 1.7*mm, 1*mm, 1.2*mm, 10*m, 10*m, 10*m}; // absorption length
+  G4double Emissionbluewls[8] = {0.0005, 0.02, 0., 0., 0., 0., 0., 0.}; // relative emission spectrum, unitless
+
+  G4double reflectivity[8] = {0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98};
+
+  worldMat = nist->FindOrBuildMaterial("G4_lAr"); // other option: G4_lAr
+  // worldMat = nist->FindOrBuildMaterial("G4_AIR");
   // 8 wavelengths [nm]: {530, 425, 400, 340, 305, 160, 128, 106}; 
   G4double rindexpTP[8] = {1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65}; // source: https://indico.fnal.gov/event/63097/contributions/283538/attachments/174977/237339/slides.pdf
   G4double AbspTP[8] = {10*m, 10*m, 10*m, 10*m, 0.187*mm, 0.0005*mm, 0.0005*mm, 0.0005*mm}; // < 200nm guess, >200nm source: DeVol, T. A., Wehe, D. K., Knoll, G. F. (1993/04/01)."Evaluation of p-terphenyl and 2,2" dimethyl-p-terphenyl as wavelength shifters for barium fluoride." Nuclear Instruments and Methods in Physics Research Section A: Accelerators, Spectrometers, Detectors and Associated Equipment 327(2-3): 354-362.
