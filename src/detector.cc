@@ -48,11 +48,11 @@ G4bool MySensitiveDetector::ProcessHits(G4Step *aStep, G4TouchableHistory *ROhis
   const G4VTouchable *touchable = aStep->GetPreStepPoint()->GetTouchable();
 
   G4int copyNo = touchable->GetCopyNumber(); // photon hit which sipm
-  // G4cout << "copyNo: " << copyNo << G4endl;
+  G4cout << "copyNo: " << copyNo << G4endl;
 
   G4VPhysicalVolume *physVol = touchable->GetVolume();
   G4ThreeVector posDetector = physVol->GetTranslation();
-  // G4cout << "posDetector: " << posDetector << G4endl;
+  G4cout << "posDetector: " << posDetector << G4endl;
 
   G4int evt = G4RunManager::GetRunManager()->GetCurrentEvent()->GetEventID();
 
