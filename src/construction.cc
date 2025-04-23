@@ -204,7 +204,7 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   ReflectiveFoilBackPlane =  new G4Box("ReflectiveFoilBackPlane", lighttrapsize/2., lighttrapsize/2., 0.065*mm/2);
   logicReflectiveFoilBackPlane = new G4LogicalVolume(ReflectiveFoilBackPlane, acrylicMcMaster, "logicReflectiveFoilBackPlane");
   G4LogicalSkinSurface *skin = new G4LogicalSkinSurface("skin", logicReflectiveFoilBackPlane, Vikuiti);
-  physReflectiveFoilBackPlane = new G4PVPlacement(0, G4ThreeVector(0., 0., lighttrapsize/2. + pTPsubstratethickness/2. + 6.033/2.*mm), logicReflectiveFoilBackPlane, "physReflectiveFoilBackPlane", logicWorld, false, 0, true);
+  physReflectiveFoilBackPlane = new G4PVPlacement(0, G4ThreeVector(0., 0., lighttrapsize/2. + pTPsubstratethickness/2. + 0.065*mm/2), logicReflectiveFoilBackPlane, "physReflectiveFoilBackPlane", logicWorld, false, 0, true);
 
   // // apply vikuiti to backplane
   // ReflectiveFoilBackPlane =  new G4Box("ReflectiveFoilBackPlane", lighttrapsize/2., lighttrapsize/2., 0.065*mm/2);
