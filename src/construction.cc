@@ -177,7 +177,7 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   physpTPlayer = new G4PVPlacement(0, G4ThreeVector(0., 0., lighttrapsize/2. - pTPsubstratethickness/2. - pTPlayerthickness/2.), logicpTPlayer, "physpTPlayer", logicWorld, false, 0, true);
 
   pTPsubstrate =  new G4Box("pTPsubstrate", lighttrapsize/2., lighttrapsize/2., pTPsubstratethickness/2.);
-  pTPsubstrate =  new G4Box("pTPsubstrate", lighttrapsize/2., lighttrapsize/2., pTPsubstratethickness);
+  // pTPsubstrate =  new G4Box("pTPsubstrate", lighttrapsize/2., lighttrapsize/2., pTPsubstratethickness);
   logicpTPsubstrate = new G4LogicalVolume(pTPsubstrate, acrylicMcMaster, "logicpTPsubstrate");
   physpTPsubstrate = new G4PVPlacement(0, G4ThreeVector(0., 0., lighttrapsize/2.), logicpTPsubstrate, "physpTPsubstrate", logicWorld, false, 0, true);
 
@@ -197,7 +197,7 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   logicSiPMs = new G4LogicalVolume(SiPMs, worldMat, "logicSiPMs");
   // create an array of sensitive det
   for (G4int i = 0; i < nSiPMs; i++) {
-    physSiPMs = new G4PVPlacement(0, G4ThreeVector(-1*lighttrapsize/2. + lighttrapsize/(nSiPMs+1)/2. + i*lighttrapsize/(nSiPMs+1), lighttrapsize/2. + 1*mm, lighttrapsize/2. + 1.5*mm), logicSiPMs, "physSiPMs", logicWorld, false, i, true);
+    physSiPMs = new G4PVPlacement(0, G4ThreeVector(-1*lighttrapsize/2. + lighttrapsize/(nSiPMs+1)/2. + i*lighttrapsize/(nSiPMs+1), lighttrapsize/2. + 1*mm, lighttrapsize/2.), logicSiPMs, "physSiPMs", logicWorld, false, i, true);
   }
 
   // apply vikuiti to backplane of first acrylic layer
