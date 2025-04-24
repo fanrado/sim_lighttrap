@@ -1,9 +1,18 @@
+
+
 /gps/particle opticalphoton
-/gps/energy 4.35 eV
+
+# position settings
 /gps/pos/type Plane
 /gps/pos/centre 0. 0. 23 cm
 /gps/pos/shape Square
 /gps/pos/halfx 25 cm
 /gps/pos/halfy 25 cm
+
+# Set direction
 /gps/direction 0 0 1
+
+/control/execute spectrum_macro.mac
+
+# Run the simulation with 1000 particles
 /run/beamOn 1000
