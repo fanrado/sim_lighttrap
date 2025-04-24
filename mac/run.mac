@@ -6,4 +6,4 @@
 /gps/pos/halfx 25 cm
 /gps/pos/halfy 25 cm
 /gps/direction 0 0 1
-/run/beamOn 1000
+/run/beamOn 10000
