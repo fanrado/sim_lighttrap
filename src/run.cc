@@ -52,6 +52,38 @@ MyRunAction::MyRunAction()
   man->CreateNtupleDColumn("wl"); // wavelength
   man->CreateNtupleIColumn("matName");          // material name
   man->FinishNtuple(4);
+
+  // Primary photon properties for optical validation (Fresnel, reflection)
+  man->CreateNtuple("OpticalValidation", "Optical Properties Validation");
+  man->CreateNtupleIColumn("eventID");
+  man->CreateNtupleDColumn("wavelength");
+  man->CreateNtupleDColumn("incidentAngle");
+  man->CreateNtupleSColumn("material");
+  man->CreateNtupleIColumn("reflected");  // 1 if reflected (finalZ < source plane), 0 if transmitted
+  man->CreateNtupleDColumn("posX");
+  man->CreateNtupleDColumn("posY");
+  man->CreateNtupleDColumn("posZ");
+  man->FinishNtuple(5);
+
+  // Validation detector: photons leaking through the Vikuiti backplane
+  man->CreateNtuple("BackplaneLeak", "Photons leaking through Vikuiti backplane");
+  man->CreateNtupleIColumn("eventID");
+  man->CreateNtupleDColumn("fX");
+  man->CreateNtupleDColumn("fY");
+  man->CreateNtupleDColumn("fZ");
+  man->CreateNtupleDColumn("fT");
+  man->CreateNtupleDColumn("fwl");
+  man->FinishNtuple(6);
+
+  // Validation detector: full-coverage edge strip (all photons reaching the SiPM edge)
+  man->CreateNtuple("EdgeStrip", "Photons at full-coverage edge strip");
+  man->CreateNtupleIColumn("eventID");
+  man->CreateNtupleDColumn("fX");
+  man->CreateNtupleDColumn("fY");
+  man->CreateNtupleDColumn("fZ");
+  man->CreateNtupleDColumn("fT");
+  man->CreateNtupleDColumn("fwl");
+  man->FinishNtuple(7);
 }
 
 MyRunAction::~MyRunAction()

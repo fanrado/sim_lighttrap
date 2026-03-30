@@ -37,15 +37,6 @@ void MyLightTrapConstruction::DefinePTPMaterial() {
   pTP->AddElement(nist->FindOrBuildElement("C"), 18);
   pTP->AddElement(nist->FindOrBuildElement("H"), 14);
 
-  acrylicMcMaster = new G4Material("acrylicMcMaster", 1.19*g/cm3, 3);
-  acrylicMcMaster->AddElement(nist->FindOrBuildElement("C"), 5);
-  acrylicMcMaster->AddElement(nist->FindOrBuildElement("H"), 8);
-  acrylicMcMaster->AddElement(nist->FindOrBuildElement("O"), 2);
-
-  bluewlsacrylic = new G4Material("bluewlsacrylic", 1.023*g/cm3, 2); // https://eljentechnology.com/products/wavelength-shifting-plastics/ej-280-ej-282-ej-284-ej-286
-  bluewlsacrylic->AddElement(nist->FindOrBuildElement("C"), 9);
-  bluewlsacrylic->AddElement(nist->FindOrBuildElement("H"), 10);
-
   G4double energy[8] = {1.239841939*eV/0.53, 1.239841939*eV/0.425, 1.239841939*eV/0.4, 1.239841939*eV/0.34, 1.239841939*eV/0.305, 1.239841939*eV/0.16, 1.239841939*eV/0.128, 1.239841939*eV/0.106}; //wavelength in microns
   G4double rindexWorld[8] = {1.38, 1.38, 1.38, 1.38, 1.38, 1.38, 1.38, 1.38};
   G4double ffraction[8] = {0., 0., 0., 0., 0., 0.000238409, 0.0398859, 0.00422473};
@@ -209,6 +200,20 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   G4LogicalSkinSurface *skin = new G4LogicalSkinSurface("skin", logicReflectiveFoilBackPlane, Vikuiti);
   physReflectiveFoilBackPlane = new G4PVPlacement(0, G4ThreeVector(0., 0., lighttrapsize/2. + pTPsubstratethickness/2. + 0.065*mm/2), logicReflectiveFoilBackPlane, "physReflectiveFoilBackPlane", logicWorld, false, 0, true);
 
+  // Validation detector 1: thin LAr slab just behind the Vikuiti foil.
+  // Catches any photon that leaks through the backplane (should be ~2% of those hitting it).
+  G4double foilBackFaceZ = lighttrapsize/2. + pTPsubstratethickness/2. + 0.065*mm;
+  BackplaneLeakDet = new G4Box("BackplaneLeakDet", lighttrapsize/2., lighttrapsize/2., 0.1*mm/2.);
+  logicBackplaneLeakDet = new G4LogicalVolume(BackplaneLeakDet, worldMat, "logicBackplaneLeakDet");
+  physBackplaneLeakDet = new G4PVPlacement(0, G4ThreeVector(0., 0., foilBackFaceZ + 0.1*mm/2.), logicBackplaneLeakDet, "physBackplaneLeakDet", logicWorld, false, 0, true);
+
+  // Validation detector 2: continuous strip at the SiPM edge, full x and z coverage.
+  // Placed at y = lighttrapsize/2 + 2mm to sit just beyond the SiPM array (which ends at y + 1.5mm).
+  // Records all photons reaching the edge regardless of SiPM gaps.
+  EdgeStripDet = new G4Box("EdgeStripDet", lighttrapsize/2., 0.5*mm/2., pTPsubstratethickness/2.);
+  logicEdgeStripDet = new G4LogicalVolume(EdgeStripDet, worldMat, "logicEdgeStripDet");
+  physEdgeStripDet = new G4PVPlacement(0, G4ThreeVector(0., lighttrapsize/2. + 2.*mm, lighttrapsize/2.), logicEdgeStripDet, "physEdgeStripDet", logicWorld, false, 0, true);
+
   // // apply vikuiti to backplane
   // ReflectiveFoilBackPlane =  new G4Box("ReflectiveFoilBackPlane", lighttrapsize/2., lighttrapsize/2., 0.065*mm/2);
   // logicReflectiveFoilBackPlane = new G4LogicalVolume(ReflectiveFoilBackPlane, acrylicMcMaster, "logicReflectiveFoilBackPlane");
@@ -244,4 +249,10 @@ void MyLightTrapConstruction::ConstructSDandField()
 {
   MySensitiveDetector *sensDet = new MySensitiveDetector("SensitiveDetector");
   logicSiPMs->SetSensitiveDetector(sensDet);
+
+  MyLeakDetector *backplaneDet = new MyLeakDetector("BackplaneLeakDetector", 6);
+  logicBackplaneLeakDet->SetSensitiveDetector(backplaneDet);
+
+  MyLeakDetector *edgeStripDet = new MyLeakDetector("EdgeStripDetector", 7);
+  logicEdgeStripDet->SetSensitiveDetector(edgeStripDet);
 }

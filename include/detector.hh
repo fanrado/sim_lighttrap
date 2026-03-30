@@ -19,4 +19,18 @@ private:
   G4PhysicsFreeVector *QE;
 };
 
+// Simple 100%-efficient photon counter for validation volumes.
+// Records every photon that enters, then kills the track.
+class MyLeakDetector : public G4VSensitiveDetector
+{
+public:
+  MyLeakDetector(G4String name, G4int ntupleID);
+  ~MyLeakDetector();
+
+private:
+  virtual G4bool ProcessHits(G4Step *, G4TouchableHistory *);
+
+  G4int fNtupleID;
+};
+
 #endif

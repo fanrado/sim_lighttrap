@@ -76,3 +76,35 @@ G4bool MySensitiveDetector::ProcessHits(G4Step *aStep, G4TouchableHistory *ROhis
 
   return true;
 }
+
+// ---------------------------------------------------------------------------
+MyLeakDetector::MyLeakDetector(G4String name, G4int ntupleID)
+  : G4VSensitiveDetector(name), fNtupleID(ntupleID)
+{}
+
+MyLeakDetector::~MyLeakDetector()
+{}
+
+G4bool MyLeakDetector::ProcessHits(G4Step *aStep, G4TouchableHistory *)
+{
+  G4Track *track = aStep->GetTrack();
+  track->SetTrackStatus(fStopAndKill);
+
+  G4StepPoint *preStepPoint = aStep->GetPreStepPoint();
+  G4ThreeVector pos  = preStepPoint->GetPosition();
+  G4double      time = preStepPoint->GetGlobalTime();
+  G4double      wl   = (1.239841939*eV / preStepPoint->GetMomentum().mag()) * 1E+03;
+
+  G4int evt = G4RunManager::GetRunManager()->GetCurrentEvent()->GetEventID();
+  G4AnalysisManager *man = G4AnalysisManager::Instance();
+
+  man->FillNtupleIColumn(fNtupleID, 0, evt);
+  man->FillNtupleDColumn(fNtupleID, 1, pos.x());
+  man->FillNtupleDColumn(fNtupleID, 2, pos.y());
+  man->FillNtupleDColumn(fNtupleID, 3, pos.z());
+  man->FillNtupleDColumn(fNtupleID, 4, time);
+  man->FillNtupleDColumn(fNtupleID, 5, wl);
+  man->AddNtupleRow(fNtupleID);
+
+  return true;
+}

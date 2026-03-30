@@ -35,6 +35,11 @@ private:
   G4LogicalVolume   *logicWorld, *logicpTPlayer, *logicpTPsubstrate, *logicBlueWLSplate, *logicSiPMs, *logicReflectiveFoilBackPlane, *logicReflectiveFoilEdgeTop, *logicReflectiveFoilEdgeBot, *logicReflectiveFoilEdgeLeft, *logicReflectiveFoilEdgeRight;
   G4VPhysicalVolume *physWorld,  *physpTPlayer,  *physpTPsubstrate,  *physBlueWLSplate,  *physSiPMs,  *physReflectiveFoilBackPlane,  *physReflectiveFoilEdgeTop,  *physReflectiveFoilEdgeBot,  *physReflectiveFoilEdgeLeft,  *physReflectiveFoilEdgeRight;
 
+  // Validation detectors
+  G4Box             *BackplaneLeakDet,      *EdgeStripDet;
+  G4LogicalVolume   *logicBackplaneLeakDet, *logicEdgeStripDet;
+  G4VPhysicalVolume *physBackplaneLeakDet,  *physEdgeStripDet;
+
   G4GenericMessenger *fMessenger;
 
   G4Material *pTP, *acrylicMcMaster, *bluewlsacrylic,  *worldMat;

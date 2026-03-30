@@ -88,32 +88,17 @@ void MyTrackingAction::PreUserTrackingAction(const G4Track* track)
         // Calculate incident angle with respect to surface normal
         G4double incidentAngle = std::acos(std::abs(direction.z()));
         
-        // Create validation ntuple
-        static bool validationNtupleCreated = false;
-        if (!validationNtupleCreated) {
-          man->CreateNtuple("OpticalValidation", "Optical Properties Validation");
-          man->CreateNtupleIColumn("eventID");
-          man->CreateNtupleDColumn("wavelength");
-          man->CreateNtupleDColumn("incidentAngle");
-          man->CreateNtupleSColumn("material");
-          man->CreateNtupleIColumn("reflected");  // 1 if reflected, 0 if transmitted
-          man->CreateNtupleDColumn("posX");
-          man->CreateNtupleDColumn("posY");
-          man->CreateNtupleDColumn("posZ");
-          man->FinishNtuple(5);
-          validationNtupleCreated = true;
-        }
-        
-        // Fill validation data
+        // Fill validation data (ntuple 5 created in MyRunAction)
         G4int eventId = G4RunManager::GetRunManager()->GetCurrentEvent()->GetEventID();
         man->FillNtupleIColumn(5, 0, eventId);
         man->FillNtupleDColumn(5, 1, wavelength);
         man->FillNtupleDColumn(5, 2, incidentAngle * 180.0 / CLHEP::pi);
         man->FillNtupleSColumn(5, 3, currentMaterial);
+        // column 4 (reflected) filled in PostUserTrackingAction once track ends
         man->FillNtupleDColumn(5, 5, track->GetPosition().x());
         man->FillNtupleDColumn(5, 6, track->GetPosition().y());
         man->FillNtupleDColumn(5, 7, track->GetPosition().z());
-        man->AddNtupleRow(5);
+        // AddNtupleRow deferred to PostUserTrackingAction
       }
     }
   }
@@ -122,15 +107,15 @@ void MyTrackingAction::PreUserTrackingAction(const G4Track* track)
 // Add this method to track boundary processes
 void MyTrackingAction::PostUserTrackingAction(const G4Track* track)
 {
-  if (track->GetDefinition()->GetParticleName() == "opticalphoton") {
-    // Track where the photon ended up to validate transmission/reflection
+  if (track->GetDefinition()->GetParticleName() == "opticalphoton"
+      && track->GetCreatorProcess() == nullptr) { // primary photons only
     G4AnalysisManager* man = G4AnalysisManager::Instance();
-    
-    // Check final position to determine if reflected or transmitted
+
+    // reflected = 1 if photon ended up behind the source plane(z < 24.5)
     G4double finalZ = track->GetPosition().z();
-    G4int reflected = (finalZ < 0) ? 1 : 0;  // Adjust based on your geometry
-    
-    // Update the last row with reflection status
+    G4int reflected = (finalZ < 24.5) ? 1 : 0;
+
     man->FillNtupleIColumn(5, 4, reflected);
+    man->AddNtupleRow(5);
   }
 }
