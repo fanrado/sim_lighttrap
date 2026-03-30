@@ -53,7 +53,8 @@ void MyPrimaryGenerator::GeneratePrimaries(G4Event *anEvent)
   G4ThreeVector perp = momentumDir.cross(refVec).unit();
 
   // Generate a random rotation angle
-  G4double phi = G4UniformRand() * 2.0 * CLHEP::pi;
+  // G4double phi = G4UniformRand() * 2.0 * CLHEP::pi;
+  G4double phi = G4UniformRand() * 0.5 * CLHEP::pi;
 
   // Rotate the perpendicular vector by phi around the momentum direction.
   // This gives a random polarization vector still perpendicular to momentumDir.

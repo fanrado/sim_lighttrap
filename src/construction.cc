@@ -16,7 +16,10 @@ MyLightTrapConstruction::MyLightTrapConstruction()
   pTPlayerthickness = 0.002*mm;
   pTPsubstratethickness = 6*mm;
   LArthickness = 2*mm;
-  lighttrapsize = 50*cm;
+  lighttrapsize = 50*cm; // 1m x 1m light trap
+  // // pTPlayerthickness = 10*cm; // 10cm thick pTP layer
+  // pTPlayerthickness = 1000*nm;
+  // pTPsubstratethickness = 20*cm; // 20cm thick substrate
 
   G4double tmp[8] = {EVUM/0.53, EVUM/0.425, EVUM/0.4, EVUM/0.34, EVUM/0.305, EVUM/0.16, EVUM/0.128, EVUM/0.106}; //wavelength in microns
   std::copy(tmp, tmp+8, energy);
@@ -178,7 +181,7 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
 
   pTPsubstrate =  new G4Box("pTPsubstrate", lighttrapsize/2., lighttrapsize/2., pTPsubstratethickness/2.);
   // pTPsubstrate =  new G4Box("pTPsubstrate", lighttrapsize/2., lighttrapsize/2., pTPsubstratethickness);
-  logicpTPsubstrate = new G4LogicalVolume(pTPsubstrate, acrylicMcMaster, "logicpTPsubstrate");
+  logicpTPsubstrate = new G4LogicalVolume(pTPsubstrate,bluewlsacrylic, "logicpTPsubstrate");// acrylicMcMaster, 
   physpTPsubstrate = new G4PVPlacement(0, G4ThreeVector(0., 0., lighttrapsize/2.), logicpTPsubstrate, "physpTPsubstrate", logicWorld, false, 0, true);
 
   // BlueWLSplate =  new G4Box("BlueWLSplate", lighttrapsize/2., lighttrapsize/2., 3*mm);
