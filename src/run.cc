@@ -75,15 +75,8 @@ MyRunAction::MyRunAction()
   man->CreateNtupleDColumn("fwl");
   man->FinishNtuple(6);
 
-  // Validation detector: full-coverage edge strip (all photons reaching the SiPM edge)
-  man->CreateNtuple("EdgeStrip", "Photons at full-coverage edge strip");
-  man->CreateNtupleIColumn("eventID");
-  man->CreateNtupleDColumn("fX");
-  man->CreateNtupleDColumn("fY");
-  man->CreateNtupleDColumn("fZ");
-  man->CreateNtupleDColumn("fT");
-  man->CreateNtupleDColumn("fwl");
-  man->FinishNtuple(7);
+  // Ntuple 7 (EdgeStrip) removed: the ±x edges of the blue WLS slab are now
+  // covered by Vikuiti foils (lateral reflectors), not open validation detectors.
 }
 
 MyRunAction::~MyRunAction()

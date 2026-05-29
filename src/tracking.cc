@@ -111,9 +111,12 @@ void MyTrackingAction::PostUserTrackingAction(const G4Track* track)
       && track->GetCreatorProcess() == nullptr) { // primary photons only
     G4AnalysisManager* man = G4AnalysisManager::Instance();
 
-    // reflected = 1 if photon ended up behind the source plane(z < 24.5)
-    G4double finalZ = track->GetPosition().z();
-    G4int reflected = (finalZ < 24.5) ? 1 : 0;
+    // A photon is "reflected" if it ends up on the same side of the module as
+    // it started (z < vertex z).  Using the vertex position avoids a hardcoded
+    // geometry constant that would break whenever z-positions change.
+    G4double finalZ  = track->GetPosition().z();
+    G4double sourceZ = track->GetVertexPosition().z();
+    G4int reflected  = (finalZ < sourceZ) ? 1 : 0;
 
     man->FillNtupleIColumn(5, 4, reflected);
     man->AddNtupleRow(5);

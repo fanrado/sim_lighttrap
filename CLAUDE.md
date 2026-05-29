@@ -3,6 +3,9 @@
 This file provides instructions and context for AI coding agents working on this project.
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:6cd5cc61 -->
+## Plan mode
+- **Create beads issue for each plan
+- **Always look into the beads issue when asked to run a plan
 ## Beads Issue Tracker
 
 This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
@@ -41,13 +44,17 @@ This protocol applies when ending a Beads implementation workflow. It is subordi
 3. **Update issue status** - Close finished work, update in-progress items
 4. **Handle git/sync by active profile**:
    ```bash
-   # Conservative/minimal/default: report status and proposed commands; wait for approval.
+   # Conservative/minimal/default: report status and proposed commands.
    git status
 
-   # Team-maintainer opt-in only, unless current instructions forbid it:
-   git pull --rebase
+   # Forbid:
    git push
-   git status
+   git pull
+
+   # To run after each completed phase of a plan:
+   git diff
+   git commit
+   ** Use the description of the git diff as git commit message
    ```
 5. **Hand off** - Summarize changes, validation, issue status, and any blocked sync/commit/push step
 

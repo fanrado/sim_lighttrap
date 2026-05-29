@@ -7,3 +7,5 @@ build/
 *.db
 .beads-credential-key
 .beads/proxieddb/
+CLAUDE.md
+AGENTS.md

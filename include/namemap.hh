@@ -35,10 +35,10 @@ private:
       {"acrylicMcMaster", 2},
       {"bluewlsacrylic", 3},
       {"G4_lAr", 4},
+      {"uvTransAcrylic", 5},    // UV-transparent PMMA carrier for pTP film
 
       {"Scintillation", 100},
       {"OpWLS", 101}
-      // Add additional names and codes as needed.
 
     };
     return fixedMap;
