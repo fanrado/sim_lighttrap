@@ -1,9 +1,23 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# run.mac  —  Standard batch run: 10 000 VUV photons, planar square source.
+#
+# Coordinate reference: the back (+z) face of the blue WLS slab sits at z = 0.
+#   pTP front face  ≈  z = -12 mm  (kUVAcrylFrontZ - pTPlayerthickness)
+#   UV acrylic      ≈  z = -9  to -12 mm
+#   LAr gap         ≈  z = -6  to  -9 mm
+#   blue WLS slab   ≈  z = -6  to   0 mm
+#
+# Source is placed at z = -2 cm, 8 mm in front of the pTP film, inside LAr.
+# The square source covers the full 15 cm × 15 cm module face (halfx = halfy = 7.5 cm).
+# Photons travel in the +z direction (into the module).
+# ─────────────────────────────────────────────────────────────────────────────
+
 /gps/particle opticalphoton
 /gps/energy 9.68 eV
 /gps/pos/type Plane
-/gps/pos/centre 0. 0. 24.5 cm
+/gps/pos/centre 0. 0. -2. cm
 /gps/pos/shape Square
-/gps/pos/halfx 25 cm
-/gps/pos/halfy 25 cm
+/gps/pos/halfx 7.5 cm
+/gps/pos/halfy 7.5 cm
 /gps/direction 0 0 1
 /run/beamOn 10000
