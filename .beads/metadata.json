@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "sim_lighttrap",
+  "project_id": "d888d969-153b-4ed4-be69-4114a17cf388"
+}
