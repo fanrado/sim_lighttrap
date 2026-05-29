@@ -11,6 +11,7 @@
 #include "G4GenericMessenger.hh"
 #include "G4OpticalSurface.hh"
 #include "G4LogicalSkinSurface.hh"
+#include "G4LogicalBorderSurface.hh"
 
 #include "detector.hh"
 
@@ -25,35 +26,70 @@ public:
 private:
   virtual void ConstructSDandField();
 
-  G4int nSiPMs;
-  G4double pTPlayerthickness;
-  G4double pTPsubstratethickness;
-  G4double LArthickness;
-  G4double lighttrapsize;
+  // ── Tunable geometry parameters (set via /detector/ messenger or defaults) ──
+  G4int    nSiPMs;                // total SiPMs (split equally between ±y edges)
+  G4double pTPlayerthickness;     // pTP WLS film thickness           (default 2 µm)
+  G4double uvAcrylicThickness;    // UV-transparent acrylic thickness  (default 3 mm)
+  G4double pTPsubstratethickness; // blue WLS slab thickness           (default 6 mm)
+  G4double LArthickness;          // LAr gap: first layer → blue WLS   (default 3 mm)
+  G4double lighttrapsize;         // square module side length         (default 15 cm)
 
-  G4Box             *solidWorld, *pTPlayer,      *pTPsubstrate,      *BlueWLSplate,      *SiPMs,      *ReflectiveFoilBackPlane,      *ReflectiveFoilEdgeTop,      *ReflectiveFoilEdgeBot,      *ReflectiveFoilEdgeLeft,      *ReflectiveFoilEdgeRight;
-  G4LogicalVolume   *logicWorld, *logicpTPlayer, *logicpTPsubstrate, *logicBlueWLSplate, *logicSiPMs, *logicReflectiveFoilBackPlane, *logicReflectiveFoilEdgeTop, *logicReflectiveFoilEdgeBot, *logicReflectiveFoilEdgeLeft, *logicReflectiveFoilEdgeRight;
-  G4VPhysicalVolume *physWorld,  *physpTPlayer,  *physpTPsubstrate,  *physBlueWLSplate,  *physSiPMs,  *physReflectiveFoilBackPlane,  *physReflectiveFoilEdgeTop,  *physReflectiveFoilEdgeBot,  *physReflectiveFoilEdgeLeft,  *physReflectiveFoilEdgeRight;
+  // ── World ────────────────────────────────────────────────────────────────────
+  G4Box             *solidWorld;
+  G4LogicalVolume   *logicWorld;
+  G4VPhysicalVolume *physWorld;
 
-  // Validation detectors
-  G4Box             *BackplaneLeakDet,      *EdgeStripDet;
-  G4LogicalVolume   *logicBackplaneLeakDet, *logicEdgeStripDet;
-  G4VPhysicalVolume *physBackplaneLeakDet,  *physEdgeStripDet;
+  // ── First layer: pTP WLS film + UV-transparent acrylic carrier ───────────────
+  G4Box             *pTPlayer,      *uvAcrylicSlab;
+  G4LogicalVolume   *logicpTPlayer, *logicUVAcrylic;
+  G4VPhysicalVolume *physpTPlayer,  *physUVAcrylic;
 
+  // ── Blue WLS substrate ───────────────────────────────────────────────────────
+  G4Box             *pTPsubstrate;
+  G4LogicalVolume   *logicpTPsubstrate;
+  G4VPhysicalVolume *physpTPsubstrate;
+
+  // ── SiPM photosensors (edge-coupled at ±y faces of blue WLS slab) ────────────
+  G4Box             *SiPMs;
+  G4LogicalVolume   *logicSiPMs;
+  G4VPhysicalVolume *physSiPMs;   // pointer reused in placement loop
+
+  // ── Vikuiti reflective foils ─────────────────────────────────────────────────
+  // Backplane foil: covers the +z (back) face of the blue WLS slab
+  G4Box             *ReflectiveFoilBackPlane;
+  G4LogicalVolume   *logicReflectiveFoilBackPlane;
+  G4VPhysicalVolume *physReflectiveFoilBackPlane;
+  // Lateral foils: cover the ±x faces of the blue WLS slab (the edges without SiPMs)
+  G4Box             *VikuitiEdge;
+  G4LogicalVolume   *logicVikuitiEdge;
+  G4VPhysicalVolume *physVikuitiEdge_pX, *physVikuitiEdge_nX;
+
+  // ── Validation detector: backplane photon-leak counter ───────────────────────
+  G4Box             *BackplaneLeakDet;
+  G4LogicalVolume   *logicBackplaneLeakDet;
+  G4VPhysicalVolume *physBackplaneLeakDet;
+
+  // ── Runtime messenger ────────────────────────────────────────────────────────
   G4GenericMessenger *fMessenger;
 
-  G4Material *pTP, *acrylicMcMaster, *bluewlsacrylic,  *worldMat;
+  // ── Materials ────────────────────────────────────────────────────────────────
+  G4Material *pTP;             // p-terphenyl WLS film (1st WLS stage)
+  G4Material *uvTransAcrylic;  // UV-transparent PMMA carrier for pTP film
+  G4Material *acrylicMcMaster; // standard PMMA (used for Vikuiti foil body material)
+  G4Material *bluewlsacrylic;  // blue-shifting WLS acrylic slab (2nd WLS stage)
+  G4Material *worldMat;        // liquid argon (LAr)
 
   void DefineMaterials();
   void DefinePTPMaterial();
+  void DefineUVTransparentAcrylicMaterial();
   void DefineAcrylicMaterial();
   void DefineBlueWLSMaterial();
   void DefineWorldMaterial();
   void DefineOpticalSurface();
 
   G4OpticalSurface *Vikuiti;
-  const G4double EVUM; // eV to microns conversion factor 1.239841939*eV
-  G4double energy[8];
+  const G4double EVUM; // hc constant in eV·µm: 1.239841939 eV·µm (wavelength ↔ energy)
+  G4double energy[8];  // 8 sampled photon energies covering VUV to visible
 };
 
 #endif

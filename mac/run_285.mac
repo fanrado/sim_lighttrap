@@ -1,18 +1,15 @@
-
-
 /gps/particle opticalphoton
-
-# position settings
-/gps/pos/type Plane
-/gps/pos/centre 0. 0. 23 cm
-/gps/pos/shape Square
-/gps/pos/halfx 25 cm
-/gps/pos/halfy 25 cm
-
-# Set direction
-/gps/direction 0 0 1
-
 /control/execute spectrum_macro.mac
+
+# position: in front of pTP front face (z ~ -12 mm), inside world (z half = 9 cm)
+/gps/pos/type Plane
+/gps/pos/centre 0. 0. -2. cm
+/gps/pos/shape Square
+/gps/pos/halfx 7.5 cm
+/gps/pos/halfy 7.5 cm
+
+# shoot toward detector (+z direction)
+/gps/direction 0 0 1
 
 # Run the simulation with 1000 particles
 /run/beamOn 1000

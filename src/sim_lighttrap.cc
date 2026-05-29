@@ -24,8 +24,11 @@ int main(int argc, char** argv)
 
   runManager->Initialize();
 
+  G4String macroFile = (argc > 1) ? G4String(argv[1]) : G4String("");
+  bool isVisMacro = (argc == 1) || (macroFile.find("vis") != std::string::npos);
+
   G4UIExecutive *ui = 0;
-  if (argc == 1) {
+  if (isVisMacro) {
     ui = new G4UIExecutive(argc, argv);
   }
 
@@ -34,12 +37,11 @@ int main(int argc, char** argv)
 
   G4UImanager *UImanager = G4UImanager::GetUIpointer();
   if (ui) {
-    UImanager->ApplyCommand("/control/execute vis.mac");
+    G4String mac = macroFile.empty() ? "vis.mac" : macroFile;
+    UImanager->ApplyCommand("/control/execute " + mac);
     ui->SessionStart();
   } else {
-    G4String command = "/control/execute ";
-    G4String fileName = argv[1];
-    UImanager->ApplyCommand(command + fileName);
+    UImanager->ApplyCommand("/control/execute " + macroFile);
   }
 
 
