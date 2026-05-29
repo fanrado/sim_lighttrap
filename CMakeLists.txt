@@ -4,6 +4,21 @@ project(LightTrapSimulation)
 find_package(Geant4 REQUIRED ui_all vis_all)
 include(${Geant4_USE_FILE})
 
+# ── yaml-cpp (YAML configuration support) ────────────────────────────────────
+# Try a system installation first; fall back to fetching from source.
+find_package(yaml-cpp QUIET)
+if (NOT yaml-cpp_FOUND)
+  include(FetchContent)
+  FetchContent_Declare(
+    yaml-cpp
+    GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+    GIT_TAG        0.8.0
+  )
+  set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+  FetchContent_MakeAvailable(yaml-cpp)
+endif()
+
 # Add the include directory so that header files in "include/" are found.
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
@@ -17,12 +32,13 @@ file(GLOB MACRO_FILES ${PROJECT_SOURCE_DIR}/mac/*.mac)
 # Copy macro files to the binary directory.
 file(COPY ${MACRO_FILES} DESTINATION ${PROJECT_BINARY_DIR})
 
-# If you have any data files (e.g., ".dat"), update the search path if needed.
+# Copy data files and the YAML configuration to the build directory.
 file(GLOB DATA_FILES ${PROJECT_SOURCE_DIR}/input/*.dat)
 file(COPY ${DATA_FILES} DESTINATION ${PROJECT_BINARY_DIR})
+file(COPY ${PROJECT_SOURCE_DIR}/sim_config.yaml DESTINATION ${PROJECT_BINARY_DIR})
 
-# Build the executable using the source and header files.
+# Build the executable.
 add_executable(sim_lighttrap ${sources} ${headers})
-target_link_libraries(sim_lighttrap ${Geant4_LIBRARIES})
+target_link_libraries(sim_lighttrap ${Geant4_LIBRARIES} yaml-cpp::yaml-cpp)
 
 add_custom_target(LightTrapSimulation DEPENDS sim_lighttrap)

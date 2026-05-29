@@ -1,0 +1,34 @@
+# sim_config.yaml — LightTrap Simulation Configuration
+#
+# Usage:
+#   ./sim_lighttrap sim_config.yaml           # YAML-only batch run
+#   ./sim_lighttrap sim_config.yaml run.mac   # YAML geometry + macro source/run
+#   ./sim_lighttrap run.mac                   # macro-only (original behaviour)
+#
+# YAML settings are applied first; a macro file (if also given) can override them.
+# Geometry changes trigger /run/reinitializeGeometry automatically.
+
+geometry:
+  nSiPMs: 30                      # total SiPMs, split equally between ±y edges (15 per side)
+  pTPlayerThickness_mm: 0.002     # pTP WLS film thickness [mm]  (default: 2 µm)
+  uvAcrylicThickness_mm: 3.0      # UV-transparent acrylic carrier [mm]
+  pTPSubstrateThickness_mm: 6.0   # blue WLS slab thickness [mm]  (2nd WLS stage)
+  LArThickness_mm: 3.0            # LAr gap between first layer and blue WLS [mm]
+  lightTrapSize_cm: 15.0          # square module side length [cm]
+
+source:
+  particle: opticalphoton         # Geant4 particle name
+  energy_eV: 9.68                 # photon energy [eV]  (128 nm VUV)
+  positionType: Plane             # GPS type: Point | Plane | Surface | Volume
+  positionShape: Square           # GPS shape: Square | Circle | Ellipse | Rectangle
+  centerX_cm: 0.0                 # source centre x [cm]
+  centerY_cm: 0.0                 # source centre y [cm]
+  centerZ_cm: -2.0                # source centre z [cm]  (8 mm in front of pTP film)
+  halfX_cm: 7.5                   # source half-width in x [cm]  (covers full 15 cm face)
+  halfY_cm: 7.5                   # source half-width in y [cm]
+  directionX: 0.0                 # momentum direction (unit vector)
+  directionY: 0.0
+  directionZ: 1.0                 # into the module (+z)
+
+run:
+  nEvents: 10000                  # primary particles per run

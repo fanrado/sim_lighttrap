@@ -32,7 +32,7 @@ LightTrapSimulation is a Geant4-based simulation project designed to model an op
 
 ## Running the Simulation
 
-You can run the simulation in interactive or batch mode:
+You can run the simulation in three modes:
 
 - **Interactive Mode (with Visualization):**
 
@@ -40,14 +40,47 @@ You can run the simulation in interactive or batch mode:
   ./sim_lighttrap
   ```
 
-  This will launch the UI session and automatically execute the `vis.mac` macro.
-- **Batch Mode:**
+  Launches the Qt UI and executes `vis.mac` automatically.
+
+- **Batch Mode (macro file):**
 
   ```bash
   ./sim_lighttrap run.mac
   ```
 
-  You can also override the run setup by providing other macro files (e.g., `det.mac` or `scandet.mac`).
+  You can also use other macro files (e.g., `det.mac`, `scandet.mac`).
+
+- **YAML Configuration Mode:**
+
+  Edit `sim_config.yaml` in the build directory, then run:
+
+  ```bash
+  # YAML-only: geometry + source + event count all from the YAML file
+  ./sim_lighttrap sim_config.yaml
+
+  # YAML geometry + macro source/run: macro settings override the YAML ones
+  ./sim_lighttrap sim_config.yaml run.mac
+  ```
+
+  The YAML file covers all tunable parameters:
+
+  | Section    | Parameters |
+  |------------|------------|
+  | `geometry` | `nSiPMs`, layer thicknesses, module size |
+  | `source`   | particle type, energy, position, shape, direction |
+  | `run`      | number of events |
+
+  Example — scan with 20 SiPMs and a smaller module:
+
+  ```yaml
+  geometry:
+    nSiPMs: 20
+    lightTrapSize_cm: 10.0
+  run:
+    nEvents: 50000
+  ```
+
+  The YAML config is applied first; any macro file provided afterward can still override individual settings via the usual `/detector/` and `/gps/` messenger commands.
 
 ## Visualization
 
@@ -112,9 +145,11 @@ cmake .. [every time new .cc files are added]
 make     [update changes]
 
 [run]
-./simlighttrap
-./simlighttrap run.mac # override run setup
-./simlighttrap det.mac # scan det parameters
+./sim_lighttrap                        # interactive (vis.mac)
+./sim_lighttrap run.mac                # batch via macro
+./sim_lighttrap sim_config.yaml        # batch via YAML config
+./sim_lighttrap sim_config.yaml run.mac # YAML geometry + macro source/run
+./sim_lighttrap det.mac                # scan detector parameters
 ```
 
 ## Set up G4 on dunegpvm (Alma 9)

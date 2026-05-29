@@ -39,7 +39,7 @@ MyLightTrapConstruction::MyLightTrapConstruction()
 
   // ── Default geometry parameters ─────────────────────────────────────────────
   nSiPMs                = 30;       // 15 per ±y edge
-  pTPlayerthickness     = 0.004*mm; // 2 µm pTP film
+  pTPlayerthickness     = 0.002*mm; // 2 µm pTP film
   uvAcrylicThickness    = 3.*mm;    // 3 mm UV-transparent acrylic carrier
   pTPsubstratethickness = 6.*mm;    // 6 mm blue WLS acrylic slab
   LArthickness          = 3.*mm;    // 3 mm LAr gap between first layer and blue WLS
