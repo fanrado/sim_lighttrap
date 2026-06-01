@@ -89,7 +89,7 @@ private:
 
   G4OpticalSurface *Vikuiti;
   const G4double EVUM; // hc constant in eV·µm: 1.239841939 eV·µm (wavelength ↔ energy)
-  G4double energy[8];  // 8 sampled photon energies covering VUV to visible
+  G4double energy[13]; // 13 sampled photon energies covering VUV to visible (115–145 nm densified)
 };
 
 #endif
