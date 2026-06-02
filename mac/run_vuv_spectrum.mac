@@ -6,6 +6,10 @@
 # Energy range: 8.55 eV (145 nm) – 10.78 eV (115 nm).
 # 13 histogram points sampled at 2.5 nm spacing; GPS normalises automatically.
 #
+# Note: /gps/ene/unit is not a valid GPS command. Energies must be given in
+# the Geant4 default unit (MeV). Values below are the eV energies × 1e-6.
+#   e.g. 9.7242 eV → 9.7242e-6 MeV
+#
 # Source geometry: same as run.mac — square 15 cm × 15 cm at z = -2 cm,
 # photons directed in +z toward the detector module.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -20,23 +24,23 @@
 /gps/pos/halfy 7.5 cm
 /gps/direction 0 0 1
 
-# --- VUV energy distribution: Gaussian in wavelength, tabulated in eV ---
+# --- VUV energy distribution: Gaussian in wavelength, tabulated in MeV ---
+# λ(nm)  E(eV)    E(MeV)      Gaussian weight exp(-(λ-128)²/(2×4.25²))
 /gps/ene/type Arb
 /gps/hist/type arb
-# energy(eV)  weight  [λ nm → Gaussian exp(-(λ-128)²/(2×4.25²))]
-/gps/hist/point  8.5506  0.000336
-/gps/hist/point  8.7006  0.002965
-/gps/hist/point  8.8560  0.018612
-/gps/hist/point  9.0170  0.081958
-/gps/hist/point  9.1840  0.257840
-/gps/hist/point  9.3571  0.571014
-/gps/hist/point  9.5372  0.895023
-/gps/hist/point  9.7242  0.993098
-/gps/hist/point  9.9187  0.779403
-/gps/hist/point 10.1211  0.432676
-/gps/hist/point 10.3320  0.170325
-/gps/hist/point 10.5518  0.047291
-/gps/hist/point 10.7812  0.009334
+/gps/hist/point  8.5506e-6  0.000336
+/gps/hist/point  8.7006e-6  0.002965
+/gps/hist/point  8.8560e-6  0.018612
+/gps/hist/point  9.0170e-6  0.081958
+/gps/hist/point  9.1840e-6  0.257840
+/gps/hist/point  9.3571e-6  0.571014
+/gps/hist/point  9.5372e-6  0.895023
+/gps/hist/point  9.7242e-6  0.993098
+/gps/hist/point  9.9187e-6  0.779403
+/gps/hist/point 10.1211e-6  0.432676
+/gps/hist/point 10.3320e-6  0.170325
+/gps/hist/point 10.5518e-6  0.047291
+/gps/hist/point 10.7812e-6  0.009334
 /gps/hist/inter Lin
 
 /run/beamOn 10000
