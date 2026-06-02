@@ -1,0 +1,116 @@
+#+TITLE: Physics Processes & Primary Generator
+#+AUTHOR: sim_lighttrap team
+#+DATE: 2026-05-29
+#+OPTIONS: toc:t num:t
+
+* Physics List
+
+The simulation uses a two-component physics list registered in ~src/physics.cc~:
+
+| Component               | Geant4 Class            | Covers                                            |
+|-------------------------+-------------------------+---------------------------------------------------|
+| Electromagnetic physics | G4EmStandardPhysics     | Ionisation, bremsstrahlung, pair production, etc. |
+| Optical physics         | G4OpticalPhysics        | All optical photon processes (see below)          |
+
+** Optical Processes
+
+~G4OpticalPhysics~ activates the following processes for ~opticalphoton~ particles:
+
+| Process              | Description                                                        |
+|----------------------+--------------------------------------------------------------------|
+| G4OpAbsorption       | Photon bulk absorption (governed by ~ABSLENGTH~ material property) |
+| G4OpRayleigh         | Rayleigh scattering (relevant in LAr, length ~ 90 cm)             |
+| G4OpBoundaryProcess  | Snell's law refraction / Fresnel reflection at interfaces         |
+| G4OpWLS              | Wavelength shifting: absorption + delayed re-emission             |
+| G4Scintillation      | Primary scintillation photon generation in LAr                    |
+
+* Primary Particle Generator
+
+The generator is implemented via ~G4GeneralParticleSource~ (GPS) in ~src/generator.cc~.
+
+** Default Configuration (run.mac)
+
+| Property    | Value                             | Notes                                        |
+|-------------+-----------------------------------+----------------------------------------------|
+| Particle    | opticalphoton                     | Massless, speed = c                          |
+| Energy      | 9.68 eV  (λ ≈ 128 nm)            | LAr VUV scintillation peak                   |
+| Source shape| Square plane, 25 × 25 cm half-side| Centred at (0, 0, 24.5 cm)                   |
+| Direction   | (0, 0, 1) downward                | Perpendicular to detector surface            |
+| Polarisation| Random in plane ⊥ momentum        | Angle uniformly sampled in [0, π/2]          |
+| Events      | 10 000 per run (run.mac)          |                                              |
+
+The random polarisation is set in C++ code: a random rotation angle is drawn and
+used to construct a polarisation vector that remains strictly perpendicular to the
+photon momentum, as required by Geant4 for ~opticalphoton~.
+
+** Detector Scan (det.mac / scandet.mac)
+
+A parameter scan macro loops the number of SiPMs from 20 to 50 in steps of 10,
+running 10 events per configuration to produce comparative statistics.
+
+* Tracking and Stepping Logic
+
+** Stepping Action (src/stepping.cc)
+
+At each step the total energy deposition (~GetTotalEnergyDeposit~) is accumulated
+per event. The accumulated value is later written to the ~Energy~ ntuple.
+
+** Tracking Action (src/tracking.cc)
+
+*** PreUserTrackingAction
+
+For every new track the action checks the creator process:
+
+- *No creator process* (primary photon): records the initial state (position,
+  momentum, wavelength, incident angle relative to z-axis) for optical validation.
+- *OpWLS creator*: records WLS secondary photon properties — emission position,
+  direction converted to zenith/azimuth angles, wavelength, material, time.
+- *Scintillation creator*: same recording as WLS but with process code 100.
+
+Process and material types are encoded to integers using the ~NameMap~ helper
+(~include/namemap.hh~) before being stored in ROOT ntuples:
+
+| Name            | Integer code |
+|-----------------+--------------|
+| pTP             |            1 |
+| acrylicMcMaster |            2 |
+| bluewlsacrylic  |            3 |
+| G4_lAr          |            4 |
+| Scintillation   |          100 |
+| OpWLS           |          101 |
+
+*** PostUserTrackingAction
+
+After a track ends, the action completes the optical validation entry by
+determining whether the primary photon was reflected (final z < 24.5 cm) or
+transmitted, and fills the reflection flag branch.
+
+** Event Action (src/event.cc)
+
+At the start of each event, energy deposition is reset. At the end:
+
+1. The total deposited energy is written to ntuple 2 (~Energy~).
+2. Primary vertex data (position, momentum, wavelength, PDG code) are written
+   to ntuple 3 (~Primary~).
+
+Wavelength is derived from kinetic energy via λ (µm) = 1.24 eV·µm / E (eV).
+
+* Sensitive Detector Response
+
+** SiPM — MySensitiveDetector (src/detector.cc)
+
+Triggered when an optical photon enters any SiPM logical volume.
+
+1. Records hit position, time, and wavelength to ntuple 0 (~Photons~) regardless
+   of detection outcome.
+2. Looks up the photon detection efficiency (PDE) from the Broadcom table
+   (~pde_broadcom.dat~) using linear interpolation on wavelength.
+3. Draws a uniform random number; if it falls below PDE(λ), records the photon
+   to ntuple 1 (~Hits~).
+4. Kills the track (photon absorbed by detector).
+
+** Leak Detectors — MyLeakDetector (src/detector.cc)
+
+100% efficiency counters attached to the Backplane and Edge Strip volumes.
+Record position, time, wavelength, and event ID to their respective ntuples
+(6 and 7) without any efficiency weighting.

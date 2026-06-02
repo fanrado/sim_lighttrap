@@ -1,0 +1,146 @@
+#+TITLE: Output Ntuples & Analysis
+#+AUTHOR: sim_lighttrap team
+#+DATE: 2026-05-29
+#+OPTIONS: toc:t num:t
+
+* Output File
+
+The simulation writes a ROOT file named:
+
+#+BEGIN_EXAMPLE
+output_apexltsim<runID>.root
+#+END_EXAMPLE
+
+The file contains 8 TTrees (ntuples), each targeting a different aspect of the
+optical photon transport. The ntuples are created in ~src/run.cc~
+(~MyRunAction::BeginOfRunAction~) and filled by the tracking, event, and
+sensitive detector actions.
+
+* Ntuple Reference
+
+** Ntuple 0 — Photons
+
+*All* optical photons that geometrically enter a SiPM volume, before quantum
+efficiency weighting.
+
+| Branch    | Type   | Description                         |
+|-----------+--------+-------------------------------------|
+| eventID   | int    | Geant4 event number                 |
+| x, y, z   | double | Hit position (mm)                   |
+| time      | double | Global arrival time (ns)            |
+| wavelength| double | Photon wavelength (µm)              |
+
+** Ntuple 1 — Hits
+
+Photons that pass the SiPM quantum efficiency test. Subset of ntuple 0.
+
+| Branch    | Type   | Description                         |
+|-----------+--------+-------------------------------------|
+| eventID   | int    | Geant4 event number                 |
+| x, y, z   | double | SiPM hit position (mm)              |
+
+** Ntuple 2 — Energy
+
+Total energy deposited per event across all volumes.
+
+| Branch | Type   | Description              |
+|--------+--------+--------------------------|
+| fEdep  | double | Total energy deposit (MeV)|
+
+** Ntuple 3 — Primary
+
+Properties of the primary particle at the start of each event.
+
+| Branch    | Type   | Description                                  |
+|-----------+--------+----------------------------------------------|
+| eventID   | int    | Geant4 event number                          |
+| x, y, z   | double | Primary vertex position (mm)                 |
+| px, py, pz| double | Momentum direction (unit vector)             |
+| wavelength| double | Photon wavelength (µm)                      |
+| pdg       | int    | PDG code (22 for optical photon)             |
+
+** Ntuple 4 — WLSPhoton
+
+Secondary photons produced by WLS absorption or scintillation processes.
+
+| Branch    | Type   | Description                                        |
+|-----------+--------+----------------------------------------------------|
+| eventID   | int    | Geant4 event number                                |
+| x, y, z   | double | Emission position (mm)                             |
+| cosTheta  | double | Zenith angle cosine of emission direction          |
+| phi       | double | Azimuthal angle of emission direction (rad)        |
+| process   | int    | Creator process: 100=Scintillation, 101=OpWLS      |
+| time      | double | Global emission time (ns)                         |
+| pdg       | int    | PDG code                                           |
+| wavelength| double | Emitted wavelength (µm)                           |
+| material  | int    | Emission material: 1=pTP, 2=acrylic, 3=blueWLS, 4=LAr |
+
+Use this ntuple to study the angular distribution of WLS re-emission, the
+spatial distribution of emission vertices, and wavelength shift efficiency.
+
+** Ntuple 5 — OpticalValidation
+
+Records primary photon trajectories for Fresnel reflection validation against
+analytical predictions.
+
+| Branch        | Type   | Description                                 |
+|---------------+--------+---------------------------------------------|
+| eventID       | int    | Geant4 event number                         |
+| wavelength    | double | Photon wavelength (µm)                     |
+| incidentAngle | double | Angle of incidence relative to z-axis (rad)|
+| material      | int    | Material encoded integer (see NameMap)      |
+| reflected     | bool   | True if photon final z < 24.5 cm            |
+| xi, yi, zi    | double | Initial position (mm)                       |
+| xf, yf, zf    | double | Final position (mm)                         |
+
+Compare the ~reflected~ fraction vs ~incidentAngle~ against the Fresnel formula
+to validate the Geant4 optical surface model.
+
+** Ntuple 6 — BackplaneLeak
+
+Photons that pass through the Vikuiti foil (~2% transmission).
+
+| Branch    | Type   | Description              |
+|-----------+--------+--------------------------|
+| eventID   | int    | Geant4 event number      |
+| x, y, z   | double | Hit position (mm)        |
+| time      | double | Global time (ns)         |
+| wavelength| double | Photon wavelength (µm)  |
+
+** Ntuple 7 — EdgeStrip
+
+Photons escaping the active detector volume laterally.
+
+| Branch    | Type   | Description              |
+|-----------+--------+--------------------------|
+| eventID   | int    | Geant4 event number      |
+| x, y, z   | double | Hit position (mm)        |
+| time      | double | Global time (ns)         |
+| wavelength| double | Photon wavelength (µm)  |
+
+* Key Analysis Quantities
+
+| Quantity                     | Ntuples to use        | How to compute                                              |
+|------------------------------+-----------------------+-------------------------------------------------------------|
+| Detection efficiency         | 1 / 0                 | N(Hits) / N(Photons)                                        |
+| PDE-weighted collection      | 1 / 3                 | N(Hits) / N(Primary)                                        |
+| WLS conversion efficiency    | 4 / 3                 | N(WLS photons) / N(primary)                                 |
+| Backplane loss fraction      | 6 / 3                 | N(BackplaneLeak) / N(Primary)                               |
+| Edge loss fraction           | 7 / 3                 | N(EdgeStrip) / N(Primary)                                   |
+| Fresnel reflection vs angle  | 5                     | ~reflected~ rate binned in ~incidentAngle~                  |
+| WLS emission angular dist.   | 4                     | Distribution of ~cosTheta~ and ~phi~                        |
+| WLS spatial map              | 4                     | 2D histogram of (x, y) or (x, z) at emission position       |
+
+* Input Data
+
+** pde_broadcom.dat
+
+Wavelength (nm) vs. photon detection efficiency (fraction) for the Broadcom SiPM
+model used. Loaded at run initialisation by ~MySensitiveDetector~. Linear
+interpolation is applied between data points.
+
+** spectrum.txt (1905 lines)
+
+Wavelength (nm) vs. relative intensity, ranging from ~190 nm to ~900 nm.
+Currently not consumed by the simulation at runtime; it is available for
+offline spectral analysis or future integration as a GPS energy distribution.

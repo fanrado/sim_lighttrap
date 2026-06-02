@@ -1,0 +1,68 @@
+#+TITLE: LightTrapSimulation — Project Overview
+#+AUTHOR: sim_lighttrap team
+#+DATE: 2026-05-29
+#+OPTIONS: toc:t num:t
+
+* Purpose
+
+~sim_lighttrap~ is a Geant4-based Monte Carlo simulation of an optical light trap
+designed for studying scintillation and wavelength-shifting (WLS) photon transport
+in liquid argon (LAr) detectors. The primary physics goals are:
+
+- Model VUV photon (128 nm, LAr scintillation peak) absorption and re-emission
+  through multi-layer WLS materials.
+- Optimise light collection efficiency by varying the number and placement of SiPM
+  photosensors.
+- Validate optical surface properties (Vikuiti reflector at ~98%) against analytical
+  Fresnel predictions.
+- Quantify photon losses at the detector backplane and edges.
+
+The simulation context is large-scale liquid argon time-projection chambers (LArTPCs)
+such as those used in the DUNE experiment, where efficient VUV photon detection is
+critical for triggering and calorimetry.
+
+* Repository Layout
+
+#+BEGIN_EXAMPLE
+sim_lighttrap/
+├── include/          # C++ header files (.hh)
+├── src/              # C++ implementation files (.cc)
+├── mac/              # Geant4 macro files (.mac)
+├── input/            # External data (spectrum.txt)
+├── docs/             # This documentation folder
+├── CMakeLists.txt    # Build configuration
+└── README.md         # Quick-start guide
+#+END_EXAMPLE
+
+* Simulation Flow
+
+#+BEGIN_EXAMPLE
+Primary photon (9.68 eV, λ = 128 nm, VUV)
+        │
+        ▼
+  LAr World volume
+        │  Rayleigh scattering, absorption
+        ▼
+  pTP deposited layer (2 µm)
+        │  WLS absorption → re-emission (λ ~ 340–430 nm)
+        ▼
+  Blue WLS Acrylic substrate (6 mm)
+        │  Second WLS stage → emission at ~430 nm
+        ▼
+  ┌─────────────────────────────────────────────┐
+  │  SiPM array (20–50 sensors, 3 mm × 1 mm)   │
+  │  Quantum efficiency applied per photon      │
+  └─────────────────────────────────────────────┘
+        │  ~2% leak through
+        ▼
+  Vikuiti reflective foil (65 µm, ≥98% reflectivity)
+        │
+  Backplane / Edge leak detectors (validation)
+#+END_EXAMPLE
+
+* Related Documentation
+
+- [[file:geometry.org][Detector Geometry & Materials]]
+- [[file:physics.org][Physics Processes & Primary Generator]]
+- [[file:analysis.org][Output Ntuples & Analysis]]
+- [[file:running.org][Building & Running the Simulation]]

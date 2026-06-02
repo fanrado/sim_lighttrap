@@ -1,0 +1,116 @@
+#+TITLE: Building & Running the Simulation
+#+AUTHOR: sim_lighttrap team
+#+DATE: 2026-05-29
+#+OPTIONS: toc:t num:t
+
+* Prerequisites
+
+- Geant4 ≥ 10.x compiled with UI drivers and visualisation (~-DGEANT4_USE_QT=ON~
+  or ~OPENGL~) and multithreading optional.
+- CMake ≥ 2.6.
+- ROOT (for output file analysis; not a compile-time dependency).
+
+Ensure the Geant4 environment is sourced before building:
+
+#+BEGIN_SRC bash
+source /path/to/geant4/bin/geant4.sh   # bash
+# or
+source /path/to/geant4/bin/geant4.csh  # csh
+#+END_SRC
+
+* Building
+
+#+BEGIN_SRC bash
+cd sim_lighttrap
+mkdir build && cd build
+cmake ..
+make -j$(nproc)
+#+END_SRC
+
+The executable ~sim_lighttrap~ and all macro/data files are placed in the build
+directory by CMake (~file(COPY ...)~ directives in ~CMakeLists.txt~).
+
+* Running
+
+** Interactive mode (visualisation)
+
+#+BEGIN_SRC bash
+./sim_lighttrap
+#+END_SRC
+
+Loads ~vis.mac~ automatically. An OpenGL viewer opens with trajectory rendering,
+scale bar, axes, and event ID overlay. GUI menus provide camera control and
+test-run buttons.
+
+** Batch mode (standard run)
+
+#+BEGIN_SRC bash
+./sim_lighttrap run.mac
+#+END_SRC
+
+Runs 10 000 events with the default planar square source (25 × 25 cm at z = 24.5 cm,
+λ = 128 nm, downward). Output: ~output_apexltsim0.root~.
+
+** Detector parameter scan
+
+#+BEGIN_SRC bash
+./sim_lighttrap det.mac
+#+END_SRC
+
+Loops ~scandet.mac~ over nSiPMs ∈ {20, 30, 40, 50}, running 10 events per step.
+One ROOT file per run ID is produced.
+
+* Runtime Geometry Configuration
+
+Inside an interactive session or at the top of a custom macro:
+
+#+BEGIN_EXAMPLE
+/mydet/nSiPMs 40
+/run/reinitializeGeometry
+/run/beamOn 10000
+#+END_EXAMPLE
+
+Other tunable parameters:
+
+| Command              | Default | Effect                                  |
+|----------------------+---------+-----------------------------------------|
+| /mydet/nSiPMs        |      30 | Number of SiPMs in the array            |
+| /mydet/pTPThick      |   2 µm  | pTP deposited layer thickness           |
+| /mydet/subThick      |   6 mm  | Blue WLS acrylic substrate thickness    |
+
+* Output
+
+ROOT file is written to the build directory:
+
+#+BEGIN_EXAMPLE
+output_apexltsim<runID>.root
+#+END_EXAMPLE
+
+Open with ROOT:
+
+#+BEGIN_SRC cpp
+TFile *f = TFile::Open("output_apexltsim0.root");
+f->ls();                         // list all TTrees
+TTree *hits = (TTree*)f->Get("Hits");
+hits->Draw("x:y","","colz");     // 2D SiPM hit map
+#+END_SRC
+
+See [[file:analysis.org][Output Ntuples & Analysis]] for the full branch reference.
+
+* Macro Files Reference
+
+| File           | Purpose                                                     |
+|----------------+-------------------------------------------------------------|
+| mac/vis.mac    | Interactive visualisation; loaded automatically with no args|
+| mac/run.mac    | Standard 10 000-event batch run                             |
+| mac/det.mac    | Outer loop for SiPM count scan (calls scandet.mac)          |
+| mac/scandet.mac| Single-configuration run inside the scan loop               |
+
+* Tips
+
+- Increase verbosity for debugging: ~/tracking/verbose 2~ or ~/event/verbose 1~.
+- To suppress visualisation overhead in large runs, always use batch mode.
+- The Broadcom PDE file (~pde_broadcom.dat~) must be present in the working
+  directory (build); CMake copies it automatically.
+- Physics random seed can be set with ~/random/setSeeds <s1> <s2>~ for
+  reproducible results.
