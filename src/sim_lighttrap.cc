@@ -47,7 +47,7 @@ int main(int argc, char** argv)
 
     // ── Geant4 initialisation ────────────────────────────────────────────────
     G4RunManager *runManager = new G4RunManager();
-    runManager->SetUserInitialization(new MyLightTrapConstruction());
+    runManager->SetUserInitialization(new MyLightTrapConstruction(cfg));
     runManager->SetUserInitialization(new MyPhysicsList());
     runManager->SetUserInitialization(new MyActionInitialization());
     runManager->Initialize();

@@ -14,11 +14,12 @@
 #include "G4LogicalBorderSurface.hh"
 
 #include "detector.hh"
+#include "config.hh"
 
 class MyLightTrapConstruction : public G4VUserDetectorConstruction
 {
 public:
-  MyLightTrapConstruction();
+  explicit MyLightTrapConstruction(const SimConfig& cfg = SimConfig{});
   ~MyLightTrapConstruction();
 
   virtual G4VPhysicalVolume *Construct();
@@ -72,6 +73,9 @@ private:
   // ── Runtime messenger ────────────────────────────────────────────────────────
   G4GenericMessenger *fMessenger;
 
+  // ── Config snapshot (set at construction, used by DefineMaterials) ───────────
+  SimConfig fCfg;
+
   // ── Materials ────────────────────────────────────────────────────────────────
   G4Material *pTP;             // p-terphenyl WLS film (1st WLS stage)
   G4Material *uvTransAcrylic;  // UV-transparent PMMA carrier for pTP film
@@ -90,6 +94,10 @@ private:
   G4OpticalSurface *Vikuiti;
   const G4double EVUM; // hc constant in eV·µm: 1.239841939 eV·µm (wavelength ↔ energy)
   G4double energy[13]; // 13 sampled photon energies covering VUV to visible (115–145 nm densified)
+
+  // Returns buf (filled from cfg * unitFactor) if cfg is non-empty, else returns fallback.
+  static G4double* resolveArray(const std::vector<double>& cfg, double unitFactor,
+                                G4double (&buf)[13], G4double* fallback);
 };
 
 #endif

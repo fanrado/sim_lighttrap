@@ -19,8 +19,20 @@
 //                   Backplane leak detector (validation, 100 % efficiency)
 // ─────────────────────────────────────────────────────────────────────────────
 
-MyLightTrapConstruction::MyLightTrapConstruction()
-: EVUM(1.239841939*eV)
+G4double* MyLightTrapConstruction::resolveArray(
+    const std::vector<double>& cfg, double unitFactor,
+    G4double (&buf)[13], G4double* fallback)
+{
+    if (!cfg.empty()) {
+        for (int i = 0; i < 13; ++i)
+            buf[i] = cfg[i] * unitFactor;
+        return buf;
+    }
+    return fallback;
+}
+
+MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
+: EVUM(1.239841939*eV), fCfg(cfg)
 {
   // ── Runtime messenger: /detector/<command> ──────────────────────────────────
   fMessenger = new G4GenericMessenger(this, "/detector/", "Light Trap Construction");
@@ -81,24 +93,23 @@ void MyLightTrapConstruction::DefinePTPMaterial()
   G4double rindex[13]   = {1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65};
   G4double abslen[13]   = {10*m, 10*m, 10*m, 10*m, 0.1*mm, 0.0005*mm, 0.0005*mm, 0.0005*mm,
                            0.0005*mm, 0.0005*mm, 0.0005*mm, 0.0005*mm, 0.0005*mm};
-  //                        transparent →       ↑ strong VUV WLS absorption from 305 nm downward
   G4double emission[13] = {0., 0.0005, 0.002, 0.022, 0.0005, 0., 0., 0., 0., 0., 0., 0., 0.};
-  //                            ↑ emission peaks around 340–400 nm; zero in VUV
+  G4double bulkabs[13]  = {1*m, 1*m, 1*m, 1*m, 100*m, 100*m, 100*m, 100*m,
+                           100*m, 100*m, 100*m, 100*m, 100*m};
 
-  // Bulk absorption for non-WLS photons in pTP.
-  // Visible/near-UV (re-emission 340-530 nm): 1 m — pTP is transparent to its
-  // own emission, so TIR-escaping photons are not lost in bulk.
-  // UV (≤305 nm): 100 m >> WLSABSLENGTH so WLS process dominates; efficiency
-  // stays high and photons are not bulk-killed before WLS can act.
-  G4double bulkabs[13] = {1*m, 1*m, 1*m, 1*m, 100*m, 100*m, 100*m, 100*m,
-                          100*m, 100*m, 100*m, 100*m, 100*m};
+  G4double buf_ri[13], buf_abs[13], buf_wls[13], buf_em[13];
+  G4double* p_rindex   = resolveArray(fCfg.materials.ptp.rindex,      1., buf_ri,  rindex);
+  G4double* p_bulkabs  = resolveArray(fCfg.materials.ptp.abslen_m,    m,  buf_abs, bulkabs);
+  G4double* p_wlsabs   = resolveArray(fCfg.materials.ptp.wlsabslen_m, m,  buf_wls, abslen);
+  G4double* p_emission = resolveArray(fCfg.materials.ptp.wlscomponent, 1., buf_em, emission);
 
   G4MaterialPropertiesTable *mpt = new G4MaterialPropertiesTable();
-  mpt->AddProperty("RINDEX",       energy, rindex,   13);
-  mpt->AddProperty("ABSLENGTH",    energy, bulkabs,  13);
-  mpt->AddProperty("WLSABSLENGTH", energy, abslen,   13);
-  mpt->AddProperty("WLSCOMPONENT", energy, emission, 13);
-  mpt->AddConstProperty("WLSTIMECONSTANT", 1.136*ns);
+  mpt->AddProperty("RINDEX",       energy, p_rindex,   13);
+  mpt->AddProperty("ABSLENGTH",    energy, p_bulkabs,  13);
+  mpt->AddProperty("WLSABSLENGTH", energy, p_wlsabs,   13);
+  mpt->AddProperty("WLSCOMPONENT", energy, p_emission, 13);
+  mpt->AddConstProperty("WLSTIMECONSTANT",
+      fCfg.materials.ptp.wlstimeconstant_ns.value_or(1.136) * ns);
   pTP->SetMaterialPropertiesTable(mpt);
 }
 
@@ -107,13 +118,7 @@ void MyLightTrapConstruction::DefineUVTransparentAcrylicMaterial()
   G4NistManager *nist = G4NistManager::Instance();
 
   // UV-transparent PMMA (e.g., Plexiglas UVT / Spartech Polycast UVT).
-  // Same chemistry as standard acrylic (C5H8O2) but manufactured to minimise
-  // UV absorption: ~85 % transmission at 300–400 nm through 3 mm.
   // Ref: Plexiglas UVT datasheet (Röhm GmbH).
-  //
-  // Role: mechanical carrier for the pTP WLS film.  Must pass pTP-shifted
-  // photons (340–430 nm) toward the blue WLS slab.  Strongly absorbs any VUV
-  // photons that bypass pTP (safety cut — does not affect normal operation).
   uvTransAcrylic = new G4Material("uvTransAcrylic", 1.19*g/cm3, 3);
   uvTransAcrylic->AddElement(nist->FindOrBuildElement("C"), 5);
   uvTransAcrylic->AddElement(nist->FindOrBuildElement("H"), 8);
@@ -123,11 +128,14 @@ void MyLightTrapConstruction::DefineUVTransparentAcrylicMaterial()
   G4double rindex[13] = {1.49, 1.49, 1.49, 1.50, 1.51, 1.53, 1.54, 1.545, 1.55, 1.55, 1.55, 1.55, 1.55};
   G4double abslen[13] = {10*m, 5*m, 1*m, 10*cm, 1*cm, 0.1*mm, 0.001*mm, 0.0001*mm,
                          0.0001*mm, 0.0001*mm, 0.0001*mm, 0.0001*mm, 0.0001*mm};
-  //                      very transparent at visible/near-UV ↑   VUV strongly absorbed ↑
+
+  G4double buf_ri[13], buf_abs[13];
+  G4double* p_rindex = resolveArray(fCfg.materials.uvAcrylic.rindex,   1., buf_ri,  rindex);
+  G4double* p_abslen = resolveArray(fCfg.materials.uvAcrylic.abslen_m, m,  buf_abs, abslen);
 
   G4MaterialPropertiesTable *mpt = new G4MaterialPropertiesTable();
-  mpt->AddProperty("RINDEX",    energy, rindex, 13);
-  mpt->AddProperty("ABSLENGTH", energy, abslen, 13);
+  mpt->AddProperty("RINDEX",    energy, p_rindex, 13);
+  mpt->AddProperty("ABSLENGTH", energy, p_abslen, 13);
   uvTransAcrylic->SetMaterialPropertiesTable(mpt);
 }
 
@@ -135,9 +143,7 @@ void MyLightTrapConstruction::DefineAcrylicMaterial()
 {
   G4NistManager *nist = G4NistManager::Instance();
 
-  // Standard optical-grade PMMA (McMaster-Carr #8560K224).
-  // Used only as the body material of Vikuiti foil volumes; the Vikuiti skin
-  // surface overrides optical behaviour at the boundary.
+  // Standard optical-grade PMMA (McMaster-Carr #8560K224), Vikuiti foil body material.
   // Ref: https://www.mcmaster.com/8560K224/
   acrylicMcMaster = new G4Material("acrylicMcMaster", 1.19*g/cm3, 3);
   acrylicMcMaster->AddElement(nist->FindOrBuildElement("C"), 5);
@@ -146,10 +152,12 @@ void MyLightTrapConstruction::DefineAcrylicMaterial()
 
   // Wavelengths [nm]: { 530,  425,  400,  340,  305,  160,  145,  135,  128,  125,  120,  115,  106 }
   G4double rindex[13] = {1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50};
-  // Ref: https://indico.fnal.gov/event/63097/contributions/283538/attachments/174977/237339/slides.pdf
+
+  G4double buf_ri[13];
+  G4double* p_rindex = resolveArray(fCfg.materials.acrylicMcMaster.rindex, 1., buf_ri, rindex);
 
   G4MaterialPropertiesTable *mpt = new G4MaterialPropertiesTable();
-  mpt->AddProperty("RINDEX", energy, rindex, 13);
+  mpt->AddProperty("RINDEX", energy, p_rindex, 13);
   acrylicMcMaster->SetMaterialPropertiesTable(mpt);
 }
 
@@ -158,8 +166,6 @@ void MyLightTrapConstruction::DefineBlueWLSMaterial()
   G4NistManager *nist = G4NistManager::Instance();
 
   // Blue-shifting WLS acrylic (EJ-280/282/284/286 type), second WLS stage.
-  // Absorbs 340–430 nm photons from pTP and re-emits at ~430 nm (blue),
-  // well-matched to SiPM peak PDE.
   // Ref: https://eljentechnology.com/products/wavelength-shifting-plastics/ej-280-ej-282-ej-284-ej-286
   bluewlsacrylic = new G4Material("bluewlsacrylic", 1.023*g/cm3, 2);
   bluewlsacrylic->AddElement(nist->FindOrBuildElement("C"), 9);
@@ -167,21 +173,21 @@ void MyLightTrapConstruction::DefineBlueWLSMaterial()
 
   // Wavelengths [nm]: {  530,   425,   400,   340,  305,  160,  145,  135,  128,  125,  120,  115,  106 }
   G4double rindex[13]   = {1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58};
-  // Absorption lengths:
-  //   430 nm (DUNE VD, 200 cm): https://agenda.infn.it/event/37876/.../PhColl_DUNE_IT-1.pdf
-  //   400–300 nm: DUNE HD XA:   https://indico.cern.ch/event/1485254/.../DRD2_250211-4.pdf
-  //   < 300 nm: estimated; VUV strongly absorbed, WLS re-emission suppressed
   G4double abslen[13]   = {200*cm, 200*cm, 0.8*mm, 0.8*mm, 3*mm, 0.0001*mm, 0.0001*mm, 0.0001*mm,
                            0.0001*mm, 0.0001*mm, 0.0001*mm, 0.0001*mm, 0.0001*mm};
-  // Emission spectrum (relative, peaks at ~430 nm):
-  // Ref: https://iopscience.iop.org/article/10.1088/1748-0221/19/02/C02021
   G4double emission[13] = {0.0005, 0.02, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.};
 
+  G4double buf_ri[13], buf_abs[13], buf_em[13];
+  G4double* p_rindex   = resolveArray(fCfg.materials.blueWLS.rindex,      1., buf_ri,  rindex);
+  G4double* p_wlsabs   = resolveArray(fCfg.materials.blueWLS.wlsabslen_m, m,  buf_abs, abslen);
+  G4double* p_emission = resolveArray(fCfg.materials.blueWLS.wlscomponent, 1., buf_em, emission);
+
   G4MaterialPropertiesTable *mpt = new G4MaterialPropertiesTable();
-  mpt->AddProperty("RINDEX",       energy, rindex,   13);
-  mpt->AddProperty("WLSABSLENGTH", energy, abslen,   13);
-  mpt->AddProperty("WLSCOMPONENT", energy, emission, 13);
-  mpt->AddConstProperty("WLSTIMECONSTANT", 1.26*ns);
+  mpt->AddProperty("RINDEX",       energy, p_rindex,   13);
+  mpt->AddProperty("WLSABSLENGTH", energy, p_wlsabs,   13);
+  mpt->AddProperty("WLSCOMPONENT", energy, p_emission, 13);
+  mpt->AddConstProperty("WLSTIMECONSTANT",
+      fCfg.materials.blueWLS.wlstimeconstant_ns.value_or(1.26) * ns);
   bluewlsacrylic->SetMaterialPropertiesTable(mpt);
 }
 
@@ -194,14 +200,11 @@ void MyLightTrapConstruction::DefineWorldMaterial()
   // Refractive index of liquid argon:
   //   Ref 1: http://dx.doi.org/10.1016/j.nima.2017.06.031
   //   Ref 2: https://github.com/LArSoft/larg4/.../simpleLArTPC.gdml#L45
-  // New VUV points linearly interpolated between 160/128 and 128/106 nm anchor values.
   G4double rindex[13]    = {1.23, 1.23, 1.23, 1.23, 1.235, 1.315,
                             1.378, 1.420, 1.45,
                             1.995, 2.904, 3.814, 5.45};
-  // Scintillation spectrum (peaks at 128 nm, dual fast/slow component):
+  // Scintillation spectrum (peaks at 128 nm):
   // Ref: https://github.com/LArSoft/larg4/.../simpleLArTPC.gdml#L18
-  // New VUV points sampled from Gaussian (σ = 4.25 nm, centred at 128 nm) normalised to
-  // the existing peak value at 128 nm.  See issue sim_lighttrap-03k for the spectral decision.
   G4double ffraction[13] = {0., 0., 0., 0., 0., 0.000238409,
                             1.34e-5, 0.01030, 0.0398859,
                             0.03107, 0.00681, 3.73e-4, 0.00422473};
@@ -213,18 +216,30 @@ void MyLightTrapConstruction::DefineWorldMaterial()
   G4double rayleigh[13]  = {90*cm, 90*cm, 90*cm, 90*cm, 90*cm, 90*cm,
                             90*cm, 90*cm, 90*cm, 90*cm, 90*cm, 90*cm, 90*cm};
 
+  G4double buf_ri[13], buf_abs[13], buf_ray[13], buf_sc[13];
+  G4double* p_rindex    = resolveArray(fCfg.materials.lar.rindex,       1., buf_ri,  rindex);
+  G4double* p_abslen    = resolveArray(fCfg.materials.lar.abslen_m,     m,  buf_abs, abslen);
+  G4double* p_rayleigh  = resolveArray(fCfg.materials.lar.rayleigh_m,   m,  buf_ray, rayleigh);
+  G4double* p_scint     = resolveArray(fCfg.materials.lar.scintcomponent, 1., buf_sc, ffraction);
+
   G4MaterialPropertiesTable *mpt = new G4MaterialPropertiesTable();
-  mpt->AddProperty("RINDEX",                  energy, rindex,    13);
-  mpt->AddProperty("SCINTILLATIONCOMPONENT1", energy, ffraction, 13);
-  mpt->AddProperty("SCINTILLATIONCOMPONENT2", energy, ffraction, 13);
-  mpt->AddConstProperty("SCINTILLATIONYIELD",         24000./MeV); // 24 000 photons/MeV
-  mpt->AddConstProperty("SCINTILLATIONYIELD1",        0.75);       // fast component (75 %)
-  mpt->AddConstProperty("SCINTILLATIONYIELD2",        0.25);       // slow component (25 %)
-  mpt->AddConstProperty("RESOLUTIONSCALE",            1.0);
-  mpt->AddConstProperty("SCINTILLATIONTIMECONSTANT1", 7.*ns);      // fast τ
-  mpt->AddConstProperty("SCINTILLATIONTIMECONSTANT2", 1400.*ns);   // slow τ
-  mpt->AddProperty("ABSLENGTH", energy, abslen,    13);
-  mpt->AddProperty("RAYLEIGH",  energy, rayleigh,  13);
+  mpt->AddProperty("RINDEX",                  energy, p_rindex,  13);
+  mpt->AddProperty("SCINTILLATIONCOMPONENT1", energy, p_scint,   13);
+  mpt->AddProperty("SCINTILLATIONCOMPONENT2", energy, p_scint,   13);
+  mpt->AddConstProperty("SCINTILLATIONYIELD",
+      fCfg.materials.lar.scintillationyield.value_or(24000.) / MeV);
+  mpt->AddConstProperty("SCINTILLATIONYIELD1",
+      fCfg.materials.lar.scintillationyield1.value_or(0.75));
+  mpt->AddConstProperty("SCINTILLATIONYIELD2",
+      fCfg.materials.lar.scintillationyield2.value_or(0.25));
+  mpt->AddConstProperty("RESOLUTIONSCALE",
+      fCfg.materials.lar.resolutionscale.value_or(1.0));
+  mpt->AddConstProperty("SCINTILLATIONTIMECONSTANT1",
+      fCfg.materials.lar.scintillationtimeconstant1_ns.value_or(7.) * ns);
+  mpt->AddConstProperty("SCINTILLATIONTIMECONSTANT2",
+      fCfg.materials.lar.scintillationtimeconstant2_ns.value_or(1400.) * ns);
+  mpt->AddProperty("ABSLENGTH", energy, p_abslen,   13);
+  mpt->AddProperty("RAYLEIGH",  energy, p_rayleigh, 13);
 
   worldMat->SetMaterialPropertiesTable(mpt);
   worldMat->GetIonisation()->SetBirksConstant(0.694*mm/MeV);
@@ -233,11 +248,13 @@ void MyLightTrapConstruction::DefineWorldMaterial()
 void MyLightTrapConstruction::DefineOpticalSurface()
 {
   // 3M Enhanced Specular Reflector (Vikuiti / ESR): ≥98 % specular reflectivity.
-  // Applied as a skin surface to all Vikuiti foil logical volumes.
   // Ref: https://multimedia.3m.com/mws/media/1245089O/3m-enhanced-specular-reflector-films-3m-esr-tech-data-sheet.pdf
 
   // Wavelengths [nm]: { 530,  425,  400,  340,  305,  160,  145,  135,  128,  125,  120,  115,  106 }
   G4double reflectivity[13] = {0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98};
+
+  G4double buf_refl[13];
+  G4double* p_refl = resolveArray(fCfg.materials.vikuiti.reflectivity, 1., buf_refl, reflectivity);
 
   Vikuiti = new G4OpticalSurface("Vikuiti");
   Vikuiti->SetType(dielectric_metal);
@@ -245,7 +262,7 @@ void MyLightTrapConstruction::DefineOpticalSurface()
   Vikuiti->SetModel(unified);
 
   G4MaterialPropertiesTable *mpt = new G4MaterialPropertiesTable();
-  mpt->AddProperty("REFLECTIVITY", energy, reflectivity, 13);
+  mpt->AddProperty("REFLECTIVITY", energy, p_refl, 13);
   Vikuiti->SetMaterialPropertiesTable(mpt);
 }
 

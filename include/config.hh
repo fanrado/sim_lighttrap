@@ -2,6 +2,67 @@
 #define CONFIG_HH
 
 #include <string>
+#include <vector>
+#include <optional>
+#include <stdexcept>
+
+inline void validateOpticalArray(const std::vector<double>& v, const std::string& name)
+{
+    if (!v.empty() && v.size() != 13)
+        throw std::runtime_error(
+            "SimConfig: optical array '" + name + "' must have 13 entries, got " +
+            std::to_string(v.size()));
+}
+
+struct PTPConfig {
+    std::vector<double>   rindex;
+    std::vector<double>   abslen_m;
+    std::vector<double>   wlsabslen_m;
+    std::vector<double>   wlscomponent;
+    std::optional<double> wlstimeconstant_ns;
+};
+
+struct UVAcrylicConfig {
+    std::vector<double> rindex;
+    std::vector<double> abslen_m;
+};
+
+struct AcrylicMcMasterConfig {
+    std::vector<double> rindex;
+};
+
+struct BlueWLSConfig {
+    std::vector<double>   rindex;
+    std::vector<double>   wlsabslen_m;
+    std::vector<double>   wlscomponent;
+    std::optional<double> wlstimeconstant_ns;
+};
+
+struct LArConfig {
+    std::vector<double>   rindex;
+    std::vector<double>   abslen_m;
+    std::vector<double>   rayleigh_m;
+    std::vector<double>   scintcomponent;
+    std::optional<double> scintillationyield;
+    std::optional<double> scintillationyield1;
+    std::optional<double> scintillationyield2;
+    std::optional<double> resolutionscale;
+    std::optional<double> scintillationtimeconstant1_ns;
+    std::optional<double> scintillationtimeconstant2_ns;
+};
+
+struct VikuitiConfig {
+    std::vector<double> reflectivity;
+};
+
+struct MaterialsConfig {
+    PTPConfig             ptp;
+    UVAcrylicConfig       uvAcrylic;
+    AcrylicMcMasterConfig acrylicMcMaster;
+    BlueWLSConfig         blueWLS;
+    LArConfig             lar;
+    VikuitiConfig         vikuiti;
+};
 
 struct SimConfig {
     // ── Geometry (messenger: /detector/<param>) ─────────────────────────────
@@ -28,6 +89,9 @@ struct SimConfig {
 
     // ── Run ─────────────────────────────────────────────────────────────────
     int nEvents = 10000;
+
+    // ── Optical material properties ──────────────────────────────────────────
+    MaterialsConfig materials;
 
     static SimConfig fromFile(const std::string& path);
 };

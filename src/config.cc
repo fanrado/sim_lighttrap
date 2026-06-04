@@ -3,6 +3,85 @@
 #include <iostream>
 #include <stdexcept>
 
+static std::vector<double> readVec(const YAML::Node& node, const std::string& key)
+{
+    std::vector<double> v;
+    if (node[key])
+        v = node[key].as<std::vector<double>>();
+    return v;
+}
+
+static MaterialsConfig parseMaterials(const YAML::Node& mat)
+{
+    MaterialsConfig m;
+
+    if (auto n = mat["ptp"]) {
+        m.ptp.rindex       = readVec(n, "rindex");
+        m.ptp.abslen_m     = readVec(n, "abslen_m");
+        m.ptp.wlsabslen_m  = readVec(n, "wlsabslen_m");
+        m.ptp.wlscomponent = readVec(n, "wlscomponent");
+        if (n["wlstimeconstant_ns"])
+            m.ptp.wlstimeconstant_ns = n["wlstimeconstant_ns"].as<double>();
+        validateOpticalArray(m.ptp.rindex,       "ptp.rindex");
+        validateOpticalArray(m.ptp.abslen_m,     "ptp.abslen_m");
+        validateOpticalArray(m.ptp.wlsabslen_m,  "ptp.wlsabslen_m");
+        validateOpticalArray(m.ptp.wlscomponent, "ptp.wlscomponent");
+    }
+
+    if (auto n = mat["uvAcrylic"]) {
+        m.uvAcrylic.rindex   = readVec(n, "rindex");
+        m.uvAcrylic.abslen_m = readVec(n, "abslen_m");
+        validateOpticalArray(m.uvAcrylic.rindex,   "uvAcrylic.rindex");
+        validateOpticalArray(m.uvAcrylic.abslen_m, "uvAcrylic.abslen_m");
+    }
+
+    if (auto n = mat["acrylicMcMaster"]) {
+        m.acrylicMcMaster.rindex = readVec(n, "rindex");
+        validateOpticalArray(m.acrylicMcMaster.rindex, "acrylicMcMaster.rindex");
+    }
+
+    if (auto n = mat["blueWLS"]) {
+        m.blueWLS.rindex       = readVec(n, "rindex");
+        m.blueWLS.wlsabslen_m  = readVec(n, "wlsabslen_m");
+        m.blueWLS.wlscomponent = readVec(n, "wlscomponent");
+        if (n["wlstimeconstant_ns"])
+            m.blueWLS.wlstimeconstant_ns = n["wlstimeconstant_ns"].as<double>();
+        validateOpticalArray(m.blueWLS.rindex,       "blueWLS.rindex");
+        validateOpticalArray(m.blueWLS.wlsabslen_m,  "blueWLS.wlsabslen_m");
+        validateOpticalArray(m.blueWLS.wlscomponent, "blueWLS.wlscomponent");
+    }
+
+    if (auto n = mat["lar"]) {
+        m.lar.rindex         = readVec(n, "rindex");
+        m.lar.abslen_m       = readVec(n, "abslen_m");
+        m.lar.rayleigh_m     = readVec(n, "rayleigh_m");
+        m.lar.scintcomponent = readVec(n, "scintcomponent");
+        if (n["scintillationyield"])
+            m.lar.scintillationyield = n["scintillationyield"].as<double>();
+        if (n["scintillationyield1"])
+            m.lar.scintillationyield1 = n["scintillationyield1"].as<double>();
+        if (n["scintillationyield2"])
+            m.lar.scintillationyield2 = n["scintillationyield2"].as<double>();
+        if (n["resolutionscale"])
+            m.lar.resolutionscale = n["resolutionscale"].as<double>();
+        if (n["scintillationtimeconstant1_ns"])
+            m.lar.scintillationtimeconstant1_ns = n["scintillationtimeconstant1_ns"].as<double>();
+        if (n["scintillationtimeconstant2_ns"])
+            m.lar.scintillationtimeconstant2_ns = n["scintillationtimeconstant2_ns"].as<double>();
+        validateOpticalArray(m.lar.rindex,         "lar.rindex");
+        validateOpticalArray(m.lar.abslen_m,       "lar.abslen_m");
+        validateOpticalArray(m.lar.rayleigh_m,     "lar.rayleigh_m");
+        validateOpticalArray(m.lar.scintcomponent, "lar.scintcomponent");
+    }
+
+    if (auto n = mat["vikuiti"]) {
+        m.vikuiti.reflectivity = readVec(n, "reflectivity");
+        validateOpticalArray(m.vikuiti.reflectivity, "vikuiti.reflectivity");
+    }
+
+    return m;
+}
+
 SimConfig SimConfig::fromFile(const std::string& path)
 {
     YAML::Node doc;
@@ -41,6 +120,9 @@ SimConfig SimConfig::fromFile(const std::string& path)
     if (auto run = doc["run"]) {
         if (run["nEvents"]) cfg.nEvents = run["nEvents"].as<int>();
     }
+
+    if (auto mat = doc["materials"])
+        cfg.materials = parseMaterials(mat);
 
     std::cout << "[SimConfig] Loaded: " << path << "\n";
     return cfg;

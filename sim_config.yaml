@@ -32,3 +32,74 @@ source:
 
 run:
   nEvents: 10000                  # primary particles per run
+
+# ── Optical material properties ────────────────────────────────────────────────
+#
+# Wavelength grid (13 points, nm):
+#   530, 425, 400, 340, 305, 160, 145, 135, 128, 125, 120, 115, 106
+# All per-wavelength arrays must have exactly 13 entries (or be absent entirely).
+# Absent key = use the hard-coded fallback in construction.cc.
+# Lengths in metres; time constants in nanoseconds; dimensionless quantities are plain numbers.
+#
+materials:
+
+  ptp:
+    # p-Terphenyl WLS film — 1st stage (VUV → 340–430 nm)
+    # Ref: Nucl. Instr. Meth. Phys. Res. A 327 (1993) 354
+    rindex:     [1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65]
+    # Bulk absorption (m): transparent to own emission; long in VUV so WLS process dominates
+    abslen_m:   [1.0, 1.0, 1.0, 1.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0]
+    # WLS absorption (m): 10 m transparent at visible; 5e-7 m strong VUV absorption from 305 nm down
+    wlsabslen_m: [10.0, 10.0, 10.0, 10.0, 1.0e-4, 5.0e-7, 5.0e-7, 5.0e-7, 5.0e-7, 5.0e-7, 5.0e-7, 5.0e-7, 5.0e-7]
+    # WLS emission spectrum (relative, peaks at 340–400 nm; zero in VUV)
+    wlscomponent: [0.0, 5.0e-4, 2.0e-3, 0.022, 5.0e-4, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    wlstimeconstant_ns: 1.136
+
+  uvAcrylic:
+    # UV-transparent PMMA carrier for pTP film
+    # Ref: Plexiglas UVT datasheet (Röhm GmbH)
+    rindex:   [1.49, 1.49, 1.49, 1.50, 1.51, 1.53, 1.54, 1.545, 1.55, 1.55, 1.55, 1.55, 1.55]
+    # Absorption (m): very transparent at visible/near-UV; VUV strongly absorbed
+    abslen_m: [10.0, 5.0, 1.0, 0.1, 0.01, 1.0e-4, 1.0e-6, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7]
+
+  acrylicMcMaster:
+    # Standard optical-grade PMMA (McMaster-Carr #8560K224), Vikuiti foil body material
+    # Ref: https://indico.fnal.gov/event/63097/contributions/283538/attachments/174977/237339/slides.pdf
+    rindex: [1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50]
+
+  blueWLS:
+    # Blue-shifting WLS acrylic (EJ-280/282/284/286 type) — 2nd stage (→ ~430 nm)
+    # Ref: https://eljentechnology.com/products/wavelength-shifting-plastics/ej-280-ej-282-ej-284-ej-286
+    rindex: [1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58]
+    # WLS absorption (m): 2 m at 430 nm (DUNE VD); sub-mm at 400–300 nm; VUV strongly absorbed
+    # Refs: https://agenda.infn.it/event/37876 ; https://indico.cern.ch/event/1485254
+    wlsabslen_m: [2.0, 2.0, 8.0e-4, 8.0e-4, 3.0e-3, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7]
+    # Emission spectrum (relative, peaks at ~430 nm)
+    # Ref: https://iopscience.iop.org/article/10.1088/1748-0221/19/02/C02021
+    wlscomponent: [5.0e-4, 0.02, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    wlstimeconstant_ns: 1.26
+
+  lar:
+    # Liquid argon optical properties
+    # Refractive index refs: http://dx.doi.org/10.1016/j.nima.2017.06.031
+    #                        https://github.com/LArSoft/larg4/.../simpleLArTPC.gdml#L45
+    rindex: [1.23, 1.23, 1.23, 1.23, 1.235, 1.315, 1.378, 1.420, 1.45, 1.995, 2.904, 3.814, 5.45]
+    # Bulk absorption (m): very long in pure LAr
+    abslen_m: [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0]
+    # Rayleigh scattering (m): ~90 cm at 128 nm
+    # Ref: https://github.com/LArSoft/larg4/.../simpleLArTPC.gdml#L21
+    rayleigh_m: [0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9]
+    # Scintillation spectrum (peaks at 128 nm; Gaussian σ = 4.25 nm)
+    # Ref: https://github.com/LArSoft/larg4/.../simpleLArTPC.gdml#L18
+    scintcomponent: [0.0, 0.0, 0.0, 0.0, 0.0, 2.38409e-4, 1.34e-5, 0.01030, 0.0398859, 0.03107, 0.00681, 3.73e-4, 4.22473e-3]
+    scintillationyield: 24000.0       # photons per MeV
+    scintillationyield1: 0.75         # fast component fraction
+    scintillationyield2: 0.25         # slow component fraction
+    resolutionscale: 1.0
+    scintillationtimeconstant1_ns: 7.0     # fast τ (ns)
+    scintillationtimeconstant2_ns: 1400.0  # slow τ (ns)
+
+  vikuiti:
+    # 3M Enhanced Specular Reflector (ESR): ≥98 % specular reflectivity
+    # Ref: https://multimedia.3m.com/mws/media/1245089O/3m-enhanced-specular-reflector-films-3m-esr-tech-data-sheet.pdf
+    reflectivity: [0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98]
