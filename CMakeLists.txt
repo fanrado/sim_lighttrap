@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 project(LightTrapSimulation)
 
+# Hint at the Spack-installed Geant4 so cmake finds it without extra flags
+list(APPEND CMAKE_PREFIX_PATH
+  "/opt/homebrew/Cellar/spack/1.0.2/opt/spack/darwin-m1/geant4-11.3.2-3saow3gxwbdw7apyrnmt3gx2ujwcetwy/lib/cmake/Geant4"
+)
+
 find_package(Geant4 REQUIRED ui_all vis_all)
 include(${Geant4_USE_FILE})
 
