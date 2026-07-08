@@ -1,10 +1,17 @@
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 project(LightTrapSimulation)
 
-# Hint at the Spack-installed Geant4 so cmake finds it without extra flags
-list(APPEND CMAKE_PREFIX_PATH
-  "/opt/homebrew/Cellar/spack/1.0.2/opt/spack/darwin-m1/geant4-11.3.2-3saow3gxwbdw7apyrnmt3gx2ujwcetwy/lib/cmake/Geant4"
-)
+# ── Geant4 discovery (portable) ──────────────────────────────────────────────
+# Do NOT hardcode a machine-specific install path. Let the build find Geant4 via
+# the standard mechanisms, in priority order:
+#   1. -DGeant4_DIR=/path/to/lib/cmake/Geant4      (cmake command line)
+#   2. -DCMAKE_PREFIX_PATH=/path/to/geant4/prefix  (cmake command line)
+#   3. GEANT4_CMAKE_DIR environment variable pointing at .../lib/cmake/Geant4
+#      (e.g. `spack load geant4` exports this, or set it in your shell rc)
+# Anything provided is appended as a hint before find_package so cmake can use it.
+if(DEFINED ENV{GEANT4_CMAKE_DIR})
+  list(APPEND CMAKE_PREFIX_PATH "$ENV{GEANT4_CMAKE_DIR}")
+endif()
 
 find_package(Geant4 REQUIRED ui_all vis_all)
 include(${Geant4_USE_FILE})
@@ -47,3 +54,4 @@ add_executable(sim_lighttrap ${sources} ${headers})
 target_link_libraries(sim_lighttrap ${Geant4_LIBRARIES} yaml-cpp::yaml-cpp)
 
 add_custom_target(LightTrapSimulation DEPENDS sim_lighttrap)
+
