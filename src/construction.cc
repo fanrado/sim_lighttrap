@@ -48,6 +48,8 @@ MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
       LArthickness,         "LAr gap between first layer and blue WLS [default 3 mm]");
   fMessenger->DeclareProperty("lighttrapsize",
       lighttrapsize,        "Square module side length [default 15 cm]");
+  fMessenger->DeclareProperty("pTPsigmaAlpha",
+      pTPsigmaAlpha,        "pTP surface facet-slope RMS [rad]; 0 = perfectly smooth");
 
   // ── Default geometry parameters ─────────────────────────────────────────────
   nSiPMs                = 30;       // 15 per ±y edge
@@ -56,6 +58,7 @@ MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
   pTPsubstratethickness = 6.*mm;    // 6 mm blue WLS acrylic slab
   LArthickness          = 3.*mm;    // 3 mm LAr gap between first layer and blue WLS
   lighttrapsize         = 15.*cm;   // 15 cm × 15 cm module (real detector size)
+  pTPsigmaAlpha         = 0.0;      // perfectly smooth pTP surface (no wiggle); rad
 
   // ── Photon energy sampling points ───────────────────────────────────────────
   // 13 wavelengths [nm]: { 530, 425, 400, 340, 305, 160, 145, 135, 128, 125, 120, 115, 106 }
@@ -302,6 +305,7 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   // ── Fixed component thicknesses ─────────────────────────────────────────────
   const G4double kVikuitiThick  = 0.065*mm; // 3M Vikuiti ESR foil
   const G4double kLeakDetThick  = 0.1*mm;   // backplane leak-detector LAr slab
+  const G4double kGapDetThick   = 0.1*mm;   // first-layer exit counter LAr slab
 
   // ── SiPM dimensions ─────────────────────────────────────────────────────────
   // Each SiPM presents a 6 mm × 6 mm face against the ±y edge of the blue WLS
@@ -327,6 +331,9 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   const G4double kVikuitiCenterZ = kBlueWLSBackZ  + kVikuitiThick / 2.;
   // Backplane leak detector immediately behind the Vikuiti foil:
   const G4double kLeakDetCenterZ = kBlueWLSBackZ  + kVikuitiThick + kLeakDetThick / 2.;
+  // First-layer exit counter: thin LAr slab just inside the gap, flush against
+  // the acrylic back (+z) face — counts photons leaving layer 1 toward the slab.
+  const G4double kGapDetCenterZ  = kUVAcrylBackZ  + kGapDetThick / 2.;
 
   // ══ WORLD VOLUME ════════════════════════════════════════════════════════════
   // Liquid argon box, 60 % larger than the module on each side.
@@ -450,20 +457,36 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
       G4ThreeVector(0., 0., kLeakDetCenterZ),
       logicBackplaneLeakDet, "physBackplaneLeakDet", logicWorld, false, 0, true);
 
+  // ══ FIRST-LAYER EXIT COUNTER ════════════════════════════════════════════════
+  // Thin (0.1 mm) LAr slab flush against the acrylic back (+z) face, sitting just
+  // inside the LAr gap.  Built from worldMat (LAr) — identical refractive index to
+  // the surrounding world, so it introduces no optical boundary (no Fresnel/TIR):
+  // it is optically invisible and only *counts* photons crossing from the first
+  // layer into the gap.  Its SD is a pass-through counter (does NOT kill the
+  // track), so photons continue on toward the blue WLS slab.
+  FirstLayerExitDet      = new G4Box("FirstLayerExitDet",
+      lighttrapsize/2., lighttrapsize/2., kGapDetThick/2.);
+  logicFirstLayerExitDet = new G4LogicalVolume(
+      FirstLayerExitDet, worldMat, "logicFirstLayerExitDet");
+  physFirstLayerExitDet  = new G4PVPlacement(0,
+      G4ThreeVector(0., 0., kGapDetCenterZ),
+      logicFirstLayerExitDet, "physFirstLayerExitDet", logicWorld, false, 0, true);
+
   // ══ pTP INTERFACE SURFACES ══════════════════════════════════════════════════
-  // The pTP film is vacuum-evaporated, so both its outer (LAr-facing) and inner
-  // (acrylic-facing) surfaces have nanometre-scale roughness.  Without a surface
-  // defined here Geant4 uses perfectly smooth Fresnel boundaries, which TIR-traps
-  // ~55 % of WLS-emitted photons forever in the 2 µm film.  A ground/unified
-  // surface with sigmaAlpha = 0.1 rad (≈ 6°) scatters those guided modes so they
-  // can escape within a few bounces — physically motivated by evaporated-film
-  // surface roughness measured at 10–100 nm RMS.
+  // Both pTP faces (outer LAr-facing, inner acrylic-facing) share one ground/
+  // unified optical surface whose facet-slope RMS is pTPsigmaAlpha (radians),
+  // configurable via geometry.pTPsigmaAlpha_rad / "/detector/pTPsigmaAlpha".
+  //   pTPsigmaAlpha = 0   → perfectly smooth, specular Fresnel (no wiggle).
+  //                         Note: a smooth film TIR-traps ~55 % of WLS photons
+  //                         in the 2 µm layer; raise sigmaAlpha to model
+  //                         evaporated-film roughness / coating waviness so those
+  //                         guided modes scatter out (0.1 rad ≈ 6°).
   {
     G4OpticalSurface *pTPRoughSurf = new G4OpticalSurface("pTPRoughSurface");
     pTPRoughSurf->SetType(dielectric_dielectric);
     pTPRoughSurf->SetFinish(ground);
     pTPRoughSurf->SetModel(unified);
-    pTPRoughSurf->SetSigmaAlpha(0.1); // radians
+    pTPRoughSurf->SetSigmaAlpha(pTPsigmaAlpha); // facet-slope RMS [rad]; 0 = smooth
 
     // pTP ↔ LAr (outer face)
     new G4LogicalBorderSurface("pTP_to_LAr",  physpTPlayer, physWorld,    pTPRoughSurf);
@@ -503,6 +526,10 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
     // Leak detector: magenta, semi-transparent
     auto *vaLeak = new G4VisAttributes(G4Colour(1.0, 0.0, 1.0, 0.3));
     logicBackplaneLeakDet->SetVisAttributes(vaLeak);
+
+    // First-layer exit counter: cyan, semi-transparent
+    auto *vaGap = new G4VisAttributes(G4Colour(0.0, 0.8, 1.0, 0.3));
+    logicFirstLayerExitDet->SetVisAttributes(vaGap);
   }
 
   return physWorld;
@@ -514,7 +541,13 @@ void MyLightTrapConstruction::ConstructSDandField()
   MySensitiveDetector *sensDet = new MySensitiveDetector("SensitiveDetector");
   logicSiPMs->SetSensitiveDetector(sensDet);
 
-  // Backplane leak detector: 100 %-efficiency counter → ntuple 6
+  // Backplane leak detector: terminal 100 %-efficiency counter → ntuple 6
   MyLeakDetector *backplaneDet = new MyLeakDetector("BackplaneLeakDetector", 6);
   logicBackplaneLeakDet->SetSensitiveDetector(backplaneDet);
+
+  // First-layer exit counter: pass-through counter (killTrack=false) → ntuple 7.
+  // Records photons crossing into the LAr gap without absorbing them, so they
+  // continue on to the blue WLS slab.
+  MyLeakDetector *gapEntryDet = new MyLeakDetector("FirstLayerExitDetector", 7, false);
+  logicFirstLayerExitDet->SetSensitiveDetector(gapEntryDet);
 }

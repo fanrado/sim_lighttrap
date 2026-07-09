@@ -34,6 +34,7 @@ private:
   G4double pTPsubstratethickness; // blue WLS slab thickness           (default 6 mm)
   G4double LArthickness;          // LAr gap: first layer → blue WLS   (default 3 mm)
   G4double lighttrapsize;         // square module side length         (default 15 cm)
+  G4double pTPsigmaAlpha;         // pTP surface facet-slope RMS [rad]  (default 0 = smooth)
 
   // ── World ────────────────────────────────────────────────────────────────────
   G4Box             *solidWorld;
@@ -69,6 +70,11 @@ private:
   G4Box             *BackplaneLeakDet;
   G4LogicalVolume   *logicBackplaneLeakDet;
   G4VPhysicalVolume *physBackplaneLeakDet;
+
+  // ── First-layer exit counter: pass-through counter in the LAr gap ────────────
+  G4Box             *FirstLayerExitDet;
+  G4LogicalVolume   *logicFirstLayerExitDet;
+  G4VPhysicalVolume *physFirstLayerExitDet;
 
   // ── Runtime messenger ────────────────────────────────────────────────────────
   G4GenericMessenger *fMessenger;
