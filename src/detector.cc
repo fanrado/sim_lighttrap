@@ -78,8 +78,8 @@ G4bool MySensitiveDetector::ProcessHits(G4Step *aStep, G4TouchableHistory *ROhis
 }
 
 // ---------------------------------------------------------------------------
-MyLeakDetector::MyLeakDetector(G4String name, G4int ntupleID)
-  : G4VSensitiveDetector(name), fNtupleID(ntupleID)
+MyLeakDetector::MyLeakDetector(G4String name, G4int ntupleID, G4bool killTrack)
+  : G4VSensitiveDetector(name), fNtupleID(ntupleID), fKillTrack(killTrack)
 {}
 
 MyLeakDetector::~MyLeakDetector()
@@ -88,12 +88,19 @@ MyLeakDetector::~MyLeakDetector()
 G4bool MyLeakDetector::ProcessHits(G4Step *aStep, G4TouchableHistory *)
 {
   G4Track *track = aStep->GetTrack();
-  track->SetTrackStatus(fStopAndKill);
+  // Terminal counters kill the photon; pass-through counters let it continue
+  // downstream (so the first-layer exit counter does not absorb the light).
+  if (fKillTrack)
+    track->SetTrackStatus(fStopAndKill);
 
   G4StepPoint *preStepPoint = aStep->GetPreStepPoint();
   G4ThreeVector pos  = preStepPoint->GetPosition();
   G4double      time = preStepPoint->GetGlobalTime();
-  G4double      wl   = (1.239841939*eV / preStepPoint->GetMomentum().mag()) * 1E+03;
+  G4ThreeVector mom  = preStepPoint->GetMomentum();
+  G4double      wl   = (1.239841939*eV / mom.mag()) * 1E+03;
+  // Direction cosine along +z: >0 = travelling forward (into the gap / toward the
+  // blue slab), <0 = back-reflected.  Lets analysis separate the two.
+  G4double      cosTheta = mom.unit().z();
 
   G4int evt = G4RunManager::GetRunManager()->GetCurrentEvent()->GetEventID();
   G4AnalysisManager *man = G4AnalysisManager::Instance();
@@ -104,6 +111,7 @@ G4bool MyLeakDetector::ProcessHits(G4Step *aStep, G4TouchableHistory *)
   man->FillNtupleDColumn(fNtupleID, 3, pos.z());
   man->FillNtupleDColumn(fNtupleID, 4, time);
   man->FillNtupleDColumn(fNtupleID, 5, wl);
+  man->FillNtupleDColumn(fNtupleID, 6, cosTheta);
   man->AddNtupleRow(fNtupleID);
 
   return true;

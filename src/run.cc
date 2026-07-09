@@ -73,10 +73,21 @@ MyRunAction::MyRunAction()
   man->CreateNtupleDColumn("fZ");
   man->CreateNtupleDColumn("fT");
   man->CreateNtupleDColumn("fwl");
+  man->CreateNtupleDColumn("fcosTheta");   // momentum-z direction cosine
   man->FinishNtuple(6);
 
-  // Ntuple 7 (EdgeStrip) removed: the ±x edges of the blue WLS slab are now
-  // covered by Vikuiti foils (lateral reflectors), not open validation detectors.
+  // First-layer exit counter: photons crossing out of the pTP/acrylic stack into
+  // the LAr gap (pass-through counter — the photon continues to the blue slab).
+  // Pairs with WLSPhoton (birth) to give first-layer transport/collection.
+  man->CreateNtuple("FirstLayerExit", "Photons exiting first layer into the LAr gap");
+  man->CreateNtupleIColumn("eventID");
+  man->CreateNtupleDColumn("fX");
+  man->CreateNtupleDColumn("fY");
+  man->CreateNtupleDColumn("fZ");
+  man->CreateNtupleDColumn("fT");
+  man->CreateNtupleDColumn("fwl");
+  man->CreateNtupleDColumn("fcosTheta");   // >0 = forward into gap toward blue slab
+  man->FinishNtuple(7);
 }
 
 MyRunAction::~MyRunAction()
