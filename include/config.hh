@@ -72,6 +72,7 @@ struct SimConfig {
     double pTPSubstrateThickness_mm = 6.0;    // blue WLS slab
     double LArThickness_mm          = 3.0;    // LAr gap
     double lightTrapSize_cm         = 15.0;   // square module side
+    double pTPsigmaAlpha_rad        = 0.0;    // pTP surface facet-slope RMS; 0 = smooth
 
     // ── Source (messenger: /gps/<param>) ────────────────────────────────────
     std::string particle      = "opticalphoton";

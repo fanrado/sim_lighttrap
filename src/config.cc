@@ -100,6 +100,7 @@ SimConfig SimConfig::fromFile(const std::string& path)
         if (geo["pTPSubstrateThickness_mm"])  cfg.pTPSubstrateThickness_mm = geo["pTPSubstrateThickness_mm"].as<double>();
         if (geo["LArThickness_mm"])           cfg.LArThickness_mm          = geo["LArThickness_mm"].as<double>();
         if (geo["lightTrapSize_cm"])          cfg.lightTrapSize_cm         = geo["lightTrapSize_cm"].as<double>();
+        if (geo["pTPsigmaAlpha_rad"])         cfg.pTPsigmaAlpha_rad        = geo["pTPsigmaAlpha_rad"].as<double>();
     }
 
     if (auto src = doc["source"]) {

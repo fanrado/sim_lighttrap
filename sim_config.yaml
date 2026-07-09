@@ -15,6 +15,8 @@ geometry:
   pTPSubstrateThickness_mm: 6.0   # blue WLS slab thickness [mm]  (2nd WLS stage)
   LArThickness_mm: 3.0            # LAr gap between first layer and blue WLS [mm]
   lightTrapSize_cm: 15.0          # square module side length [cm]
+  pTPsigmaAlpha_rad: 0.0          # pTP surface facet-slope RMS [rad]; 0.0 = flat, perfectly smooth (no wiggle)
+                                  #   raise to model coating waviness/roughness, e.g. 0.1 rad ≈ 6°
 
 source:
   particle: opticalphoton         # Geant4 particle name
