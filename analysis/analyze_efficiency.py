@@ -10,17 +10,17 @@ Two efficiencies are reported:
 
   2. Second-layer (blue-WLS) SiPM collection / detection efficiency
         eps_collect = N(photons arriving at SiPM) / N(blue-WLS photons)
-        eps_detect  = N(Hits, after PDE)          / N(blue-WLS photons)
+        eps_detect  = N(SiPMHits, after PDE)      / N(blue-WLS photons)
      'collect' is the optical+geometric transport to the ±y-edge SiPMs; 'detect'
      folds in the per-wavelength photon-detection efficiency (pde_broadcom.dat)
-     already applied when the Hits ntuple is filled.
+     already applied when the SiPMHits ntuple is filled.
 
 Data model (see src/run.cc, src/detector.cc, src/tracking.cc, include/namemap.hh):
   Primary   (ntuple 3) : one row per primary photon  -> N_primary
   WLSPhoton (ntuple 4) : one row per OpWLS/Scint photon; matName code identifies
                          the emitting material  (pTP = 1, bluewlsacrylic = 3)
-  Photons   (ntuple 0) : one row per photon reaching a SiPM (before PDE)
-  Hits      (ntuple 1) : subset of Photons that pass the PDE roll (photoelectrons)
+  SiPMPhotons (ntuple 0) : one row per photon reaching a SiPM (before PDE)
+  SiPMHits    (ntuple 1) : subset of SiPMPhotons that pass the PDE roll (photoelectrons)
 
 Run it with the project's ROOT environment sourced (PyROOT):
     source ~/Software/setup.sh
@@ -78,8 +78,8 @@ def main(argv):
 
     primary = get_tree(f, "Primary")
     wls = get_tree(f, "WLSPhoton")
-    photons = get_tree(f, "Photons")
-    hits = get_tree(f, "Hits")
+    photons = get_tree(f, "SiPMPhotons")
+    hits = get_tree(f, "SiPMHits")
 
     n_primary = primary.GetEntries()
     n_wls_total = wls.GetEntries()
