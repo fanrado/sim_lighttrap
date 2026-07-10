@@ -5,8 +5,8 @@ MyRunAction::MyRunAction()
   G4AnalysisManager *man = G4AnalysisManager::Instance();
 
   // ── Ntuple ID → detector-region map (two-layer light trap) ──────────────────
-  //   0  Photons            — raw SiPM-face hits (pre-QE), second-layer edges
-  //   1  Hits               — SecondLayerEdges: QE-weighted SiPM detections
+  //   0  SiPMPhotons        — every photon reaching a SiPM face (pre-PDE), 2nd-layer edges
+  //   1  SiPMHits           — SecondLayerEdges: photons collected/detected by the SiPMs (post-PDE)
   //   2  Energy             — deposited energy
   //   3  Primary            — (a) primary particle info
   //   4  WLSPhoton          — WLS/scintillation photon births
@@ -14,10 +14,10 @@ MyRunAction::MyRunAction()
   //   6  SecondLayerBackplane — (d) leak through the Vikuiti backplane foil
   //   7  FirstLayerBackplane  — (b) photons crossing the first-layer back (+z) face
   //   8  FirstLayerEdges      — (c) photons reaching the first-layer ±x edges
-  // Regions a/d/e reuse existing ntuples (Primary, SecondLayerBackplane, Hits);
-  // "Hits" keeps its name (read by name in analysis/analyze_efficiency.py).
+  // Regions a/d/e reuse existing ntuples (Primary, SecondLayerBackplane, SiPMHits).
+  // The SiPM trees are read by name in analysis/analyze_efficiency.py.
 
-  man->CreateNtuple("Photons", "Photons");
+  man->CreateNtuple("SiPMPhotons", "Photons reaching a SiPM face (pre-PDE)");
   man->CreateNtupleIColumn("eventID");
   man->CreateNtupleDColumn("fX");
   man->CreateNtupleDColumn("fY");
@@ -26,7 +26,7 @@ MyRunAction::MyRunAction()
   man->CreateNtupleDColumn("fwl");
   man->FinishNtuple(0);
 
-  man->CreateNtuple("Hits", "Hits");
+  man->CreateNtuple("SiPMHits", "Photons collected/detected by the SiPMs (post-PDE)");
   man->CreateNtupleIColumn("eventID");
   man->CreateNtupleDColumn("fX");
   man->CreateNtupleDColumn("fY");
