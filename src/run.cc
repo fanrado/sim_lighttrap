@@ -4,6 +4,19 @@ MyRunAction::MyRunAction()
 {
   G4AnalysisManager *man = G4AnalysisManager::Instance();
 
+  // ── Ntuple ID → detector-region map (two-layer light trap) ──────────────────
+  //   0  Photons            — raw SiPM-face hits (pre-QE), second-layer edges
+  //   1  Hits               — SecondLayerEdges: QE-weighted SiPM detections
+  //   2  Energy             — deposited energy
+  //   3  Primary            — (a) primary particle info
+  //   4  WLSPhoton          — WLS/scintillation photon births
+  //   5  OpticalValidation  — Fresnel/reflection validation
+  //   6  SecondLayerBackplane — (d) leak through the Vikuiti backplane foil
+  //   7  FirstLayerBackplane  — (b) photons crossing the first-layer back (+z) face
+  //   8  FirstLayerEdges      — (c) photons reaching the first-layer ±x edges
+  // Regions a/d/e reuse existing ntuples (Primary, SecondLayerBackplane, Hits);
+  // "Hits" keeps its name (read by name in analysis/analyze_efficiency.py).
+
   man->CreateNtuple("Photons", "Photons");
   man->CreateNtupleIColumn("eventID");
   man->CreateNtupleDColumn("fX");
@@ -65,8 +78,9 @@ MyRunAction::MyRunAction()
   man->CreateNtupleDColumn("posZ");
   man->FinishNtuple(5);
 
-  // Validation detector: photons leaking through the Vikuiti backplane
-  man->CreateNtuple("BackplaneLeak", "Photons leaking through Vikuiti backplane");
+  // (d) SecondLayerBackplane: photons leaking through the Vikuiti backplane foil
+  // behind the blue WLS slab (~2 % of those hitting it).  Terminal counter.
+  man->CreateNtuple("SecondLayerBackplane", "Photons leaking through Vikuiti backplane");
   man->CreateNtupleIColumn("eventID");
   man->CreateNtupleDColumn("fX");
   man->CreateNtupleDColumn("fY");
@@ -76,10 +90,11 @@ MyRunAction::MyRunAction()
   man->CreateNtupleDColumn("fcosTheta");   // momentum-z direction cosine
   man->FinishNtuple(6);
 
-  // First-layer exit counter: photons crossing out of the pTP/acrylic stack into
-  // the LAr gap (pass-through counter — the photon continues to the blue slab).
-  // Pairs with WLSPhoton (birth) to give first-layer transport/collection.
-  man->CreateNtuple("FirstLayerExit", "Photons exiting first layer into the LAr gap");
+  // (b) FirstLayerBackplane: photons crossing the back (+z) face of the first
+  // layer (pTP/UV-acrylic stack) into the LAr gap.  Pass-through counter — the
+  // photon continues to the blue slab — so only photons that escape first-layer
+  // TIR are counted.  Pairs with WLSPhoton (birth) for first-layer collection.
+  man->CreateNtuple("FirstLayerBackplane", "Photons crossing the first-layer back face");
   man->CreateNtupleIColumn("eventID");
   man->CreateNtupleDColumn("fX");
   man->CreateNtupleDColumn("fY");
@@ -88,6 +103,18 @@ MyRunAction::MyRunAction()
   man->CreateNtupleDColumn("fwl");
   man->CreateNtupleDColumn("fcosTheta");   // >0 = forward into gap toward blue slab
   man->FinishNtuple(7);
+
+  // (c) FirstLayerEdges: photons reaching the ±x edges of the first layer.
+  // Pass-through counter — records lateral escape from the first-layer stack.
+  man->CreateNtuple("FirstLayerEdges", "Photons reaching the first-layer +/-x edges");
+  man->CreateNtupleIColumn("eventID");
+  man->CreateNtupleDColumn("fX");
+  man->CreateNtupleDColumn("fY");
+  man->CreateNtupleDColumn("fZ");
+  man->CreateNtupleDColumn("fT");
+  man->CreateNtupleDColumn("fwl");
+  man->CreateNtupleDColumn("fcosTheta");   // momentum-z direction cosine
+  man->FinishNtuple(8);
 }
 
 MyRunAction::~MyRunAction()
