@@ -18,7 +18,7 @@ sensitive detector actions.
 
 * Ntuple Reference
 
-** Ntuple 0 — Photons
+** Ntuple 0 — SiPMPhotons
 
 *All* optical photons that geometrically enter a SiPM volume, before quantum
 efficiency weighting.
@@ -30,9 +30,10 @@ efficiency weighting.
 | time      | double | Global arrival time (ns)            |
 | wavelength| double | Photon wavelength (µm)              |
 
-** Ntuple 1 — Hits
+** Ntuple 1 — SiPMHits
 
-Photons that pass the SiPM quantum efficiency test. Subset of ntuple 0.
+Photons collected/detected by the SiPMs — those that pass the SiPM quantum
+efficiency test. Subset of ntuple 0.
 
 | Branch    | Type   | Description                         |
 |-----------+--------+-------------------------------------|
@@ -122,8 +123,8 @@ Photons escaping the active detector volume laterally.
 
 | Quantity                     | Ntuples to use        | How to compute                                              |
 |------------------------------+-----------------------+-------------------------------------------------------------|
-| Detection efficiency         | 1 / 0                 | N(Hits) / N(Photons)                                        |
-| PDE-weighted collection      | 1 / 3                 | N(Hits) / N(Primary)                                        |
+| Detection efficiency         | 1 / 0                 | N(SiPMHits) / N(SiPMPhotons)                                |
+| PDE-weighted collection      | 1 / 3                 | N(SiPMHits) / N(Primary)                                    |
 | WLS conversion efficiency    | 4 / 3                 | N(WLS photons) / N(primary)                                 |
 | Backplane loss fraction      | 6 / 3                 | N(BackplaneLeak) / N(Primary)                               |
 | Edge loss fraction           | 7 / 3                 | N(EdgeStrip) / N(Primary)                                   |
