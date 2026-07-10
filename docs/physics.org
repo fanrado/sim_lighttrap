@@ -101,12 +101,12 @@ Wavelength is derived from kinetic energy via λ (µm) = 1.24 eV·µm / E (eV).
 
 Triggered when an optical photon enters any SiPM logical volume.
 
-1. Records hit position, time, and wavelength to ntuple 0 (~Photons~) regardless
-   of detection outcome.
+1. Records hit position, time, and wavelength to ntuple 0 (~SiPMPhotons~)
+   regardless of detection outcome.
 2. Looks up the photon detection efficiency (PDE) from the Broadcom table
    (~pde_broadcom.dat~) using linear interpolation on wavelength.
 3. Draws a uniform random number; if it falls below PDE(λ), records the photon
-   to ntuple 1 (~Hits~).
+   to ntuple 1 (~SiPMHits~).
 4. Kills the track (photon absorbed by detector).
 
 ** Leak Detectors — MyLeakDetector (src/detector.cc)
