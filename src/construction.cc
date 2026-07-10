@@ -306,6 +306,7 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   const G4double kVikuitiThick  = 0.065*mm; // 3M Vikuiti ESR foil
   const G4double kLeakDetThick  = 0.1*mm;   // backplane leak-detector LAr slab
   const G4double kGapDetThick   = 0.1*mm;   // first-layer backplane counter LAr slab
+  const G4double kEdgeDetThick  = 0.1*mm;   // first-layer ±x edge counter LAr slab
   // Standoff between the first-layer back (+z) face and the backplane counter's
   // front face.  A photon TIR-reflected at the back face never crosses this LAr
   // gap, so only photons that actually escape layer 1 are counted (TIR-aware).
@@ -340,6 +341,10 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   // TIR-reflected photons are not counted — only those that cross the standoff.
   const G4double kGapDetCenterZ  = kUVAcrylBackZ + kFirstLayerBackplaneStandoff
                                                  + kGapDetThick / 2.;
+  // First-layer stack (pTP film + UV acrylic) z-extent, used to size the lateral
+  // ±x edge counters so they span the full first layer.
+  const G4double kFirstLayerThick   = uvAcrylicThickness + pTPlayerthickness;
+  const G4double kFirstLayerCenterZ = kUVAcrylBackZ - kFirstLayerThick / 2.;
 
   // ══ WORLD VOLUME ════════════════════════════════════════════════════════════
   // Liquid argon box, 60 % larger than the module on each side.
@@ -480,6 +485,24 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
       G4ThreeVector(0., 0., kGapDetCenterZ),
       logicFirstLayerExitDet, "physFirstLayerExitDet", logicWorld, false, 0, true);
 
+  // ══ FIRST-LAYER EDGE COUNTERS ═══════════════════════════════════════════════
+  // Thin (0.1 mm) LAr slabs flush against the ±x faces of the first-layer stack,
+  // spanning y (lighttrapsize) and the full first-layer z-extent.  Like the
+  // backplane counter they are worldMat (LAr) — optically invisible, introducing
+  // no boundary — and only *count* photons reaching the first layer's lateral
+  // edges.  One logical volume placed twice (+x = copy 0, −x = copy 1); the SD is
+  // a pass-through counter (killTrack=false) → region (c) FirstLayerEdges.
+  FirstLayerEdgeDet      = new G4Box("FirstLayerEdgeDet",
+      kEdgeDetThick/2., lighttrapsize/2., kFirstLayerThick/2.);
+  logicFirstLayerEdgeDet = new G4LogicalVolume(
+      FirstLayerEdgeDet, worldMat, "logicFirstLayerEdgeDet");
+  physFirstLayerEdgeDet_pX = new G4PVPlacement(0,
+      G4ThreeVector(+(lighttrapsize/2. + kEdgeDetThick/2.), 0., kFirstLayerCenterZ),
+      logicFirstLayerEdgeDet, "physFirstLayerEdgeDet_pX", logicWorld, false, 0, true);
+  physFirstLayerEdgeDet_nX = new G4PVPlacement(0,
+      G4ThreeVector(-(lighttrapsize/2. + kEdgeDetThick/2.), 0., kFirstLayerCenterZ),
+      logicFirstLayerEdgeDet, "physFirstLayerEdgeDet_nX", logicWorld, false, 1, true);
+
   // ══ pTP INTERFACE SURFACES ══════════════════════════════════════════════════
   // Both pTP faces (outer LAr-facing, inner acrylic-facing) share one ground/
   // unified optical surface whose facet-slope RMS is pTPsigmaAlpha (radians),
@@ -535,9 +558,13 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
     auto *vaLeak = new G4VisAttributes(G4Colour(1.0, 0.0, 1.0, 0.3));
     logicBackplaneLeakDet->SetVisAttributes(vaLeak);
 
-    // First-layer exit counter: cyan, semi-transparent
+    // First-layer backplane counter: cyan, semi-transparent
     auto *vaGap = new G4VisAttributes(G4Colour(0.0, 0.8, 1.0, 0.3));
     logicFirstLayerExitDet->SetVisAttributes(vaGap);
+
+    // First-layer edge counters: orange, semi-transparent
+    auto *vaEdge = new G4VisAttributes(G4Colour(1.0, 0.5, 0.0, 0.3));
+    logicFirstLayerEdgeDet->SetVisAttributes(vaEdge);
   }
 
   return physWorld;
@@ -558,4 +585,9 @@ void MyLightTrapConstruction::ConstructSDandField()
   // escaped layer 1 without absorbing them, so they continue on to the blue WLS slab.
   MyLeakDetector *gapEntryDet = new MyLeakDetector("FirstLayerBackplaneDetector", 7, false);
   logicFirstLayerExitDet->SetSensitiveDetector(gapEntryDet);
+
+  // First-layer edge counters: pass-through counter (killTrack=false) → ntuple 8.
+  // One SD serves both ±x edge placements (set on the shared logical volume).
+  MyLeakDetector *edgeDet = new MyLeakDetector("FirstLayerEdgeDetector", 8, false);
+  logicFirstLayerEdgeDet->SetSensitiveDetector(edgeDet);
 }

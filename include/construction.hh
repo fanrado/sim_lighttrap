@@ -71,10 +71,16 @@ private:
   G4LogicalVolume   *logicBackplaneLeakDet;
   G4VPhysicalVolume *physBackplaneLeakDet;
 
-  // ── First-layer exit counter: pass-through counter in the LAr gap ────────────
+  // ── First-layer backplane counter: pass-through counter in the LAr gap ───────
   G4Box             *FirstLayerExitDet;
   G4LogicalVolume   *logicFirstLayerExitDet;
   G4VPhysicalVolume *physFirstLayerExitDet;
+
+  // ── First-layer edge counters: pass-through counters on the ±x faces of the
+  //    first-layer (pTP/UV-acrylic) stack. One logical volume placed twice. ─────
+  G4Box             *FirstLayerEdgeDet;
+  G4LogicalVolume   *logicFirstLayerEdgeDet;
+  G4VPhysicalVolume *physFirstLayerEdgeDet_pX, *physFirstLayerEdgeDet_nX;
 
   // ── Runtime messenger ────────────────────────────────────────────────────────
   G4GenericMessenger *fMessenger;
