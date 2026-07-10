@@ -305,7 +305,11 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   // ── Fixed component thicknesses ─────────────────────────────────────────────
   const G4double kVikuitiThick  = 0.065*mm; // 3M Vikuiti ESR foil
   const G4double kLeakDetThick  = 0.1*mm;   // backplane leak-detector LAr slab
-  const G4double kGapDetThick   = 0.1*mm;   // first-layer exit counter LAr slab
+  const G4double kGapDetThick   = 0.1*mm;   // first-layer backplane counter LAr slab
+  // Standoff between the first-layer back (+z) face and the backplane counter's
+  // front face.  A photon TIR-reflected at the back face never crosses this LAr
+  // gap, so only photons that actually escape layer 1 are counted (TIR-aware).
+  const G4double kFirstLayerBackplaneStandoff = 0.01*mm;
 
   // ── SiPM dimensions ─────────────────────────────────────────────────────────
   // Each SiPM presents a 6 mm × 6 mm face against the ±y edge of the blue WLS
@@ -331,9 +335,11 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   const G4double kVikuitiCenterZ = kBlueWLSBackZ  + kVikuitiThick / 2.;
   // Backplane leak detector immediately behind the Vikuiti foil:
   const G4double kLeakDetCenterZ = kBlueWLSBackZ  + kVikuitiThick + kLeakDetThick / 2.;
-  // First-layer exit counter: thin LAr slab just inside the gap, flush against
-  // the acrylic back (+z) face — counts photons leaving layer 1 toward the slab.
-  const G4double kGapDetCenterZ  = kUVAcrylBackZ  + kGapDetThick / 2.;
+  // First-layer backplane counter: thin LAr slab in the gap, its front face set
+  // kFirstLayerBackplaneStandoff (0.01 mm) behind the acrylic back (+z) face so
+  // TIR-reflected photons are not counted — only those that cross the standoff.
+  const G4double kGapDetCenterZ  = kUVAcrylBackZ + kFirstLayerBackplaneStandoff
+                                                 + kGapDetThick / 2.;
 
   // ══ WORLD VOLUME ════════════════════════════════════════════════════════════
   // Liquid argon box, 60 % larger than the module on each side.
@@ -457,13 +463,15 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
       G4ThreeVector(0., 0., kLeakDetCenterZ),
       logicBackplaneLeakDet, "physBackplaneLeakDet", logicWorld, false, 0, true);
 
-  // ══ FIRST-LAYER EXIT COUNTER ════════════════════════════════════════════════
-  // Thin (0.1 mm) LAr slab flush against the acrylic back (+z) face, sitting just
-  // inside the LAr gap.  Built from worldMat (LAr) — identical refractive index to
-  // the surrounding world, so it introduces no optical boundary (no Fresnel/TIR):
-  // it is optically invisible and only *counts* photons crossing from the first
-  // layer into the gap.  Its SD is a pass-through counter (does NOT kill the
-  // track), so photons continue on toward the blue WLS slab.
+  // ══ FIRST-LAYER BACKPLANE COUNTER ═══════════════════════════════════════════
+  // Thin (0.1 mm) LAr slab in the LAr gap, its front face standing 0.01 mm behind
+  // the acrylic back (+z) face (kFirstLayerBackplaneStandoff).  Built from worldMat
+  // (LAr) — identical refractive index to the surrounding world, so it introduces
+  // no optical boundary (no Fresnel/TIR): it is optically invisible and only
+  // *counts* photons that have already escaped the first-layer back face and
+  // crossed the standoff — photons TIR-reflected at that face never reach it.
+  // Its SD is a pass-through counter (does NOT kill the track), so photons
+  // continue on toward the blue WLS slab. Records region (b) FirstLayerBackplane.
   FirstLayerExitDet      = new G4Box("FirstLayerExitDet",
       lighttrapsize/2., lighttrapsize/2., kGapDetThick/2.);
   logicFirstLayerExitDet = new G4LogicalVolume(
@@ -545,9 +553,9 @@ void MyLightTrapConstruction::ConstructSDandField()
   MyLeakDetector *backplaneDet = new MyLeakDetector("BackplaneLeakDetector", 6);
   logicBackplaneLeakDet->SetSensitiveDetector(backplaneDet);
 
-  // First-layer exit counter: pass-through counter (killTrack=false) → ntuple 7.
-  // Records photons crossing into the LAr gap without absorbing them, so they
-  // continue on to the blue WLS slab.
-  MyLeakDetector *gapEntryDet = new MyLeakDetector("FirstLayerExitDetector", 7, false);
+  // First-layer backplane counter: pass-through counter (killTrack=false) → ntuple 7.
+  // Sits 0.01 mm behind the first-layer back face (TIR-aware); records photons that
+  // escaped layer 1 without absorbing them, so they continue on to the blue WLS slab.
+  MyLeakDetector *gapEntryDet = new MyLeakDetector("FirstLayerBackplaneDetector", 7, false);
   logicFirstLayerExitDet->SetSensitiveDetector(gapEntryDet);
 }
