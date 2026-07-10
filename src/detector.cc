@@ -101,6 +101,10 @@ G4bool MyLeakDetector::ProcessHits(G4Step *aStep, G4TouchableHistory *)
   // Direction cosine along +z: >0 = travelling forward (into the gap / toward the
   // blue slab), <0 = back-reflected.  Lets analysis separate the two.
   G4double      cosTheta = mom.unit().z();
+  // Explicit forward flag for trivial, self-documenting selection in analysis:
+  // 1 = forward (out of layer 1, mom.z()>0), 0 = backward (e.g. Vikuiti-reflected).
+  // Both directions are recorded — this only tags them.
+  G4int         forward  = (mom.z() > 0.) ? 1 : 0;
 
   G4int evt = G4RunManager::GetRunManager()->GetCurrentEvent()->GetEventID();
   G4AnalysisManager *man = G4AnalysisManager::Instance();
@@ -112,6 +116,7 @@ G4bool MyLeakDetector::ProcessHits(G4Step *aStep, G4TouchableHistory *)
   man->FillNtupleDColumn(fNtupleID, 4, time);
   man->FillNtupleDColumn(fNtupleID, 5, wl);
   man->FillNtupleDColumn(fNtupleID, 6, cosTheta);
+  man->FillNtupleIColumn(fNtupleID, 7, forward);
   man->AddNtupleRow(fNtupleID);
 
   return true;

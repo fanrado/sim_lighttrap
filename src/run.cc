@@ -14,6 +14,9 @@ MyRunAction::MyRunAction()
   //   6  SecondLayerBackplane — (d) leak through the Vikuiti backplane foil
   //   7  FirstLayerBackplane  — (b) photons crossing the first-layer back (+z) face
   //   8  FirstLayerEdges      — (c) photons reaching the first-layer ±x edges
+  // Ntuples 6/7/8 share MyLeakDetector's fill and carry a 'forward' int column
+  // (index 7): 1 if mom.z()>0 (forward, out of layer 1), else 0 (e.g. Vikuiti-
+  // reflected light travelling back -z). Both directions are recorded.
   // Regions a/d/e reuse existing ntuples (Primary, SecondLayerBackplane, SiPMHits).
   // The SiPM trees are read by name in analysis/analyze_efficiency.py.
 
@@ -88,6 +91,7 @@ MyRunAction::MyRunAction()
   man->CreateNtupleDColumn("fT");
   man->CreateNtupleDColumn("fwl");
   man->CreateNtupleDColumn("fcosTheta");   // momentum-z direction cosine
+  man->CreateNtupleIColumn("forward");     // 1 if mom.z()>0 (forward), else 0
   man->FinishNtuple(6);
 
   // (b) FirstLayerBackplane: photons crossing the back (+z) face of the first
@@ -102,6 +106,7 @@ MyRunAction::MyRunAction()
   man->CreateNtupleDColumn("fT");
   man->CreateNtupleDColumn("fwl");
   man->CreateNtupleDColumn("fcosTheta");   // >0 = forward into gap toward blue slab
+  man->CreateNtupleIColumn("forward");     // 1 if mom.z()>0 (forward), else 0
   man->FinishNtuple(7);
 
   // (c) FirstLayerEdges: photons reaching the ±x edges of the first layer.
@@ -114,6 +119,7 @@ MyRunAction::MyRunAction()
   man->CreateNtupleDColumn("fT");
   man->CreateNtupleDColumn("fwl");
   man->CreateNtupleDColumn("fcosTheta");   // momentum-z direction cosine
+  man->CreateNtupleIColumn("forward");     // 1 if mom.z()>0 (forward), else 0
   man->FinishNtuple(8);
 }
 
