@@ -2,6 +2,11 @@
 #include "G4VisAttributes.hh"
 #include "G4Colour.hh"
 
+#include <cmath>
+#include <vector>
+#include <algorithm>
+#include <utility>
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MyLightTrapConstruction
 //
@@ -81,6 +86,55 @@ MyLightTrapConstruction::~MyLightTrapConstruction()
 // Material definitions
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Adds a WLS emission spectrum to `mpt`. WLSCOMPONENT is allowed its own energy
+// grid, so a fine/arbitrary spectrum can be used regardless of the shared
+// 13-point grid. Precedence: file table > inline 13-point > smooth Gaussian.
+void MyLightTrapConstruction::addWLSEmission(
+    G4MaterialPropertiesTable* mpt,
+    const std::vector<double>& fileWl, const std::vector<double>& fileInt,
+    const std::vector<double>& inline13,
+    G4double peak, G4double sigBlue, G4double sigRed,
+    G4double lamMin, G4double lamMax)
+{
+  if (!fileWl.empty()) {
+    // File-provided spectrum: (wavelength nm, intensity) -> (energy, value),
+    // sorted by strictly ascending energy (Geant4 requirement), dups dropped.
+    std::vector<std::pair<G4double, G4double>> pts;
+    pts.reserve(fileWl.size());
+    for (std::size_t i = 0; i < fileWl.size(); ++i)
+      pts.emplace_back(EVUM / (fileWl[i] / 1000.), fileInt[i]);   // nm -> µm -> eV
+    std::sort(pts.begin(), pts.end());
+    std::vector<G4double> eE, eV;
+    eE.reserve(pts.size());
+    eV.reserve(pts.size());
+    for (const auto& p : pts) {
+      if (!eE.empty() && p.first <= eE.back()) continue;
+      eE.push_back(p.first);
+      eV.push_back(p.second);
+    }
+    mpt->AddProperty("WLSCOMPONENT", eE.data(), eV.data(), static_cast<G4int>(eE.size()));
+  } else if (!inline13.empty()) {
+    // Explicit inline 13-point spectrum on the shared grid (back-compat).
+    G4double v13[13];
+    std::copy(inline13.begin(), inline13.begin() + 13, v13);
+    mpt->AddProperty("WLSCOMPONENT", energy, v13, 13);
+  } else {
+    // Built-in smooth default: asymmetric Gaussian (longer red tail) on a
+    // dedicated fine grid, avoiding the coarse-grid piecewise-linear artifact.
+    constexpr G4int kNEm = 40;
+    G4double emE[kNEm], emV[kNEm];
+    for (G4int i = 0; i < kNEm; ++i) {
+      // walk wavelength high -> low so photon energy is strictly ascending
+      const G4double lam = lamMax - (lamMax - lamMin) * i / (kNEm - 1);  // nm
+      const G4double sig = (lam >= peak) ? sigRed : sigBlue;
+      const G4double d   = lam - peak;
+      emE[i] = EVUM / (lam / 1000.);
+      emV[i] = std::exp(-d * d / (2. * sig * sig));
+    }
+    mpt->AddProperty("WLSCOMPONENT", emE, emV, kNEm);
+  }
+}
+
 void MyLightTrapConstruction::DefinePTPMaterial()
 {
   G4NistManager *nist = G4NistManager::Instance();
@@ -110,7 +164,18 @@ void MyLightTrapConstruction::DefinePTPMaterial()
   mpt->AddProperty("RINDEX",       energy, p_rindex,   13);
   mpt->AddProperty("ABSLENGTH",    energy, p_bulkabs,  13);
   mpt->AddProperty("WLSABSLENGTH", energy, p_wlsabs,   13);
-  mpt->AddProperty("WLSCOMPONENT", energy, p_emission, 13);
+
+  // ── WLS emission spectrum ──────────────────────────────────────────────────
+  // File (materials.ptp.wlscomponent_file) > inline 13-pt (wlscomponent) >
+  // built-in smooth default: asymmetric Gaussian peaking at 340 nm (blue σ=18,
+  // red σ=30 nm), avoiding the coarse-grid piecewise-linear artifact. Real pTP
+  // emission is not Gaussian — supply measured data via the file for accuracy.
+  (void)p_emission;  // superseded by addWLSEmission()
+  addWLSEmission(mpt,
+      fCfg.materials.ptp.emissionWl_nm, fCfg.materials.ptp.emissionIntensity,
+      fCfg.materials.ptp.wlscomponent,
+      /*peak*/340., /*sigBlue*/18., /*sigRed*/30., /*lamMin*/305., /*lamMax*/460.);
+
   mpt->AddConstProperty("WLSTIMECONSTANT",
       fCfg.materials.ptp.wlstimeconstant_ns.value_or(1.136) * ns);
   pTP->SetMaterialPropertiesTable(mpt);
@@ -188,7 +253,18 @@ void MyLightTrapConstruction::DefineBlueWLSMaterial()
   G4MaterialPropertiesTable *mpt = new G4MaterialPropertiesTable();
   mpt->AddProperty("RINDEX",       energy, p_rindex,   13);
   mpt->AddProperty("WLSABSLENGTH", energy, p_wlsabs,   13);
-  mpt->AddProperty("WLSCOMPONENT", energy, p_emission, 13);
+
+  // ── WLS emission spectrum ──────────────────────────────────────────────────
+  // File (materials.blueWLS.wlscomponent_file) > inline 13-pt (wlscomponent) >
+  // built-in smooth default: asymmetric Gaussian peaking at 430 nm (blue σ=20,
+  // red σ=32 nm), avoiding the coarse-grid artifact (the inline default has only
+  // 2 nonzero points). Supply a measured EJ-286-type spectrum via the file.
+  (void)p_emission;  // superseded by addWLSEmission()
+  addWLSEmission(mpt,
+      fCfg.materials.blueWLS.emissionWl_nm, fCfg.materials.blueWLS.emissionIntensity,
+      fCfg.materials.blueWLS.wlscomponent,
+      /*peak*/430., /*sigBlue*/20., /*sigRed*/32., /*lamMin*/375., /*lamMax*/545.);
+
   mpt->AddConstProperty("WLSTIMECONSTANT",
       fCfg.materials.blueWLS.wlstimeconstant_ns.value_or(1.26) * ns);
   bluewlsacrylic->SetMaterialPropertiesTable(mpt);

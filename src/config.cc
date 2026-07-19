@@ -1,6 +1,8 @@
 #include "config.hh"
 #include <yaml-cpp/yaml.h>
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <stdexcept>
 
 static std::vector<double> readVec(const YAML::Node& node, const std::string& key)
@@ -11,7 +13,55 @@ static std::vector<double> readVec(const YAML::Node& node, const std::string& ke
     return v;
 }
 
-static MaterialsConfig parseMaterials(const YAML::Node& mat)
+// Directory portion of a path (with trailing slash), or "" if none.
+static std::string dirOf(const std::string& path)
+{
+    auto pos = path.find_last_of("/\\");
+    return (pos == std::string::npos) ? std::string() : path.substr(0, pos + 1);
+}
+
+// Load a two-column "<wavelength_nm> <intensity>" table. Lines are trimmed at
+// '#'; blank lines are skipped. A relative path is tried first against the
+// current working directory, then against the config file's directory.
+static void loadEmissionFile(const std::string& label, const std::string& cfgDir,
+                             const std::string& relOrAbs,
+                             std::vector<double>& wl, std::vector<double>& val)
+{
+    std::vector<std::string> tried;
+    std::ifstream in;
+    std::string   used;
+    const bool absolute = !relOrAbs.empty() && (relOrAbs[0] == '/' || relOrAbs[0] == '\\');
+    std::vector<std::string> candidates =
+        absolute ? std::vector<std::string>{ relOrAbs }
+                 : std::vector<std::string>{ relOrAbs, cfgDir + relOrAbs };
+    for (const auto& c : candidates) {
+        tried.push_back(c);
+        in.open(c);
+        if (in) { used = c; break; }
+        in.clear();
+    }
+    if (!in) {
+        std::string msg = "SimConfig: cannot open ptp.wlscomponent_file. Tried:";
+        for (const auto& t : tried) msg += "\n  " + t;
+        throw std::runtime_error(msg);
+    }
+
+    std::string line;
+    while (std::getline(in, line)) {
+        auto h = line.find('#');
+        if (h != std::string::npos) line.erase(h);
+        std::istringstream ss(line);
+        double w, v;
+        if (ss >> w >> v) { wl.push_back(w); val.push_back(v); }
+    }
+    if (wl.size() < 2)
+        throw std::runtime_error("SimConfig: ptp.wlscomponent_file '" + used +
+                                 "' needs at least 2 data rows, got " + std::to_string(wl.size()));
+    std::cout << "[SimConfig] " << label << " emission spectrum from " << used
+              << " (" << wl.size() << " points)\n";
+}
+
+static MaterialsConfig parseMaterials(const YAML::Node& mat, const std::string& cfgDir)
 {
     MaterialsConfig m;
 
@@ -22,6 +72,9 @@ static MaterialsConfig parseMaterials(const YAML::Node& mat)
         m.ptp.wlscomponent = readVec(n, "wlscomponent");
         if (n["wlstimeconstant_ns"])
             m.ptp.wlstimeconstant_ns = n["wlstimeconstant_ns"].as<double>();
+        if (n["wlscomponent_file"])
+            loadEmissionFile("pTP", cfgDir, n["wlscomponent_file"].as<std::string>(),
+                             m.ptp.emissionWl_nm, m.ptp.emissionIntensity);
         validateOpticalArray(m.ptp.rindex,       "ptp.rindex");
         validateOpticalArray(m.ptp.abslen_m,     "ptp.abslen_m");
         validateOpticalArray(m.ptp.wlsabslen_m,  "ptp.wlsabslen_m");
@@ -46,6 +99,9 @@ static MaterialsConfig parseMaterials(const YAML::Node& mat)
         m.blueWLS.wlscomponent = readVec(n, "wlscomponent");
         if (n["wlstimeconstant_ns"])
             m.blueWLS.wlstimeconstant_ns = n["wlstimeconstant_ns"].as<double>();
+        if (n["wlscomponent_file"])
+            loadEmissionFile("blueWLS", cfgDir, n["wlscomponent_file"].as<std::string>(),
+                             m.blueWLS.emissionWl_nm, m.blueWLS.emissionIntensity);
         validateOpticalArray(m.blueWLS.rindex,       "blueWLS.rindex");
         validateOpticalArray(m.blueWLS.wlsabslen_m,  "blueWLS.wlsabslen_m");
         validateOpticalArray(m.blueWLS.wlscomponent, "blueWLS.wlscomponent");
@@ -123,7 +179,7 @@ SimConfig SimConfig::fromFile(const std::string& path)
     }
 
     if (auto mat = doc["materials"])
-        cfg.materials = parseMaterials(mat);
+        cfg.materials = parseMaterials(mat, dirOf(path));
 
     std::cout << "[SimConfig] Loaded: " << path << "\n";
     return cfg;

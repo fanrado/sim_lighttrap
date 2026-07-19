@@ -16,6 +16,8 @@
 #include "detector.hh"
 #include "config.hh"
 
+class G4MaterialPropertiesTable;
+
 class MyLightTrapConstruction : public G4VUserDetectorConstruction
 {
 public:
@@ -110,6 +112,18 @@ private:
   // Returns buf (filled from cfg * unitFactor) if cfg is non-empty, else returns fallback.
   static G4double* resolveArray(const std::vector<double>& cfg, double unitFactor,
                                 G4double (&buf)[13], G4double* fallback);
+
+  // Adds "WLSCOMPONENT" to mpt with precedence:
+  //   1. file spectrum   (fileWl [nm] / fileInt, arbitrary # of points)
+  //   2. inline 13-point (inline13, on the shared `energy` grid)
+  //   3. built-in smooth asymmetric Gaussian (peak / sigBlue / sigRed [nm]) on a
+  //      dedicated fine grid spanning [lamMin, lamMax] nm.
+  void addWLSEmission(G4MaterialPropertiesTable* mpt,
+                      const std::vector<double>& fileWl,
+                      const std::vector<double>& fileInt,
+                      const std::vector<double>& inline13,
+                      G4double peak, G4double sigBlue, G4double sigRed,
+                      G4double lamMin, G4double lamMax);
 };
 
 #endif

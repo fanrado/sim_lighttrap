@@ -1,0 +1,45 @@
+# Blue-WLS acrylic (EJ-280/282/284/286-type) emission spectrum — EXAMPLE / template
+# =============================================================================
+# Format: two whitespace-separated columns per line
+#     column 1 = wavelength [nm]
+#     column 2 = relative emission intensity (arbitrary units)
+#
+# Rules (identical to input/ptp_emission.dat):
+#   - Any number of rows (>= 2); row order does not matter (sorted internally).
+#   - Blank lines ignored; anything after '#' ignored.
+#   - Intensities are RELATIVE — only the shape matters (Geant4 normalizes).
+#   - Bracket the band with zero-intensity points at each end for a clean
+#     roll-off; a hard nonzero edge piles counts into the boundary bin.
+#
+# Enable in sim_config.yaml:
+#     materials:
+#       blueWLS:
+#         wlscomponent_file: input/bluewls_emission.dat
+#
+# PLACEHOLDER shape: broad emission peaking near 430 nm with a red tail, typical
+# of blue-emitting WLS plastics. REPLACE with your datasheet/measured spectrum
+# (e.g. Eljen EJ-286: https://eljentechnology.com/products/wavelength-shifting-plastics).
+#
+#  wl[nm]   intensity
+   390      0.000
+   400      0.030
+   405      0.090
+   410      0.220
+   415      0.450
+   420      0.720
+   425      0.920
+   430      1.000
+   435      0.980
+   440      0.900
+   445      0.780
+   450      0.640
+   455      0.520
+   460      0.420
+   470      0.270
+   480      0.170
+   490      0.105
+   500      0.065
+   510      0.040
+   520      0.024
+   540      0.010
+   560      0.000

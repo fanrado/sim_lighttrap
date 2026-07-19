@@ -1,0 +1,55 @@
+# pTP (p-terphenyl) WLS emission spectrum — EXAMPLE / template
+# =============================================================================
+# Format: two whitespace-separated columns per line
+#     column 1 = wavelength [nm]
+#     column 2 = relative emission intensity (arbitrary units)
+#
+# Rules:
+#   - Any number of rows (>= 2); row order does not matter (sorted internally).
+#   - Blank lines are ignored; anything after '#' on a line is ignored.
+#   - Intensities are RELATIVE — only the shape matters, Geant4 normalizes the
+#     spectrum internally. Absolute scale and units are irrelevant.
+#   - Wavelengths outside the listed range emit nothing, so bracket the band
+#     with zero-intensity points at each end (as below) for a clean roll-off;
+#     a hard nonzero edge piles counts up in the boundary bin.
+#
+# Enable in sim_config.yaml (path is relative to the YAML file, or to the
+# working directory, or absolute):
+#     materials:
+#       ptp:
+#         wlscomponent_file: input/ptp_emission.dat
+#
+# The numbers below are a PLACEHOLDER showing the vibronic (non-Gaussian)
+# structure of p-terphenyl fluorescence — a 0-0 peak near 340 nm with a
+# vibronic shoulder near 355 nm and a long red tail. REPLACE with your measured
+# or literature spectrum (e.g. NIM A 327 (1993) 354).
+#
+#  wl[nm]   intensity
+   300      0.000
+   305      0.005
+   310      0.020
+   315      0.050
+   320      0.120
+   325      0.280
+   330      0.550
+   335      0.820
+   340      1.000
+   345      0.960
+   350      0.870
+   355      0.900
+   360      0.760
+   365      0.610
+   370      0.560
+   375      0.500
+   380      0.400
+   385      0.310
+   390      0.240
+   395      0.180
+   400      0.140
+   410      0.080
+   420      0.045
+   430      0.025
+   440      0.014
+   450      0.008
+   460      0.004
+   470      0.000

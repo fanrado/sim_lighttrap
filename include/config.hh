@@ -18,8 +18,12 @@ struct PTPConfig {
     std::vector<double>   rindex;
     std::vector<double>   abslen_m;
     std::vector<double>   wlsabslen_m;
-    std::vector<double>   wlscomponent;
+    std::vector<double>   wlscomponent;          // optional inline 13-point spectrum
     std::optional<double> wlstimeconstant_ns;
+    // Optional file-provided emission spectrum (arbitrary # of points), loaded
+    // from materials.ptp.wlscomponent_file. Parallel arrays; empty if no file.
+    std::vector<double>   emissionWl_nm;         // wavelength [nm]
+    std::vector<double>   emissionIntensity;     // relative intensity (auto-normalized)
 };
 
 struct UVAcrylicConfig {
@@ -34,8 +38,12 @@ struct AcrylicMcMasterConfig {
 struct BlueWLSConfig {
     std::vector<double>   rindex;
     std::vector<double>   wlsabslen_m;
-    std::vector<double>   wlscomponent;
+    std::vector<double>   wlscomponent;          // optional inline 13-point spectrum
     std::optional<double> wlstimeconstant_ns;
+    // Optional file-provided emission spectrum (arbitrary # of points), loaded
+    // from materials.blueWLS.wlscomponent_file. Parallel arrays; empty if none.
+    std::vector<double>   emissionWl_nm;         // wavelength [nm]
+    std::vector<double>   emissionIntensity;     // relative intensity (auto-normalized)
 };
 
 struct LArConfig {

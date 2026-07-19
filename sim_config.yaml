@@ -56,8 +56,17 @@ materials:
     # UV up to ~300 nm (e.g. a 285 nm line) is captured by the 2 µm film, not
     # transmitted unshifted. (Was 1e-4 at 305 nm: a 2 µm film absorbs only ~2%.)
     wlsabslen_m: [10.0, 10.0, 10.0, 10.0, 5.0e-7, 5.0e-7, 5.0e-7, 5.0e-7, 5.0e-7, 5.0e-7, 5.0e-7, 5.0e-7, 5.0e-7]
-    # WLS emission spectrum (relative, peaks at 340–400 nm; zero in VUV)
-    wlscomponent: [0.0, 5.0e-4, 2.0e-3, 0.022, 5.0e-4, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    # WLS emission spectrum — three ways to set it, in precedence order:
+    #  1) wlscomponent_file: a 2-column "<wavelength_nm> <intensity>" table with
+    #     any number of points (real pTP emission is not Gaussian — use measured
+    #     data). Path is relative to this YAML file (or cwd), or absolute.
+    #     See input/ptp_emission.dat for the format.
+    # wlscomponent_file: input/ptp_emission.dat
+    #  2) wlscomponent: an explicit inline 13-point spectrum on the shared grid
+    #     (coarse — kept for back-compat). Overridden by wlscomponent_file.
+    # wlscomponent: [0.0, 5.0e-4, 2.0e-3, 0.022, 5.0e-4, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    #  3) neither set (default): construction.cc generates a smooth asymmetric
+    #     Gaussian emission (peak 340 nm) on a dedicated fine grid.
     wlstimeconstant_ns: 1.136
 
   uvAcrylic:
@@ -79,9 +88,16 @@ materials:
     # WLS absorption (m): 2 m at 430 nm (DUNE VD); sub-mm at 400–300 nm; VUV strongly absorbed
     # Refs: https://agenda.infn.it/event/37876 ; https://indico.cern.ch/event/1485254
     wlsabslen_m: [2.0, 2.0, 8.0e-4, 8.0e-4, 3.0e-3, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7]
-    # Emission spectrum (relative, peaks at ~430 nm)
-    # Ref: https://iopscience.iop.org/article/10.1088/1748-0221/19/02/C02021
-    wlscomponent: [5.0e-4, 0.02, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    # WLS emission spectrum — same three options/precedence as ptp above:
+    #  1) wlscomponent_file: 2-column "<wavelength_nm> <intensity>" table, any #
+    #     of points. See input/bluewls_emission.dat. Ref (spectrum shape):
+    #     https://iopscience.iop.org/article/10.1088/1748-0221/19/02/C02021
+    # wlscomponent_file: input/bluewls_emission.dat
+    #  2) wlscomponent: explicit inline 13-point spectrum (coarse — only 2 usable
+    #     points here, 425 & 530 nm; kept for back-compat). Overridden by the file.
+    # wlscomponent: [5.0e-4, 0.02, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    #  3) neither set (default): smooth asymmetric Gaussian (peak 430 nm) on a
+    #     dedicated fine grid.
     wlstimeconstant_ns: 1.26
 
   lar:
