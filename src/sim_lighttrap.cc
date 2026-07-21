@@ -79,6 +79,8 @@ int main(int argc, char** argv)
         UImanager->ApplyCommand("/detector/lighttrapsize "       + d2s(cfg.lightTrapSize_cm * 10.0));
         // pTP surface facet-slope RMS [rad]; 0 = perfectly smooth (no wiggle)
         UImanager->ApplyCommand("/detector/pTPsigmaAlpha "       + d2s(cfg.pTPsigmaAlpha_rad));
+        // Backplane reflector foil: vikuiti | ptfe | none
+        UImanager->ApplyCommand("/detector/backplaneFoil "       + cfg.backplaneFoil);
         UImanager->ApplyCommand("/run/reinitializeGeometry");
 
         // Source — GPS commands accept explicit unit tokens

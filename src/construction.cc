@@ -55,6 +55,8 @@ MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
       lighttrapsize,        "Square module side length [default 15 cm]");
   fMessenger->DeclareProperty("pTPsigmaAlpha",
       pTPsigmaAlpha,        "pTP surface facet-slope RMS [rad]; 0 = perfectly smooth");
+  fMessenger->DeclareProperty("backplaneFoil",
+      fBackplaneFoil,       "Backplane (+z) reflector foil: vikuiti | ptfe | none");
 
   // ── Default geometry parameters ─────────────────────────────────────────────
   nSiPMs                = 30;       // 15 per ±y edge
@@ -64,6 +66,7 @@ MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
   LArthickness          = 3.*mm;    // 3 mm LAr gap between first layer and blue WLS
   lighttrapsize         = 15.*cm;   // 15 cm × 15 cm module (real detector size)
   pTPsigmaAlpha         = 0.0;      // perfectly smooth pTP surface (no wiggle); rad
+  fBackplaneFoil        = "vikuiti";// specular ESR backplane by default
 
   // ── Photon energy sampling points ───────────────────────────────────────────
   // 13 wavelengths [nm]: { 530, 425, 400, 340, 305, 160, 145, 135, 128, 125, 120, 115, 106 }
@@ -345,6 +348,29 @@ void MyLightTrapConstruction::DefineOpticalSurface()
   Vikuiti->SetMaterialPropertiesTable(mpt);
 }
 
+void MyLightTrapConstruction::DefinePTFEOpticalSurface()
+{
+  // PTFE (e.g. sintered Teflon): near-Lambertian diffuse reflector, ~95 %
+  // reflectivity across the VUV–visible band used here. Modelled as a
+  // dielectric_metal surface with the UNIFIED model and a groundfrontpainted
+  // finish, which yields purely diffuse (Lambertian) reflection.
+
+  // Wavelengths [nm]: { 530,  425,  400,  340,  305,  160,  145,  135,  128,  125,  120,  115,  106 }
+  G4double reflectivity[13] = {0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95};
+
+  G4double buf_refl[13];
+  G4double* p_refl = resolveArray(fCfg.materials.ptfe.reflectivity, 1., buf_refl, reflectivity);
+
+  PTFE = new G4OpticalSurface("PTFE");
+  PTFE->SetType(dielectric_metal);
+  PTFE->SetFinish(groundfrontpainted);   // Lambertian diffuse reflection
+  PTFE->SetModel(unified);
+
+  G4MaterialPropertiesTable *mpt = new G4MaterialPropertiesTable();
+  mpt->AddProperty("REFLECTIVITY", energy, p_refl, 13);
+  PTFE->SetMaterialPropertiesTable(mpt);
+}
+
 void MyLightTrapConstruction::DefineMaterials()
 {
   DefinePTPMaterial();
@@ -353,6 +379,7 @@ void MyLightTrapConstruction::DefineMaterials()
   DefineBlueWLSMaterial();
   DefineWorldMaterial();
   DefineOpticalSurface();
+  DefinePTFEOpticalSurface();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -499,19 +526,40 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
     }
   }
 
-  // ══ VIKUITI FOIL — BACKPLANE (+z face of blue WLS) ══════════════════════════
-  // 3M ESR foil on the back face of the blue WLS slab.
-  // Reflects ~98 % of photons back toward the SiPM edges; ~2 % transmitted
-  // (monitored by the backplane leak detector below).
-  ReflectiveFoilBackPlane      = new G4Box("ReflectiveFoilBackPlane",
-      lighttrapsize/2., lighttrapsize/2., kVikuitiThick/2.);
-  logicReflectiveFoilBackPlane = new G4LogicalVolume(
-      ReflectiveFoilBackPlane, acrylicMcMaster, "logicReflectiveFoilBackPlane");
-  new G4LogicalSkinSurface("skinBackplane", logicReflectiveFoilBackPlane, Vikuiti);
-  physReflectiveFoilBackPlane  = new G4PVPlacement(0,
-      G4ThreeVector(0., 0., kVikuitiCenterZ),
-      logicReflectiveFoilBackPlane, "physReflectiveFoilBackPlane",
-      logicWorld, false, 0, true);
+  // ══ REFLECTOR FOIL — BACKPLANE (+z face of blue WLS) ════════════════════════
+  // Foil on the back face of the blue WLS slab, selectable at run time via
+  // /detector/backplaneFoil (geometry.backplaneFoil):
+  //   "vikuiti" — 3M ESR, specular ~98 % reflector (default)
+  //   "ptfe"    — sintered PTFE, diffuse (Lambertian) ~95 % reflector
+  //   "none"    — no foil; the full back-face escape is seen by the leak detector
+  // Whichever is chosen, ~(1−R) is transmitted and monitored by the backplane
+  // leak detector below.  Edge (±x) foils always stay Vikuiti (out of scope).
+  ReflectiveFoilBackPlane      = nullptr;
+  logicReflectiveFoilBackPlane = nullptr;
+  physReflectiveFoilBackPlane  = nullptr;
+
+  G4OpticalSurface* backplaneSurf = nullptr;
+  if      (fBackplaneFoil == "vikuiti") backplaneSurf = Vikuiti;
+  else if (fBackplaneFoil == "ptfe")    backplaneSurf = PTFE;
+  else if (fBackplaneFoil == "none")    backplaneSurf = nullptr;
+  else {
+    G4cerr << "[Construction] Unknown backplaneFoil '" << fBackplaneFoil
+           << "'; falling back to 'vikuiti'." << G4endl;
+    fBackplaneFoil = "vikuiti";
+    backplaneSurf  = Vikuiti;
+  }
+
+  if (fBackplaneFoil != "none") {
+    ReflectiveFoilBackPlane      = new G4Box("ReflectiveFoilBackPlane",
+        lighttrapsize/2., lighttrapsize/2., kVikuitiThick/2.);
+    logicReflectiveFoilBackPlane = new G4LogicalVolume(
+        ReflectiveFoilBackPlane, acrylicMcMaster, "logicReflectiveFoilBackPlane");
+    new G4LogicalSkinSurface("skinBackplane", logicReflectiveFoilBackPlane, backplaneSurf);
+    physReflectiveFoilBackPlane  = new G4PVPlacement(0,
+        G4ThreeVector(0., 0., kVikuitiCenterZ),
+        logicReflectiveFoilBackPlane, "physReflectiveFoilBackPlane",
+        logicWorld, false, 0, true);
+  }
 
   // ══ VIKUITI FOILS — LATERAL EDGES (±x faces of blue WLS) ════════════════════
   // Two foils covering the ±x faces of the blue WLS slab — the two edges that
@@ -625,9 +673,10 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
     auto *vaSiPM = new G4VisAttributes(G4Colour(0.0, 0.8, 0.2, 0.9));
     logicSiPMs->SetVisAttributes(vaSiPM);
 
-    // Vikuiti foils: silver/grey
+    // Reflector foils: silver/grey (backplane foil absent when backplaneFoil=none)
     auto *vaVikuiti = new G4VisAttributes(G4Colour(0.8, 0.8, 0.8, 0.9));
-    logicReflectiveFoilBackPlane->SetVisAttributes(vaVikuiti);
+    if (logicReflectiveFoilBackPlane)
+      logicReflectiveFoilBackPlane->SetVisAttributes(vaVikuiti);
     logicVikuitiEdge->SetVisAttributes(vaVikuiti);
 
     // Leak detector: magenta, semi-transparent

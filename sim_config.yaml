@@ -17,6 +17,7 @@ geometry:
   lightTrapSize_cm: 15.0          # square module side length [cm]
   pTPsigmaAlpha_rad: 0.0          # pTP surface facet-slope RMS [rad]; 0.0 = flat, perfectly smooth (no wiggle)
                                   #   raise to model coating waviness/roughness, e.g. 0.1 rad ≈ 6°
+  backplaneFoil: vikuiti          # backplane (+z) reflector: vikuiti (specular ESR) | ptfe (diffuse) | none
 
 source:
   particle: opticalphoton         # Geant4 particle name
@@ -124,3 +125,9 @@ materials:
     # 3M Enhanced Specular Reflector (ESR): ≥98 % specular reflectivity
     # Ref: https://multimedia.3m.com/mws/media/1245089O/3m-enhanced-specular-reflector-films-3m-esr-tech-data-sheet.pdf
     reflectivity: [0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98]
+
+  ptfe:
+    # Sintered PTFE (Teflon): diffuse (Lambertian) reflector, ~95 % reflectivity.
+    # Used when geometry.backplaneFoil: ptfe. Values are the 13-point grid
+    # { 530,425,400,340,305,160,145,135,128,125,120,115,106 } nm.
+    reflectivity: [0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95]

@@ -37,6 +37,7 @@ private:
   G4double LArthickness;          // LAr gap: first layer → blue WLS   (default 3 mm)
   G4double lighttrapsize;         // square module side length         (default 15 cm)
   G4double pTPsigmaAlpha;         // pTP surface facet-slope RMS [rad]  (default 0 = smooth)
+  G4String fBackplaneFoil;        // backplane (+z) reflector: "vikuiti" | "ptfe" | "none"
 
   // ── World ────────────────────────────────────────────────────────────────────
   G4Box             *solidWorld;
@@ -104,8 +105,10 @@ private:
   void DefineBlueWLSMaterial();
   void DefineWorldMaterial();
   void DefineOpticalSurface();
+  void DefinePTFEOpticalSurface();
 
   G4OpticalSurface *Vikuiti;
+  G4OpticalSurface *PTFE;      // diffuse (Lambertian) backplane reflector option
   const G4double EVUM; // hc constant in eV·µm: 1.239841939 eV·µm (wavelength ↔ energy)
   G4double energy[13]; // 13 sampled photon energies covering VUV to visible (115–145 nm densified)
 

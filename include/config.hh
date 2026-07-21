@@ -63,6 +63,10 @@ struct VikuitiConfig {
     std::vector<double> reflectivity;
 };
 
+struct PTFEConfig {
+    std::vector<double> reflectivity;   // diffuse (Lambertian) reflector; ~0.95
+};
+
 struct MaterialsConfig {
     PTPConfig             ptp;
     UVAcrylicConfig       uvAcrylic;
@@ -70,6 +74,7 @@ struct MaterialsConfig {
     BlueWLSConfig         blueWLS;
     LArConfig             lar;
     VikuitiConfig         vikuiti;
+    PTFEConfig            ptfe;
 };
 
 struct SimConfig {
@@ -81,6 +86,9 @@ struct SimConfig {
     double LArThickness_mm          = 3.0;    // LAr gap
     double lightTrapSize_cm         = 15.0;   // square module side
     double pTPsigmaAlpha_rad        = 0.0;    // pTP surface facet-slope RMS; 0 = smooth
+    // Backplane (+z) reflector foil selector: "vikuiti" (specular), "ptfe"
+    // (diffuse/Lambertian), or "none" (no foil — full back-face escape).
+    std::string backplaneFoil       = "vikuiti";
 
     // ── Source (messenger: /gps/<param>) ────────────────────────────────────
     std::string particle      = "opticalphoton";

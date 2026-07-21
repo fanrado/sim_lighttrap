@@ -135,6 +135,11 @@ static MaterialsConfig parseMaterials(const YAML::Node& mat, const std::string& 
         validateOpticalArray(m.vikuiti.reflectivity, "vikuiti.reflectivity");
     }
 
+    if (auto n = mat["ptfe"]) {
+        m.ptfe.reflectivity = readVec(n, "reflectivity");
+        validateOpticalArray(m.ptfe.reflectivity, "ptfe.reflectivity");
+    }
+
     return m;
 }
 
@@ -157,6 +162,7 @@ SimConfig SimConfig::fromFile(const std::string& path)
         if (geo["LArThickness_mm"])           cfg.LArThickness_mm          = geo["LArThickness_mm"].as<double>();
         if (geo["lightTrapSize_cm"])          cfg.lightTrapSize_cm         = geo["lightTrapSize_cm"].as<double>();
         if (geo["pTPsigmaAlpha_rad"])         cfg.pTPsigmaAlpha_rad        = geo["pTPsigmaAlpha_rad"].as<double>();
+        if (geo["backplaneFoil"])             cfg.backplaneFoil            = geo["backplaneFoil"].as<std::string>();
     }
 
     if (auto src = doc["source"]) {
