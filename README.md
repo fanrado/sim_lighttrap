@@ -66,9 +66,10 @@ You can run the simulation in three modes:
 
   | Section    | Parameters |
   |------------|------------|
-  | `geometry` | `nSiPMs`, layer thicknesses, module size |
+  | `geometry` | `nSiPMs`, layer thicknesses, module size, `backplaneFoil` (`vikuiti` \| `ptfe` \| `none`) |
   | `source`   | particle type, energy, position, shape, direction |
   | `run`      | number of events |
+  | `materials`| per-material optical properties, incl. `vikuiti.reflectivity` and `ptfe.reflectivity` |
 
   Example — scan with 20 SiPMs and a smaller module:
 
@@ -81,6 +82,55 @@ You can run the simulation in three modes:
   ```
 
   The YAML config is applied first; any macro file provided afterward can still override individual settings via the usual `/detector/` and `/gps/` messenger commands.
+
+## Comparing backplane reflectors (Vikuiti / PTFE / none)
+
+The reflector foil on the back (`+z`) face of the blue WLS slab is selectable at
+run time, so you can measure its effect on SiPM light collection:
+
+| Value     | Foil                | Optical behaviour                     |
+|-----------|---------------------|---------------------------------------|
+| `vikuiti` | 3M ESR (default)    | specular reflector (~98 %)            |
+| `ptfe`    | sintered PTFE       | diffuse / Lambertian reflector (~95 %)|
+| `none`    | *(no foil)*         | bare face — no reflector (baseline)   |
+
+Select it either in YAML (`geometry.backplaneFoil:`) or from a macro
+(`/detector/backplaneFoil <value>` before `/run/beamOn`).
+
+**Run the three-way comparison** with the helper script. It derives a config per
+mode from `sim_config.yaml`, runs each (renaming `output_apexltsim0.root` →
+`build/out_<foil>.root`), then prints the efficiency chain for each:
+
+```bash
+scripts/compare_backplane.sh                 # all three, nEvents from the YAML
+scripts/compare_backplane.sh 100000          # all three, 100k events each
+scripts/compare_backplane.sh - vikuiti none  # only these modes, YAML's nEvents
+```
+
+(Requires a built `build/sim_lighttrap`. Run it from the repo root; it resolves
+paths relative to its own location, so it also works from anywhere.)
+
+What to look at across the three runs:
+
+- **Collection / detection efficiency** (`SiPMHits`, ntuple 1) — typically
+  `vikuiti ≥ ptfe > none`. The `vikuiti`-vs-`ptfe` gap is the specular-vs-diffuse
+  effect; `none` is the no-reflector baseline.
+- **Back-face escape** (`SecondLayerBackplane`, ntuple 6) — typically
+  `none ≫ ptfe ≳ vikuiti`.
+
+For tighter statistics, raise `run.nEvents` in the YAML (the default is small for
+a quick relative comparison).
+
+## Running the unit tests
+
+Source-level checks (config parsing, the `/detector/backplaneFoil` messenger, the
+PTFE surface definition, the `none`-skips-foil logic, etc.) run with `pytest` and
+require no build or simulation:
+
+```bash
+python3.13 -m pytest tests/ -v                            # full suite
+python3.13 -m pytest tests/test_backplane_foil_config.py -v  # backplane feature only
+```
 
 ## Visualization
 
