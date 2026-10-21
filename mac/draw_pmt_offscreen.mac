@@ -1,0 +1,85 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# draw_pmt_offscreen.mac — headless geometry pictures of the PMT readout mode.
+#
+#   ./sim_lighttrap draw_pmt_offscreen.mac        (batch; no display needed)
+#
+# Writes PNGs with the TOOLSSG offscreen renderer and prints the volume tree
+# (solids, materials, sensitive detectors) with ASCIITree. The offscreen
+# z-buffer renderer skips translucent surfaces, so opaque colours are forced
+# here; the thin counters are hidden. Note: the RayTracer driver segfaults in
+# this Geant4 11.3.2 build, so it is not used.
+#
+# For interactive inspection use vis_pmt.mac instead (Qt viewer).
+# ─────────────────────────────────────────────────────────────────────────────
+
+/detector/detectorType pmt
+/detector/pmtDiameter 23
+/detector/pmtWindowThick 0
+/run/reinitializeGeometry
+/run/initialize
+
+# ── volume tree ────────────────────────────────────────────────────────────
+/vis/ASCIITree/verbose 15
+/vis/drawTree ! ATree
+
+# ── offscreen renderer setup ───────────────────────────────────────────────
+/vis/open TSG_OFFSCREEN
+/vis/tsg/offscreen/set/size 1600 1200
+/vis/viewer/set/style surface
+/vis/viewer/set/hiddenEdge true
+/vis/viewer/set/lineSegmentsPerCircle 120
+# culling must be ON, otherwise the (invisible) world box is drawn and its inner
+# walls hide everything in the zoomed views
+/vis/viewer/set/culling global true
+/vis/viewer/set/culling invisible true
+/vis/drawVolume
+/vis/geometry/set/visibility logicWorld 0 false
+/vis/geometry/set/colour logicpTPlayer 0 1 0.85 0 1
+/vis/geometry/set/colour logicUVAcrylic 0 0.45 0.75 1 1
+/vis/geometry/set/colour logicPMTPhotocathode 0 0.75 0.1 0.1 1
+/vis/geometry/set/visibility logicFirstLayerExitDet 0 false
+/vis/geometry/set/visibility logicFirstLayerEdgeDet 0 false
+/vis/viewer/set/background 1 1 1
+/vis/scene/add/axes 0 0 0 20 mm
+
+# 1) seen from behind the PMT (+z), oblique: 15 cm first layer + 23 mm disc
+/vis/tsg/offscreen/set/file pmt_geom_back_oblique.png
+/vis/viewer/set/viewpointThetaPhi 35 40 deg
+/vis/viewer/set/upVector 0 1 0
+/vis/viewer/zoomTo 1
+/vis/viewer/flush
+
+# 2) straight back view: disc diameter vs module
+/vis/tsg/offscreen/set/file pmt_geom_back.png
+/vis/viewer/set/viewpointVector 0 0 1
+/vis/viewer/set/upVector 0 1 0
+/vis/viewer/zoomTo 1
+/vis/viewer/flush
+
+# 3) side view (looking along +x), slightly tilted so faces are lit: layer stack + gap + disc
+/vis/tsg/offscreen/set/file pmt_geom_side.png
+/vis/viewer/set/viewpointVector -1 -0.15 0.25
+/vis/viewer/set/upVector 0 0 1
+/vis/viewer/set/targetPoint 0 0 -3 mm
+/vis/viewer/zoomTo 5
+/vis/viewer/flush
+
+# 4) side view with 30 beam photons (circle, Ø14 mm) and their WLS daughters
+/vis/tsg/offscreen/set/file pmt_geom_side_tracks.png
+/vis/scene/add/trajectories smooth
+/vis/modeling/trajectories/create/drawByParticleID
+/vis/modeling/trajectories/drawByParticleID-0/set opticalphoton blue
+/vis/scene/endOfEventAction accumulate 100
+/vis/viewer/set/viewpointVector -1 0 0
+/vis/viewer/set/upVector 0 0 1
+/vis/viewer/set/targetPoint 0 0 -8 mm
+/vis/viewer/zoomTo 3
+/gps/particle opticalphoton
+/gps/energy 9.68 eV
+/gps/pos/type Plane
+/gps/pos/shape Circle
+/gps/pos/centre 0. 0. -2. cm
+/gps/pos/radius 7 mm
+/gps/direction 0 0 1
+/run/beamOn 30
+/vis/viewer/flush

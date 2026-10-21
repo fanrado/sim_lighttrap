@@ -163,6 +163,36 @@ cd build
 ./sim_lighttrap run_pmt_beam.mac                        # macro only (sets /detector/ itself)
 ```
 
+**Visualising the PMT geometry** (to validate it before a long run):
+
+```bash
+cd build
+./sim_lighttrap vis_pmt.mac               # interactive Qt viewer, PMT geometry + 14 mm beam preloaded
+./sim_lighttrap draw_pmt_offscreen.mac    # headless: writes pmt_geom_*.png + prints the volume tree
+```
+
+`vis_pmt.mac` switches to `detectorType pmt`, re-initialises the geometry and
+then runs the usual `vis.mac` scene, so `/run/beamOn 30` in the Qt session shows
+the circular beam, the pTP-shifted light and the photocathode disc (dark red,
+at `z = 0`). `draw_pmt_offscreen.mac` renders the same geometry with the
+TOOLSSG offscreen driver (no display needed) from behind, from the side, and
+with 30 beam events, and dumps the volume tree with ASCIITree. Reference
+renders are kept in `docs/figures/pmt_mode/`. Two caveats of this Geant4 build:
+the `RayTracer` driver segfaults, and the offscreen z-buffer renderer skips
+translucent surfaces and needs `/vis/viewer/set/culling invisible true`
+(otherwise the invisible world box is drawn and hides everything), which the
+macro already handles.
+
+A data-side check of the same geometry (beam footprint on the film, hit map on
+the photocathode, and the z positions of every recorded photon point lined up
+against the layer planes) comes from:
+
+```bash
+python3.13 analysis/plot_pmt_validation.py build/output_apexltsim0.root pmt_validation.png
+```
+
+(see `docs/figures/pmt_mode/pmt_validation_2000evt.png` for the reference output).
+
 Quick look at the result in ROOT:
 
 ```cpp

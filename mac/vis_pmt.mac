@@ -1,0 +1,32 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# vis_pmt.mac — interactive Qt visualisation of the PMT readout mode.
+#
+#   ./sim_lighttrap vis_pmt.mac
+#
+# (The file name contains "vis", so sim_lighttrap opens the Qt session and
+# executes this macro.) Switches the geometry to detectorType=pmt, then runs
+# the standard vis.mac scene (Qt3D, axes, trajectories accumulated per event)
+# and preloads the 14 mm circular VUV beam so "/run/beamOn N" shows it.
+# Photocathode: dark red disc (Ø 23 mm) at z = 0; UV acrylic: light blue;
+# pTP film: yellow (2 µm — visible only when zoomed in).
+# ─────────────────────────────────────────────────────────────────────────────
+
+/detector/detectorType pmt
+/detector/pmtDiameter 23
+/detector/pmtWindowThick 0
+/detector/pmtQE 1.0
+/detector/pmtQEmin 110
+/detector/pmtQEmax 500
+/run/reinitializeGeometry
+
+/control/execute vis.mac
+/vis/viewer/set/style surface
+/vis/viewer/set/hiddenEdge true
+
+/gps/particle opticalphoton
+/gps/energy 9.68 eV
+/gps/pos/type Plane
+/gps/pos/shape Circle
+/gps/pos/centre 0. 0. -2. cm
+/gps/pos/radius 7 mm
+/gps/direction 0 0 1

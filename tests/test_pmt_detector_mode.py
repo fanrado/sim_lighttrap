@@ -167,6 +167,33 @@ def test_pmt_macro_switches_geometry_and_uses_circular_beam():
     assert mac.index("/run/reinitializeGeometry") < mac.index("/run/beamOn")
 
 
+def test_vis_pmt_macro_switches_to_pmt_before_running_vis_scene():
+    mac = read("mac/vis_pmt.mac")
+    assert re.search(r"^/detector/detectorType\s+pmt\s*$", mac, re.M)
+    assert re.search(r"^/run/reinitializeGeometry\s*$", mac, re.M)
+    assert re.search(r"^/control/execute\s+vis\.mac\s*$", mac, re.M)
+    assert mac.index("/run/reinitializeGeometry") < mac.index("/control/execute vis.mac")
+    assert re.search(r"^/gps/pos/shape\s+Circle\s*$", mac, re.M)
+    assert re.search(r"^/gps/pos/radius\s+7\s+mm\s*$", mac, re.M)
+    # must not start a run by itself (interactive session); comments may mention it
+    commands = [l.strip() for l in mac.splitlines() if l.strip() and not l.lstrip().startswith("#")]
+    assert not any(c.startswith("/run/beamOn") for c in commands)
+
+
+def test_offscreen_macro_renders_pmt_geometry_headlessly():
+    mac = read("mac/draw_pmt_offscreen.mac")
+    assert re.search(r"^/detector/detectorType\s+pmt\s*$", mac, re.M)
+    assert re.search(r"^/vis/open\s+TSG_OFFSCREEN\s*$", mac, re.M)
+    assert re.search(r"^/vis/drawTree\s+!\s+ATree\s*$", mac, re.M)
+    # culling must be enabled, or the invisible world box hides the zoomed views
+    assert re.search(r"^/vis/viewer/set/culling\s+global\s+true\s*$", mac, re.M)
+    assert re.search(r"^/vis/viewer/set/culling\s+invisible\s+true\s*$", mac, re.M)
+    assert "RayTracer" not in [l.split()[0] for l in mac.splitlines() if l.startswith("/vis/open")]
+    files = re.findall(r"^/vis/tsg/offscreen/set/file\s+(\S+)", mac, re.M)
+    assert len(files) >= 3 and all(f.endswith(".png") for f in files)
+    assert len(re.findall(r"^/vis/viewer/flush", mac, re.M)) >= len(files)
+
+
 # ── SimConfig plumbing ───────────────────────────────────────────────────────
 
 def test_config_hh_has_pmt_fields():
