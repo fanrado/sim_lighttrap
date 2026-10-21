@@ -66,8 +66,8 @@ You can run the simulation in three modes:
 
   | Section    | Parameters |
   |------------|------------|
-  | `geometry` | `nSiPMs`, layer thicknesses, module size, `backplaneFoil` (`vikuiti` \| `ptfe` \| `none`) |
-  | `source`   | particle type, energy, position, shape, direction |
+  | `geometry` | `nSiPMs`, layer thicknesses, module size, `backplaneFoil` (`vikuiti` \| `ptfe` \| `none`), `detectorType` (`sipm` \| `pmt`) and the `pmt*` parameters |
+  | `source`   | particle type, energy, position, shape (`Square` half-widths or `Circle` `radius_cm`), direction |
   | `run`      | number of events |
   | `materials`| per-material optical properties, incl. `vikuiti.reflectivity` and `ptfe.reflectivity` |
 
@@ -121,6 +121,56 @@ What to look at across the three runs:
 For tighter statistics, raise `run.nEvents` in the YAML (the default is small for
 a quick relative comparison).
 
+## PMT readout mode (first layer + PMT, 14 mm beam)
+
+For the bench measurement of the first layer alone, the whole second stage
+(blue-WLS slab, edge SiPMs, reflector foils, backplane leak counter) can be
+replaced by a PMT model. Select it with `geometry.detectorType: pmt` in YAML or
+`/detector/detectorType pmt` in a macro (followed by `/run/reinitializeGeometry`).
+
+Geometry along `+z` in this mode (the PMT front face sits at `z = 0`):
+
+```
+beam (z = -2 cm) ──► pTP film / UV acrylic ──► [LAr gap, LArThickness_mm] ──► [MgF2 window] ──► photocathode
+```
+
+| YAML key (`geometry:`)   | Messenger                 | Default | Meaning |
+|--------------------------|---------------------------|---------|---------|
+| `detectorType`           | `/detector/detectorType`  | `sipm`  | `sipm` = blue WLS + SiPMs; `pmt` = PMT photocathode |
+| `pmtDiameter_mm`         | `/detector/pmtDiameter`   | 23      | photocathode (sensitive) diameter |
+| `pmtWindowThickness_mm`  | `/detector/pmtWindowThick`| 0       | MgF2 entrance window; 0 = bare photocathode |
+| `pmtQE`                  | `/detector/pmtQE`         | 1.0     | flat quantum efficiency inside the QE band |
+| `pmtQEmin_nm`            | `/detector/pmtQEmin`      | 110     | QE band lower edge [nm] |
+| `pmtQEmax_nm`            | `/detector/pmtQEmax`      | 500     | QE band upper edge [nm]; QE = 0 outside |
+
+The photocathode is a thin disc whose material matches the volume in front of
+it (LAr, or MgF2 behind a window), so it adds no optical boundary: every photon
+reaching it is killed and recorded in ntuple 9 `PMTPhotons` (pre-QE), and with
+probability `pmtQE` inside the band also in ntuple 10 `PMTHits` (post-QE). Both
+carry `eventID, fX, fY, fZ, fT, fwl, fcosTheta, primary`, where `primary = 1`
+tags an unshifted beam photon and `0` a pTP-shifted WLS photon. In this mode
+`SiPMPhotons`, `SiPMHits` and `SecondLayerBackplane` stay empty; `WLSPhoton`,
+`FirstLayerBackplane` and `FirstLayerEdges` are filled as usual.
+
+The light source for this setup is a 14 mm diameter parallel VUV beam rather
+than the full-face square plane: `source.positionShape: Circle` with
+`source.radius_cm: 0.7` (forwarded to `/gps/pos/radius`). Ready-made files:
+
+```bash
+cd build
+./sim_lighttrap sim_config_pmt.yaml                     # YAML only: PMT geometry + 14 mm beam
+./sim_lighttrap sim_config_pmt.yaml run_pmt_beam.mac    # YAML geometry + macro source/run
+./sim_lighttrap run_pmt_beam.mac                        # macro only (sets /detector/ itself)
+```
+
+Quick look at the result in ROOT:
+
+```cpp
+TFile *f = TFile::Open("output_apexltsim0.root");
+((TTree*)f->Get("PMTHits"))->GetEntries();                 // detected photo-electrons
+((TTree*)f->Get("PMTPhotons"))->Draw("fX:fY", "", "colz");  // hit map on the photocathode
+```
+
 ## Running the unit tests
 
 Source-level checks (config parsing, the `/detector/backplaneFoil` messenger, the
@@ -130,6 +180,7 @@ require no build or simulation:
 ```bash
 python3.13 -m pytest tests/ -v                            # full suite
 python3.13 -m pytest tests/test_backplane_foil_config.py -v  # backplane feature only
+python3.13 -m pytest tests/test_pmt_detector_mode.py -v      # PMT readout mode only
 ```
 
 ## Visualization

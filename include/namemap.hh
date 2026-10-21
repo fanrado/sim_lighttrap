@@ -36,6 +36,7 @@ private:
       {"bluewlsacrylic", 3},
       {"G4_lAr", 4},
       {"uvTransAcrylic", 5},    // UV-transparent PMMA carrier for pTP film
+      {"G4_MAGNESIUM_FLUORIDE", 6}, // MgF2 PMT entrance window (pmt mode)
 
       {"Scintillation", 100},
       {"OpWLS", 101}

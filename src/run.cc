@@ -14,6 +14,10 @@ MyRunAction::MyRunAction()
   //   6  SecondLayerBackplane — (d) leak through the Vikuiti backplane foil
   //   7  FirstLayerBackplane  — (b) photons crossing the first-layer back (+z) face
   //   8  FirstLayerEdges      — (c) photons reaching the first-layer ±x edges
+  //   9  PMTPhotons         — (pmt mode) every photon reaching the PMT photocathode (pre-QE)
+  //  10  PMTHits            — (pmt mode) detected photo-electrons (post-QE)
+  // In detectorType=pmt runs ntuples 0/1/6 stay empty (no SiPMs, no backplane
+  // foil); in sipm runs ntuples 9/10 stay empty (no PMT).
   // Ntuples 6/7/8 share MyLeakDetector's fill and carry a 'forward' int column
   // (index 7): 1 if mom.z()>0 (forward, out of layer 1), else 0 (e.g. Vikuiti-
   // reflected light travelling back -z). Both directions are recorded.
@@ -121,6 +125,32 @@ MyRunAction::MyRunAction()
   man->CreateNtupleDColumn("fcosTheta");   // momentum-z direction cosine
   man->CreateNtupleIColumn("forward");     // 1 if mom.z()>0 (forward), else 0
   man->FinishNtuple(8);
+
+  // PMT readout (detectorType = "pmt"): the photocathode is a terminal counter.
+  // 'primary' = 1 if the photon is the unshifted beam photon itself (parentID 0),
+  // 0 if it is a WLS daughter (pTP-shifted light).  cosTheta = momentum-z cosine
+  // at the photocathode (+1 = normal incidence from the first layer).
+  man->CreateNtuple("PMTPhotons", "Photons reaching the PMT photocathode (pre-QE)");
+  man->CreateNtupleIColumn("eventID");
+  man->CreateNtupleDColumn("fX");
+  man->CreateNtupleDColumn("fY");
+  man->CreateNtupleDColumn("fZ");
+  man->CreateNtupleDColumn("fT");
+  man->CreateNtupleDColumn("fwl");
+  man->CreateNtupleDColumn("fcosTheta");
+  man->CreateNtupleIColumn("primary");
+  man->FinishNtuple(9);
+
+  man->CreateNtuple("PMTHits", "Photo-electrons detected by the PMT (post-QE)");
+  man->CreateNtupleIColumn("eventID");
+  man->CreateNtupleDColumn("fX");
+  man->CreateNtupleDColumn("fY");
+  man->CreateNtupleDColumn("fZ");
+  man->CreateNtupleDColumn("fT");
+  man->CreateNtupleDColumn("fwl");
+  man->CreateNtupleDColumn("fcosTheta");
+  man->CreateNtupleIColumn("primary");
+  man->FinishNtuple(10);
 }
 
 MyRunAction::~MyRunAction()

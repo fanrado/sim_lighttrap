@@ -37,4 +37,27 @@ private:
   G4bool fKillTrack;
 };
 
+// PMT photocathode (detectorType = "pmt").  Terminal: every photon reaching the
+// photocathode is killed (the cathode is opaque).  Every arrival is recorded to
+// ntuple 9 (PMTPhotons, pre-QE); a photon is additionally recorded to ntuple 10
+// (PMTHits, post-QE) with probability `qe` if its wavelength lies inside
+// [wlMin_nm, wlMax_nm], and never outside that band.  Default: flat 100 % QE
+// over 110-500 nm (the "ideal VUV PMT" starting assumption).
+class MyPMTDetector : public G4VSensitiveDetector
+{
+public:
+  MyPMTDetector(G4String name, G4double qe, G4double wlMin_nm, G4double wlMax_nm);
+  ~MyPMTDetector();
+
+  // Efficiency at a given wavelength [nm]: qe inside the band, 0 outside.
+  G4double Efficiency(G4double wl_nm) const;
+
+private:
+  virtual G4bool ProcessHits(G4Step *, G4TouchableHistory *);
+
+  G4double fQE;
+  G4double fWlMin;   // nm
+  G4double fWlMax;   // nm
+};
+
 #endif

@@ -18,6 +18,14 @@ geometry:
   pTPsigmaAlpha_rad: 0.0          # pTP surface facet-slope RMS [rad]; 0.0 = flat, perfectly smooth (no wiggle)
                                   #   raise to model coating waviness/roughness, e.g. 0.1 rad ≈ 6°
   backplaneFoil: vikuiti          # backplane (+z) reflector: vikuiti (specular ESR) | ptfe (diffuse) | none
+  detectorType: sipm              # readout stage: sipm (blue WLS + SiPMs, this design) | pmt (PMT photocathode
+                                  #   replaces the whole 2nd layer; see sim_config_pmt.yaml for that setup)
+  # PMT parameters (used only when detectorType: pmt):
+  pmtDiameter_mm: 23.0            # photocathode diameter [mm]
+  pmtWindowThickness_mm: 0.0      # MgF2 entrance window [mm]; 0 = bare photocathode
+  pmtQE: 1.0                      # flat QE inside [pmtQEmin_nm, pmtQEmax_nm]; 0 outside
+  pmtQEmin_nm: 110.0
+  pmtQEmax_nm: 500.0
 
 source:
   particle: opticalphoton         # Geant4 particle name
@@ -29,6 +37,7 @@ source:
   centerZ_cm: -2.0                # source centre z [cm]  (8 mm in front of pTP film)
   halfX_cm: 7.5                   # source half-width in x [cm]  (covers full 15 cm face)
   halfY_cm: 7.5                   # source half-width in y [cm]
+  radius_cm: 0.7                  # source radius [cm], used when positionShape: Circle (14 mm beam)
   directionX: 0.0                 # momentum direction (unit vector)
   directionY: 0.0
   directionZ: 1.0                 # into the module (+z)

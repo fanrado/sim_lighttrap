@@ -1,0 +1,62 @@
+# sim_config_pmt.yaml — LightTrap first layer read out by a PMT (lab bench setup)
+#
+# Usage (from the build directory):
+#   ./sim_lighttrap sim_config_pmt.yaml                      # YAML-only batch run
+#   ./sim_lighttrap sim_config_pmt.yaml run_pmt_beam.mac     # YAML geometry + macro source
+#
+# Differences from sim_config.yaml (the two-layer SiPM design):
+#   * geometry.detectorType: pmt — the blue-WLS slab, edge SiPMs, reflector foils
+#     and backplane leak counter are NOT built.  A PMT photocathode disc faces the
+#     first layer (pTP film on UV acrylic) across the LAr gap (LArThickness_mm).
+#   * source: a 14 mm diameter parallel VUV beam (Plane / Circle, radius 7 mm)
+#     centred on the module axis, instead of the full-face 15 cm square plane.
+#   * PMT: 23 mm photocathode, ideal flat 100 % QE from 110 to 500 nm (0 outside).
+#
+# Geometry along +z (PMT front face at z = 0):
+#   source (z = -2 cm) → pTP film / UV acrylic → [LAr gap] → [MgF2 window] → photocathode
+#
+# Output ntuples (output_apexltsim<run>.root):
+#   PMTPhotons (9)  every photon reaching the photocathode, pre-QE
+#   PMTHits    (10) detected photo-electrons, post-QE
+#   plus Primary, WLSPhoton, FirstLayerBackplane, FirstLayerEdges as usual.
+#   SiPMPhotons/SiPMHits/SecondLayerBackplane stay empty in this mode.
+# Material optical properties not listed here use the hard-coded defaults in
+# construction.cc (identical to the values documented in sim_config.yaml).
+
+geometry:
+  detectorType: pmt               # sipm (blue WLS + SiPMs) | pmt (PMT photocathode)
+  pmtDiameter_mm: 23.0            # photocathode (sensitive) diameter [mm]
+  pmtWindowThickness_mm: 0.0      # MgF2 entrance window [mm]; 0 = bare photocathode (ideal PMT)
+  pmtQE: 1.0                      # flat quantum efficiency inside [pmtQEmin_nm, pmtQEmax_nm]
+  pmtQEmin_nm: 110.0              # QE band lower edge [nm]
+  pmtQEmax_nm: 500.0              # QE band upper edge [nm]; QE = 0 outside the band
+  pTPlayerThickness_mm: 0.002     # pTP WLS film thickness [mm]  (2 µm)
+  uvAcrylicThickness_mm: 3.0      # UV-transparent acrylic carrier [mm]
+  LArThickness_mm: 3.0            # LAr gap between first-layer back face and PMT front face [mm]
+  lightTrapSize_cm: 15.0          # square first-layer side length [cm]
+  pTPsigmaAlpha_rad: 0.0          # pTP surface facet-slope RMS [rad]; 0 = smooth
+
+source:
+  particle: opticalphoton
+  energy_eV: 9.68                 # 128 nm VUV (use a macro, e.g. run_pmt_beam.mac, for a spectrum)
+  positionType: Plane
+  positionShape: Circle           # circular beam spot
+  radius_cm: 0.7                  # 14 mm beam diameter
+  centerX_cm: 0.0                 # beam centred on the module / PMT axis
+  centerY_cm: 0.0
+  centerZ_cm: -2.0                # 14 mm in front of the pTP film (which sits at z ≈ -6 mm)
+  directionX: 0.0                 # parallel beam along +z
+  directionY: 0.0
+  directionZ: 1.0
+
+run:
+  nEvents: 10000
+
+materials:
+  mgf2:
+    # Magnesium fluoride PMT window (only built when pmtWindowThickness_mm > 0).
+    # 13-point grid: { 530,425,400,340,305,160,145,135,128,125,120,115,106 } nm.
+    # Refractive index ref: M. J. Dodge, Appl. Opt. 23, 1980 (1984).
+    rindex:   [1.379, 1.384, 1.386, 1.392, 1.397, 1.468, 1.490, 1.510, 1.530, 1.540, 1.560, 1.600, 1.650]
+    # Bulk absorption (m): transparent down to ~140 nm, cut-off near 110 nm (approximate)
+    abslen_m: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.2, 0.1, 0.05, 0.01, 0.001, 1.0e-6]

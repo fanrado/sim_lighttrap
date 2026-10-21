@@ -81,6 +81,13 @@ int main(int argc, char** argv)
         UImanager->ApplyCommand("/detector/pTPsigmaAlpha "       + d2s(cfg.pTPsigmaAlpha_rad));
         // Backplane reflector foil: vikuiti | ptfe | none
         UImanager->ApplyCommand("/detector/backplaneFoil "       + cfg.backplaneFoil);
+        // Readout stage: sipm (blue WLS + SiPMs) | pmt (PMT photocathode)
+        UImanager->ApplyCommand("/detector/detectorType "        + cfg.detectorType);
+        UImanager->ApplyCommand("/detector/pmtDiameter "         + d2s(cfg.pmtDiameter_mm));
+        UImanager->ApplyCommand("/detector/pmtWindowThick "      + d2s(cfg.pmtWindowThickness_mm));
+        UImanager->ApplyCommand("/detector/pmtQE "               + d2s(cfg.pmtQE));
+        UImanager->ApplyCommand("/detector/pmtQEmin "            + d2s(cfg.pmtQEmin_nm));
+        UImanager->ApplyCommand("/detector/pmtQEmax "            + d2s(cfg.pmtQEmax_nm));
         UImanager->ApplyCommand("/run/reinitializeGeometry");
 
         // Source — GPS commands accept explicit unit tokens
@@ -93,6 +100,8 @@ int main(int argc, char** argv)
                                                    + d2s(cfg.centerZ_cm) + " cm");
         UImanager->ApplyCommand("/gps/pos/halfx "  + d2s(cfg.halfX_cm) + " cm");
         UImanager->ApplyCommand("/gps/pos/halfy "  + d2s(cfg.halfY_cm) + " cm");
+        // Circle shape (e.g. the 14 mm lab beam) uses the radius instead of halfx/halfy
+        UImanager->ApplyCommand("/gps/pos/radius " + d2s(cfg.radius_cm) + " cm");
         UImanager->ApplyCommand("/gps/direction "  + d2s(cfg.directionX) + " "
                                                    + d2s(cfg.directionY) + " "
                                                    + d2s(cfg.directionZ));

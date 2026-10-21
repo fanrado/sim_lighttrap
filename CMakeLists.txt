@@ -47,7 +47,8 @@ file(COPY ${MACRO_FILES} DESTINATION ${PROJECT_BINARY_DIR})
 # Copy data files and the YAML configuration to the build directory.
 file(GLOB DATA_FILES ${PROJECT_SOURCE_DIR}/input/*.dat)
 file(COPY ${DATA_FILES} DESTINATION ${PROJECT_BINARY_DIR})
-file(COPY ${PROJECT_SOURCE_DIR}/sim_config.yaml DESTINATION ${PROJECT_BINARY_DIR})
+file(GLOB YAML_FILES ${PROJECT_SOURCE_DIR}/*.yaml)
+file(COPY ${YAML_FILES} DESTINATION ${PROJECT_BINARY_DIR})
 
 # Build the executable.
 add_executable(sim_lighttrap ${sources} ${headers})

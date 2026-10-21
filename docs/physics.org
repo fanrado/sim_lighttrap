@@ -76,6 +76,8 @@ Process and material types are encoded to integers using the ~NameMap~ helper
 | acrylicMcMaster |            2 |
 | bluewlsacrylic  |            3 |
 | G4_lAr          |            4 |
+| uvTransAcrylic  |            5 |
+| G4_MAGNESIUM_FLUORIDE |            6 |
 | Scintillation   |          100 |
 | OpWLS           |          101 |
 

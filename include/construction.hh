@@ -5,6 +5,7 @@
 #include "G4VPhysicalVolume.hh"
 #include "G4LogicalVolume.hh"
 #include "G4Box.hh"
+#include "G4Tubs.hh"
 #include "G4PVPlacement.hh"
 #include "G4NistManager.hh"
 #include "G4SystemOfUnits.hh"
@@ -38,6 +39,12 @@ private:
   G4double lighttrapsize;         // square module side length         (default 15 cm)
   G4double pTPsigmaAlpha;         // pTP surface facet-slope RMS [rad]  (default 0 = smooth)
   G4String fBackplaneFoil;        // backplane (+z) reflector: "vikuiti" | "ptfe" | "none"
+  G4String fDetectorType;         // readout stage: "sipm" (blue WLS + SiPMs) | "pmt"
+  G4double pmtDiameter;           // PMT photocathode diameter            (default 23 mm)
+  G4double pmtWindowThickness;    // MgF2 entrance window; 0 = none       (default 0)
+  G4double pmtQE;                 // flat QE inside the band              (default 1.0)
+  G4double pmtQEmin_nm;           // QE band lower edge [nm]              (default 110)
+  G4double pmtQEmax_nm;           // QE band upper edge [nm]              (default 500)
 
   // ── World ────────────────────────────────────────────────────────────────────
   G4Box             *solidWorld;
@@ -69,6 +76,14 @@ private:
   G4LogicalVolume   *logicVikuitiEdge;
   G4VPhysicalVolume *physVikuitiEdge_pX, *physVikuitiEdge_nX;
 
+  // ── PMT readout (detectorType = "pmt"): window (optional) + photocathode ─────
+  // Replaces the blue WLS slab, SiPMs, edge foils, backplane foil and backplane
+  // leak counter.  The photocathode is a thin disc of pmtDiameter facing the
+  // first layer across the LAr gap; its SD is a terminal QE counter.
+  G4Tubs            *PMTWindow,      *PMTPhotocathode;
+  G4LogicalVolume   *logicPMTWindow, *logicPMTPhotocathode;
+  G4VPhysicalVolume *physPMTWindow,  *physPMTPhotocathode;
+
   // ── Validation detector: backplane photon-leak counter ───────────────────────
   G4Box             *BackplaneLeakDet;
   G4LogicalVolume   *logicBackplaneLeakDet;
@@ -97,6 +112,7 @@ private:
   G4Material *acrylicMcMaster; // standard PMMA (used for Vikuiti foil body material)
   G4Material *bluewlsacrylic;  // blue-shifting WLS acrylic slab (2nd WLS stage)
   G4Material *worldMat;        // liquid argon (LAr)
+  G4Material *mgf2;            // magnesium fluoride — VUV-transparent PMT window
 
   void DefineMaterials();
   void DefinePTPMaterial();
@@ -104,6 +120,7 @@ private:
   void DefineAcrylicMaterial();
   void DefineBlueWLSMaterial();
   void DefineWorldMaterial();
+  void DefineMgF2Material();
   void DefineOpticalSurface();
   void DefinePTFEOpticalSurface();
 

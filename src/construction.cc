@@ -22,6 +22,14 @@
 //                     Vikuiti foils at ±x edges (lateral reflectors)
 //                   Vikuiti foil (backplane, +z face)
 //                   Backplane leak detector (validation, 100 % efficiency)
+//
+// PMT mode (detectorType = "pmt") keeps the first layer and the LAr gap but
+// replaces everything downstream with a PMT model:
+//
+//   [LAr world] ──► pTP film (2 µm) / UV acrylic (3 mm)
+//                   [LAr gap]
+//                   [optional MgF2 window]
+//                   PMT photocathode disc (Ø 23 mm) ← terminal QE counter
 // ─────────────────────────────────────────────────────────────────────────────
 
 G4double* MyLightTrapConstruction::resolveArray(
@@ -57,6 +65,18 @@ MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
       pTPsigmaAlpha,        "pTP surface facet-slope RMS [rad]; 0 = perfectly smooth");
   fMessenger->DeclareProperty("backplaneFoil",
       fBackplaneFoil,       "Backplane (+z) reflector foil: vikuiti | ptfe | none");
+  fMessenger->DeclareProperty("detectorType",
+      fDetectorType,        "Readout stage: sipm (blue WLS + SiPMs) | pmt (PMT photocathode)");
+  fMessenger->DeclareProperty("pmtDiameter",
+      pmtDiameter,          "PMT photocathode diameter [default 23 mm]");
+  fMessenger->DeclareProperty("pmtWindowThick",
+      pmtWindowThickness,   "PMT MgF2 entrance window thickness; 0 = bare photocathode [default 0]");
+  fMessenger->DeclareProperty("pmtQE",
+      pmtQE,                "PMT flat quantum efficiency inside the QE band [default 1.0]");
+  fMessenger->DeclareProperty("pmtQEmin",
+      pmtQEmin_nm,          "PMT QE band lower edge [nm, default 110]");
+  fMessenger->DeclareProperty("pmtQEmax",
+      pmtQEmax_nm,          "PMT QE band upper edge [nm, default 500]");
 
   // ── Default geometry parameters ─────────────────────────────────────────────
   nSiPMs                = 30;       // 15 per ±y edge
@@ -67,6 +87,12 @@ MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
   lighttrapsize         = 15.*cm;   // 15 cm × 15 cm module (real detector size)
   pTPsigmaAlpha         = 0.0;      // perfectly smooth pTP surface (no wiggle); rad
   fBackplaneFoil        = "vikuiti";// specular ESR backplane by default
+  fDetectorType         = "sipm";   // original two-layer design by default
+  pmtDiameter           = 23.*mm;   // photocathode diameter (e.g. Hamamatsu R6835-class)
+  pmtWindowThickness    = 0.*mm;    // bare photocathode (no window) to start with
+  pmtQE                 = 1.0;      // ideal PMT: 100 % QE ...
+  pmtQEmin_nm           = 110.;     // ... from 110 nm ...
+  pmtQEmax_nm           = 500.;     // ... to 500 nm, 0 outside
 
   // ── Photon energy sampling points ───────────────────────────────────────────
   // 13 wavelengths [nm]: { 530, 425, 400, 340, 305, 160, 145, 135, 128, 125, 120, 115, 106 }
@@ -327,6 +353,31 @@ void MyLightTrapConstruction::DefineWorldMaterial()
   worldMat->GetIonisation()->SetBirksConstant(0.694*mm/MeV);
 }
 
+void MyLightTrapConstruction::DefineMgF2Material()
+{
+  G4NistManager *nist = G4NistManager::Instance();
+
+  // Magnesium fluoride: VUV-transparent PMT entrance window (cut-off ≈ 110 nm).
+  // Only used when detectorType = "pmt" and pmtWindowThickness > 0.
+  // Refractive index (ordinary ray) ref: M. J. Dodge, Appl. Opt. 23, 1980 (1984).
+  // Absorption lengths are approximate: transparent from the visible down to
+  // ~140 nm, then rolling off steeply towards the 110 nm cut-off.
+  mgf2 = nist->FindOrBuildMaterial("G4_MAGNESIUM_FLUORIDE");
+
+  // Wavelengths [nm]: { 530,   425,   400,   340,   305,   160,   145,   135,   128,   125,   120,   115,   106 }
+  G4double rindex[13] = {1.379, 1.384, 1.386, 1.392, 1.397, 1.468, 1.490, 1.510, 1.530, 1.540, 1.560, 1.600, 1.650};
+  G4double abslen[13] = {1*m, 1*m, 1*m, 1*m, 1*m, 1*m, 0.5*m, 0.2*m, 0.1*m, 0.05*m, 10*mm, 1*mm, 0.001*mm};
+
+  G4double buf_ri[13], buf_abs[13];
+  G4double* p_rindex = resolveArray(fCfg.materials.mgf2.rindex,   1., buf_ri,  rindex);
+  G4double* p_abslen = resolveArray(fCfg.materials.mgf2.abslen_m, m,  buf_abs, abslen);
+
+  G4MaterialPropertiesTable *mpt = new G4MaterialPropertiesTable();
+  mpt->AddProperty("RINDEX",    energy, p_rindex, 13);
+  mpt->AddProperty("ABSLENGTH", energy, p_abslen, 13);
+  mgf2->SetMaterialPropertiesTable(mpt);
+}
+
 void MyLightTrapConstruction::DefineOpticalSurface()
 {
   // 3M Enhanced Specular Reflector (Vikuiti / ESR): ≥98 % specular reflectivity.
@@ -378,6 +429,7 @@ void MyLightTrapConstruction::DefineMaterials()
   DefineAcrylicMaterial();
   DefineBlueWLSMaterial();
   DefineWorldMaterial();
+  DefineMgF2Material();
   DefineOpticalSurface();
   DefinePTFEOpticalSurface();
 }
@@ -398,6 +450,11 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   // ║  LArthickness          = 3 mm    → LAr gap: first layer → blue WLS      ║
   // ║  pTPsubstratethickness = 6 mm    → blue WLS acrylic slab (2nd WLS)      ║
   // ║  nSiPMs                = 30      → 15 per ±y edge                       ║
+  // ║  detectorType          = sipm    → sipm: blue WLS + SiPMs (below)       ║
+  // ║                                    pmt : PMT photocathode (Ø pmtDiameter)║
+  // ║                                          replaces the whole 2nd stage   ║
+  // ║  pmtDiameter           = 23 mm   → photocathode (sensitive) diameter    ║
+  // ║  pmtWindowThickness    = 0       → optional MgF2 window in front of it  ║
   // ║                                                                          ║
   // ║  Photon path (VUV → SiPMs):                                             ║
   // ║  LAr ──► pTP film ──► UV acrylic ──► [LAr gap] ──► blue WLS ──► SiPMs  ║
@@ -422,15 +479,42 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   const G4double kSiPMDepthHalf = 0.5*mm;                      // ½ of 1 mm depth (y)
   const G4double kSiPMZHalf     = pTPsubstratethickness / 2.;  // spans full slab thickness
 
+  // ── Readout-stage selector ──────────────────────────────────────────────────
+  if (fDetectorType != "sipm" && fDetectorType != "pmt") {
+    G4cerr << "[Construction] Unknown detectorType '" << fDetectorType
+           << "'; falling back to 'sipm'." << G4endl;
+    fDetectorType = "sipm";
+  }
+  const G4bool isPMT = (fDetectorType == "pmt");
+
+  // All second-stage pointers start null; only the selected branch fills them.
+  pTPsubstrate = nullptr;            logicpTPsubstrate = nullptr;            physpTPsubstrate = nullptr;
+  SiPMs = nullptr;                   logicSiPMs = nullptr;                   physSiPMs = nullptr;
+  ReflectiveFoilBackPlane = nullptr; logicReflectiveFoilBackPlane = nullptr; physReflectiveFoilBackPlane = nullptr;
+  VikuitiEdge = nullptr;             logicVikuitiEdge = nullptr;
+  physVikuitiEdge_pX = nullptr;      physVikuitiEdge_nX = nullptr;
+  BackplaneLeakDet = nullptr;        logicBackplaneLeakDet = nullptr;        physBackplaneLeakDet = nullptr;
+  PMTWindow = nullptr;               logicPMTWindow = nullptr;               physPMTWindow = nullptr;
+  PMTPhotocathode = nullptr;         logicPMTPhotocathode = nullptr;         physPMTPhotocathode = nullptr;
+
+  // ── PMT dimensions (pmt mode) ────────────────────────────────────────────────
+  const G4double kPhotocathodeThick = 0.1*mm;   // thin sensitive disc (terminal counter)
+
   // ── Derived z-positions ──────────────────────────────────────────────────────
-  // Reference: the back (+z) face of the blue WLS slab is at z = 0.
-  // All positions are derived from the messenger parameters — changing any
-  // thickness automatically shifts all downstream components correctly.
+  // Reference: the back (+z) face of the blue WLS slab is at z = 0 (sipm mode),
+  // or the front (−z) face of the PMT — window if present, else photocathode —
+  // is at z = 0 (pmt mode).  All positions are derived from the messenger
+  // parameters — changing any thickness shifts all downstream components.
   const G4double kBlueWLSBackZ   = 0.;
   const G4double kBlueWLSCenterZ = kBlueWLSBackZ  - pTPsubstratethickness / 2.;
   const G4double kBlueWLSFrontZ  = kBlueWLSBackZ  - pTPsubstratethickness;
-  // LAr gap sits between the first layer back face and the blue WLS front face:
-  const G4double kUVAcrylBackZ   = kBlueWLSFrontZ - LArthickness;
+  const G4double kPMTFrontZ      = 0.;
+  const G4double kPMTWindowCenterZ   = kPMTFrontZ + pmtWindowThickness / 2.;
+  const G4double kPhotocathodeCenterZ = kPMTFrontZ + pmtWindowThickness + kPhotocathodeThick / 2.;
+  // Front face of the second stage that the first layer faces across the LAr gap:
+  const G4double kStage2FrontZ   = isPMT ? kPMTFrontZ : kBlueWLSFrontZ;
+  // LAr gap sits between the first layer back face and the second-stage front face:
+  const G4double kUVAcrylBackZ   = kStage2FrontZ - LArthickness;
   const G4double kUVAcrylCenterZ = kUVAcrylBackZ  - uvAcrylicThickness / 2.;
   const G4double kUVAcrylFrontZ  = kUVAcrylBackZ  - uvAcrylicThickness;
   // pTP film is on the front (LAr-facing) face of the UV acrylic:
@@ -481,116 +565,146 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   physUVAcrylic  = new G4PVPlacement(0, G4ThreeVector(0., 0., kUVAcrylCenterZ),
       logicUVAcrylic, "physUVAcrylic", logicWorld, false, 0, true);
 
-  // ══ BLUE WLS SUBSTRATE ════════════════════════════════════════════════════
-  // Second WLS stage: absorbs 340–430 nm photons (from pTP) and re-emits at
-  // ~430 nm (blue), well-matched to SiPM peak PDE.
-  // Photons propagate inside the slab by WLS re-emission and total internal
-  // reflection until they exit through one of the ±y edge faces toward SiPMs.
-  // The ±x edge faces are covered by Vikuiti foils (lateral reflectors, below).
-  // The +z (back) face is covered by a Vikuiti backplane foil (below).
-  pTPsubstrate      = new G4Box("pTPsubstrate",
-      lighttrapsize/2., lighttrapsize/2., pTPsubstratethickness/2.);
-  logicpTPsubstrate = new G4LogicalVolume(pTPsubstrate, bluewlsacrylic, "logicpTPsubstrate");
-  physpTPsubstrate  = new G4PVPlacement(0, G4ThreeVector(0., 0., kBlueWLSCenterZ),
-      logicpTPsubstrate, "physpTPsubstrate", logicWorld, false, 0, true);
+  if (isPMT) {
+    // ══ PMT READOUT (detectorType = "pmt") ══════════════════════════════════════
+    // The blue WLS slab, SiPMs, reflector foils and backplane leak counter are
+    // NOT built.  Instead a PMT faces the first layer across the LAr gap:
+    //
+    //   z = kPMTFrontZ (0)      front face of the PMT
+    //   [optional MgF2 window]  thickness pmtWindowThickness (0 = none)
+    //   photocathode disc       Ø pmtDiameter, 0.1 mm thick, terminal QE counter
+    //
+    // The photocathode is made of the same material as whatever sits in front of
+    // it (LAr if bare, MgF2 behind a window), so its front face introduces no
+    // optical boundary: every photon that reaches it enters and is counted by
+    // MyPMTDetector (QE applied there), then killed.  Photons that miss the disc
+    // simply continue to the world boundary.  No PMT body/housing is modelled.
+    const G4double rPMT = pmtDiameter / 2.;
 
-  // ══ SIPM ARRAY (±y edge coupling) ══════════════════════════════════════════
-  // 30 SiPMs total, split equally between the +y and −y edges of the blue WLS
-  // slab (15 per edge).  Each SiPM presents a 6 mm × 6 mm sensitive face
-  // directly against the slab edge; its 1 mm depth extends outward in ±y.
-  //
-  // The SiPM z half-size equals the blue WLS half-thickness so each SiPM face
-  // spans the full edge area of the slab.
-  //
-  // Copy number assignment:
-  //   0  to nPerEdge−1   → +y edge
-  //   nPerEdge to nSiPMs−1 → −y edge
-  {
-    const G4int    nPerEdge = nSiPMs / 2;
-    const G4double pitchX   = lighttrapsize / nPerEdge;          // uniform x-spacing
-    const G4double edgeY    = lighttrapsize/2. + kSiPMDepthHalf; // face flush to slab edge
-
-    SiPMs      = new G4Box("SiPMs", kSiPMFaceHalf, kSiPMDepthHalf, kSiPMZHalf);
-    logicSiPMs = new G4LogicalVolume(SiPMs, worldMat, "logicSiPMs");
-
-    for (G4int i = 0; i < nPerEdge; i++) {
-      G4double xPos = -lighttrapsize/2. + pitchX * (i + 0.5); // centre of SiPM i in x
-
-      // +y edge: face normal points in −y (toward slab)
-      new G4PVPlacement(0, G4ThreeVector(xPos, +edgeY, kBlueWLSCenterZ),
-          logicSiPMs, "physSiPMs", logicWorld, false, i, true);
-
-      // −y edge: face normal points in +y (toward slab)
-      new G4PVPlacement(0, G4ThreeVector(xPos, -edgeY, kBlueWLSCenterZ),
-          logicSiPMs, "physSiPMs", logicWorld, false, nPerEdge + i, true);
+    if (pmtWindowThickness > 0.) {
+      PMTWindow      = new G4Tubs("PMTWindow", 0., rPMT, pmtWindowThickness/2., 0., 360.*deg);
+      logicPMTWindow = new G4LogicalVolume(PMTWindow, mgf2, "logicPMTWindow");
+      physPMTWindow  = new G4PVPlacement(0, G4ThreeVector(0., 0., kPMTWindowCenterZ),
+          logicPMTWindow, "physPMTWindow", logicWorld, false, 0, true);
     }
+
+    G4Material *cathodeMat = (pmtWindowThickness > 0.) ? mgf2 : worldMat;
+    PMTPhotocathode      = new G4Tubs("PMTPhotocathode", 0., rPMT, kPhotocathodeThick/2., 0., 360.*deg);
+    logicPMTPhotocathode = new G4LogicalVolume(PMTPhotocathode, cathodeMat, "logicPMTPhotocathode");
+    physPMTPhotocathode  = new G4PVPlacement(0, G4ThreeVector(0., 0., kPhotocathodeCenterZ),
+        logicPMTPhotocathode, "physPMTPhotocathode", logicWorld, false, 0, true);
+  } else {
+    // ══ BLUE WLS SUBSTRATE ════════════════════════════════════════════════════
+    // Second WLS stage: absorbs 340–430 nm photons (from pTP) and re-emits at
+    // ~430 nm (blue), well-matched to SiPM peak PDE.
+    // Photons propagate inside the slab by WLS re-emission and total internal
+    // reflection until they exit through one of the ±y edge faces toward SiPMs.
+    // The ±x edge faces are covered by Vikuiti foils (lateral reflectors, below).
+    // The +z (back) face is covered by a Vikuiti backplane foil (below).
+    pTPsubstrate      = new G4Box("pTPsubstrate",
+        lighttrapsize/2., lighttrapsize/2., pTPsubstratethickness/2.);
+    logicpTPsubstrate = new G4LogicalVolume(pTPsubstrate, bluewlsacrylic, "logicpTPsubstrate");
+    physpTPsubstrate  = new G4PVPlacement(0, G4ThreeVector(0., 0., kBlueWLSCenterZ),
+        logicpTPsubstrate, "physpTPsubstrate", logicWorld, false, 0, true);
+
+    // ══ SIPM ARRAY (±y edge coupling) ══════════════════════════════════════════
+    // 30 SiPMs total, split equally between the +y and −y edges of the blue WLS
+    // slab (15 per edge).  Each SiPM presents a 6 mm × 6 mm sensitive face
+    // directly against the slab edge; its 1 mm depth extends outward in ±y.
+    //
+    // The SiPM z half-size equals the blue WLS half-thickness so each SiPM face
+    // spans the full edge area of the slab.
+    //
+    // Copy number assignment:
+    //   0  to nPerEdge−1   → +y edge
+    //   nPerEdge to nSiPMs−1 → −y edge
+    {
+      const G4int    nPerEdge = nSiPMs / 2;
+      const G4double pitchX   = lighttrapsize / nPerEdge;          // uniform x-spacing
+      const G4double edgeY    = lighttrapsize/2. + kSiPMDepthHalf; // face flush to slab edge
+
+      SiPMs      = new G4Box("SiPMs", kSiPMFaceHalf, kSiPMDepthHalf, kSiPMZHalf);
+      logicSiPMs = new G4LogicalVolume(SiPMs, worldMat, "logicSiPMs");
+
+      for (G4int i = 0; i < nPerEdge; i++) {
+        G4double xPos = -lighttrapsize/2. + pitchX * (i + 0.5); // centre of SiPM i in x
+
+        // +y edge: face normal points in −y (toward slab)
+        new G4PVPlacement(0, G4ThreeVector(xPos, +edgeY, kBlueWLSCenterZ),
+            logicSiPMs, "physSiPMs", logicWorld, false, i, true);
+
+        // −y edge: face normal points in +y (toward slab)
+        new G4PVPlacement(0, G4ThreeVector(xPos, -edgeY, kBlueWLSCenterZ),
+            logicSiPMs, "physSiPMs", logicWorld, false, nPerEdge + i, true);
+      }
+    }
+
+    // ══ REFLECTOR FOIL — BACKPLANE (+z face of blue WLS) ════════════════════════
+    // Foil on the back face of the blue WLS slab, selectable at run time via
+    // /detector/backplaneFoil (geometry.backplaneFoil):
+    //   "vikuiti" — 3M ESR, specular ~98 % reflector (default)
+    //   "ptfe"    — sintered PTFE, diffuse (Lambertian) ~95 % reflector
+    //   "none"    — no foil; the full back-face escape is seen by the leak detector
+    // Whichever is chosen, ~(1−R) is transmitted and monitored by the backplane
+    // leak detector below.  Edge (±x) foils always stay Vikuiti (out of scope).
+    ReflectiveFoilBackPlane      = nullptr;
+    logicReflectiveFoilBackPlane = nullptr;
+    physReflectiveFoilBackPlane  = nullptr;
+
+    G4OpticalSurface* backplaneSurf = nullptr;
+    if      (fBackplaneFoil == "vikuiti") backplaneSurf = Vikuiti;
+    else if (fBackplaneFoil == "ptfe")    backplaneSurf = PTFE;
+    else if (fBackplaneFoil == "none")    backplaneSurf = nullptr;
+    else {
+      G4cerr << "[Construction] Unknown backplaneFoil '" << fBackplaneFoil
+             << "'; falling back to 'vikuiti'." << G4endl;
+      fBackplaneFoil = "vikuiti";
+      backplaneSurf  = Vikuiti;
+    }
+
+    if (fBackplaneFoil != "none") {
+      ReflectiveFoilBackPlane      = new G4Box("ReflectiveFoilBackPlane",
+          lighttrapsize/2., lighttrapsize/2., kVikuitiThick/2.);
+      logicReflectiveFoilBackPlane = new G4LogicalVolume(
+          ReflectiveFoilBackPlane, acrylicMcMaster, "logicReflectiveFoilBackPlane");
+      new G4LogicalSkinSurface("skinBackplane", logicReflectiveFoilBackPlane, backplaneSurf);
+      physReflectiveFoilBackPlane  = new G4PVPlacement(0,
+          G4ThreeVector(0., 0., kVikuitiCenterZ),
+          logicReflectiveFoilBackPlane, "physReflectiveFoilBackPlane",
+          logicWorld, false, 0, true);
+    }
+
+    // ══ VIKUITI FOILS — LATERAL EDGES (±x faces of blue WLS) ════════════════════
+    // Two foils covering the ±x faces of the blue WLS slab — the two edges that
+    // have no SiPMs.  They reflect photons trying to escape laterally in x and
+    // redirect them back toward the SiPM edges, improving light collection.
+    // Each foil face area = lighttrapsize (y) × pTPsubstratethickness (z).
+    VikuitiEdge      = new G4Box("VikuitiEdge",
+        kVikuitiThick/2., lighttrapsize/2., pTPsubstratethickness/2.);
+    logicVikuitiEdge = new G4LogicalVolume(VikuitiEdge, acrylicMcMaster, "logicVikuitiEdge");
+    new G4LogicalSkinSurface("skinEdge", logicVikuitiEdge, Vikuiti);
+
+    // +x lateral edge foil
+    physVikuitiEdge_pX = new G4PVPlacement(0,
+        G4ThreeVector(+(lighttrapsize/2. + kVikuitiThick/2.), 0., kBlueWLSCenterZ),
+        logicVikuitiEdge, "physVikuitiEdge_pX", logicWorld, false, 0, true);
+    // −x lateral edge foil
+    physVikuitiEdge_nX = new G4PVPlacement(0,
+        G4ThreeVector(-(lighttrapsize/2. + kVikuitiThick/2.), 0., kBlueWLSCenterZ),
+        logicVikuitiEdge, "physVikuitiEdge_nX", logicWorld, false, 1, true);
+
+    // ══ BACKPLANE LEAK DETECTOR ═════════════════════════════════════════════════
+    // Thin (0.1 mm) LAr slab immediately behind the Vikuiti backplane foil.
+    // 100 %-efficient optical counter: records every photon transmitted through
+    // the backplane (~2 % of those hitting it).  Used for optical validation only.
+    BackplaneLeakDet      = new G4Box("BackplaneLeakDet",
+        lighttrapsize/2., lighttrapsize/2., kLeakDetThick/2.);
+    logicBackplaneLeakDet = new G4LogicalVolume(
+        BackplaneLeakDet, worldMat, "logicBackplaneLeakDet");
+    physBackplaneLeakDet  = new G4PVPlacement(0,
+        G4ThreeVector(0., 0., kLeakDetCenterZ),
+        logicBackplaneLeakDet, "physBackplaneLeakDet", logicWorld, false, 0, true);
   }
-
-  // ══ REFLECTOR FOIL — BACKPLANE (+z face of blue WLS) ════════════════════════
-  // Foil on the back face of the blue WLS slab, selectable at run time via
-  // /detector/backplaneFoil (geometry.backplaneFoil):
-  //   "vikuiti" — 3M ESR, specular ~98 % reflector (default)
-  //   "ptfe"    — sintered PTFE, diffuse (Lambertian) ~95 % reflector
-  //   "none"    — no foil; the full back-face escape is seen by the leak detector
-  // Whichever is chosen, ~(1−R) is transmitted and monitored by the backplane
-  // leak detector below.  Edge (±x) foils always stay Vikuiti (out of scope).
-  ReflectiveFoilBackPlane      = nullptr;
-  logicReflectiveFoilBackPlane = nullptr;
-  physReflectiveFoilBackPlane  = nullptr;
-
-  G4OpticalSurface* backplaneSurf = nullptr;
-  if      (fBackplaneFoil == "vikuiti") backplaneSurf = Vikuiti;
-  else if (fBackplaneFoil == "ptfe")    backplaneSurf = PTFE;
-  else if (fBackplaneFoil == "none")    backplaneSurf = nullptr;
-  else {
-    G4cerr << "[Construction] Unknown backplaneFoil '" << fBackplaneFoil
-           << "'; falling back to 'vikuiti'." << G4endl;
-    fBackplaneFoil = "vikuiti";
-    backplaneSurf  = Vikuiti;
-  }
-
-  if (fBackplaneFoil != "none") {
-    ReflectiveFoilBackPlane      = new G4Box("ReflectiveFoilBackPlane",
-        lighttrapsize/2., lighttrapsize/2., kVikuitiThick/2.);
-    logicReflectiveFoilBackPlane = new G4LogicalVolume(
-        ReflectiveFoilBackPlane, acrylicMcMaster, "logicReflectiveFoilBackPlane");
-    new G4LogicalSkinSurface("skinBackplane", logicReflectiveFoilBackPlane, backplaneSurf);
-    physReflectiveFoilBackPlane  = new G4PVPlacement(0,
-        G4ThreeVector(0., 0., kVikuitiCenterZ),
-        logicReflectiveFoilBackPlane, "physReflectiveFoilBackPlane",
-        logicWorld, false, 0, true);
-  }
-
-  // ══ VIKUITI FOILS — LATERAL EDGES (±x faces of blue WLS) ════════════════════
-  // Two foils covering the ±x faces of the blue WLS slab — the two edges that
-  // have no SiPMs.  They reflect photons trying to escape laterally in x and
-  // redirect them back toward the SiPM edges, improving light collection.
-  // Each foil face area = lighttrapsize (y) × pTPsubstratethickness (z).
-  VikuitiEdge      = new G4Box("VikuitiEdge",
-      kVikuitiThick/2., lighttrapsize/2., pTPsubstratethickness/2.);
-  logicVikuitiEdge = new G4LogicalVolume(VikuitiEdge, acrylicMcMaster, "logicVikuitiEdge");
-  new G4LogicalSkinSurface("skinEdge", logicVikuitiEdge, Vikuiti);
-
-  // +x lateral edge foil
-  physVikuitiEdge_pX = new G4PVPlacement(0,
-      G4ThreeVector(+(lighttrapsize/2. + kVikuitiThick/2.), 0., kBlueWLSCenterZ),
-      logicVikuitiEdge, "physVikuitiEdge_pX", logicWorld, false, 0, true);
-  // −x lateral edge foil
-  physVikuitiEdge_nX = new G4PVPlacement(0,
-      G4ThreeVector(-(lighttrapsize/2. + kVikuitiThick/2.), 0., kBlueWLSCenterZ),
-      logicVikuitiEdge, "physVikuitiEdge_nX", logicWorld, false, 1, true);
-
-  // ══ BACKPLANE LEAK DETECTOR ═════════════════════════════════════════════════
-  // Thin (0.1 mm) LAr slab immediately behind the Vikuiti backplane foil.
-  // 100 %-efficient optical counter: records every photon transmitted through
-  // the backplane (~2 % of those hitting it).  Used for optical validation only.
-  BackplaneLeakDet      = new G4Box("BackplaneLeakDet",
-      lighttrapsize/2., lighttrapsize/2., kLeakDetThick/2.);
-  logicBackplaneLeakDet = new G4LogicalVolume(
-      BackplaneLeakDet, worldMat, "logicBackplaneLeakDet");
-  physBackplaneLeakDet  = new G4PVPlacement(0,
-      G4ThreeVector(0., 0., kLeakDetCenterZ),
-      logicBackplaneLeakDet, "physBackplaneLeakDet", logicWorld, false, 0, true);
 
   // ══ FIRST-LAYER BACKPLANE COUNTER ═══════════════════════════════════════════
   // Thin (0.1 mm) LAr slab in the LAr gap, its front face standing 0.01 mm behind
@@ -665,23 +779,29 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
     auto *vaUV = new G4VisAttributes(G4Colour(0.5, 0.8, 1.0, 0.4));
     logicUVAcrylic->SetVisAttributes(vaUV);
 
-    // Blue WLS slab: blue, semi-transparent
+    // Blue WLS slab: blue, semi-transparent (sipm mode only)
     auto *vaWLS = new G4VisAttributes(G4Colour(0.1, 0.3, 1.0, 0.5));
-    logicpTPsubstrate->SetVisAttributes(vaWLS);
+    if (logicpTPsubstrate) logicpTPsubstrate->SetVisAttributes(vaWLS);
 
-    // SiPMs: green
+    // SiPMs: green (sipm mode only)
     auto *vaSiPM = new G4VisAttributes(G4Colour(0.0, 0.8, 0.2, 0.9));
-    logicSiPMs->SetVisAttributes(vaSiPM);
+    if (logicSiPMs) logicSiPMs->SetVisAttributes(vaSiPM);
 
     // Reflector foils: silver/grey (backplane foil absent when backplaneFoil=none)
     auto *vaVikuiti = new G4VisAttributes(G4Colour(0.8, 0.8, 0.8, 0.9));
     if (logicReflectiveFoilBackPlane)
       logicReflectiveFoilBackPlane->SetVisAttributes(vaVikuiti);
-    logicVikuitiEdge->SetVisAttributes(vaVikuiti);
+    if (logicVikuitiEdge) logicVikuitiEdge->SetVisAttributes(vaVikuiti);
 
-    // Leak detector: magenta, semi-transparent
+    // Leak detector: magenta, semi-transparent (sipm mode only)
     auto *vaLeak = new G4VisAttributes(G4Colour(1.0, 0.0, 1.0, 0.3));
-    logicBackplaneLeakDet->SetVisAttributes(vaLeak);
+    if (logicBackplaneLeakDet) logicBackplaneLeakDet->SetVisAttributes(vaLeak);
+
+    // PMT window: pale grey, transparent; photocathode: dark red (pmt mode only)
+    auto *vaPMTWin = new G4VisAttributes(G4Colour(0.9, 0.9, 0.9, 0.3));
+    if (logicPMTWindow) logicPMTWindow->SetVisAttributes(vaPMTWin);
+    auto *vaPMTCat = new G4VisAttributes(G4Colour(0.7, 0.1, 0.1, 0.9));
+    if (logicPMTPhotocathode) logicPMTPhotocathode->SetVisAttributes(vaPMTCat);
 
     // First-layer backplane counter: cyan, semi-transparent
     auto *vaGap = new G4VisAttributes(G4Colour(0.0, 0.8, 1.0, 0.3));
@@ -697,13 +817,24 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
 
 void MyLightTrapConstruction::ConstructSDandField()
 {
-  // SiPM array: applies Broadcom PDE table (pde_broadcom.dat) per photon
-  MySensitiveDetector *sensDet = new MySensitiveDetector("SensitiveDetector");
-  logicSiPMs->SetSensitiveDetector(sensDet);
+  // ── Second stage: SiPM array (sipm mode) or PMT photocathode (pmt mode) ─────
+  if (logicSiPMs) {
+    // SiPM array: applies Broadcom PDE table (pde_broadcom.dat) per photon → ntuples 0/1
+    MySensitiveDetector *sensDet = new MySensitiveDetector("SensitiveDetector");
+    logicSiPMs->SetSensitiveDetector(sensDet);
+  }
+  if (logicPMTPhotocathode) {
+    // PMT photocathode: terminal counter, flat QE inside [pmtQEmin, pmtQEmax] nm
+    // (default 100 % over 110–500 nm) → ntuples 9 (PMTPhotons) / 10 (PMTHits)
+    MyPMTDetector *pmtDet = new MyPMTDetector("PMTDetector", pmtQE, pmtQEmin_nm, pmtQEmax_nm);
+    logicPMTPhotocathode->SetSensitiveDetector(pmtDet);
+  }
 
-  // Backplane leak detector: terminal 100 %-efficiency counter → ntuple 6
-  MyLeakDetector *backplaneDet = new MyLeakDetector("BackplaneLeakDetector", 6);
-  logicBackplaneLeakDet->SetSensitiveDetector(backplaneDet);
+  // Backplane leak detector: terminal 100 %-efficiency counter → ntuple 6 (sipm mode only)
+  if (logicBackplaneLeakDet) {
+    MyLeakDetector *backplaneDet = new MyLeakDetector("BackplaneLeakDetector", 6);
+    logicBackplaneLeakDet->SetSensitiveDetector(backplaneDet);
+  }
 
   // First-layer backplane counter: pass-through counter (killTrack=false) → ntuple 7.
   // Sits 0.01 mm behind the first-layer back face (TIR-aware); records photons that

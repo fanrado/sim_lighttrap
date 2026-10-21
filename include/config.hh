@@ -67,6 +67,13 @@ struct PTFEConfig {
     std::vector<double> reflectivity;   // diffuse (Lambertian) reflector; ~0.95
 };
 
+struct MgF2Config {
+    // Optional VUV-transparent PMT entrance window (only built when
+    // geometry.pmtWindowThickness_mm > 0 in PMT mode).
+    std::vector<double> rindex;
+    std::vector<double> abslen_m;
+};
+
 struct MaterialsConfig {
     PTPConfig             ptp;
     UVAcrylicConfig       uvAcrylic;
@@ -75,6 +82,7 @@ struct MaterialsConfig {
     LArConfig             lar;
     VikuitiConfig         vikuiti;
     PTFEConfig            ptfe;
+    MgF2Config            mgf2;
 };
 
 struct SimConfig {
@@ -90,6 +98,17 @@ struct SimConfig {
     // (diffuse/Lambertian), or "none" (no foil — full back-face escape).
     std::string backplaneFoil       = "vikuiti";
 
+    // ── Readout stage selector ──────────────────────────────────────────────
+    // "sipm": blue-WLS slab + edge SiPMs + reflector foils (original design).
+    // "pmt" : the second layer is replaced by a PMT whose photocathode faces
+    //         the first layer across the LAr gap (LArThickness_mm).
+    std::string detectorType        = "sipm";
+    double pmtDiameter_mm           = 23.0;   // photocathode (sensitive) diameter
+    double pmtWindowThickness_mm    = 0.0;    // MgF2 entrance window; 0 = bare photocathode
+    double pmtQE                    = 1.0;    // flat quantum efficiency inside [pmtQEmin, pmtQEmax]
+    double pmtQEmin_nm              = 110.0;  // QE window lower edge [nm]
+    double pmtQEmax_nm              = 500.0;  // QE window upper edge [nm]
+
     // ── Source (messenger: /gps/<param>) ────────────────────────────────────
     std::string particle      = "opticalphoton";
     double      energy_eV     = 9.68;
@@ -100,6 +119,7 @@ struct SimConfig {
     double centerZ_cm         = -2.0;
     double halfX_cm           = 7.5;
     double halfY_cm           = 7.5;
+    double radius_cm          = 0.7;    // Circle shape only (14 mm beam): /gps/pos/radius
     double directionX         = 0.0;
     double directionY         = 0.0;
     double directionZ         = 1.0;

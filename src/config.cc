@@ -140,6 +140,13 @@ static MaterialsConfig parseMaterials(const YAML::Node& mat, const std::string& 
         validateOpticalArray(m.ptfe.reflectivity, "ptfe.reflectivity");
     }
 
+    if (auto n = mat["mgf2"]) {
+        m.mgf2.rindex   = readVec(n, "rindex");
+        m.mgf2.abslen_m = readVec(n, "abslen_m");
+        validateOpticalArray(m.mgf2.rindex,   "mgf2.rindex");
+        validateOpticalArray(m.mgf2.abslen_m, "mgf2.abslen_m");
+    }
+
     return m;
 }
 
@@ -163,6 +170,23 @@ SimConfig SimConfig::fromFile(const std::string& path)
         if (geo["lightTrapSize_cm"])          cfg.lightTrapSize_cm         = geo["lightTrapSize_cm"].as<double>();
         if (geo["pTPsigmaAlpha_rad"])         cfg.pTPsigmaAlpha_rad        = geo["pTPsigmaAlpha_rad"].as<double>();
         if (geo["backplaneFoil"])             cfg.backplaneFoil            = geo["backplaneFoil"].as<std::string>();
+        if (geo["detectorType"])              cfg.detectorType             = geo["detectorType"].as<std::string>();
+        if (geo["pmtDiameter_mm"])            cfg.pmtDiameter_mm           = geo["pmtDiameter_mm"].as<double>();
+        if (geo["pmtWindowThickness_mm"])     cfg.pmtWindowThickness_mm    = geo["pmtWindowThickness_mm"].as<double>();
+        if (geo["pmtQE"])                     cfg.pmtQE                    = geo["pmtQE"].as<double>();
+        if (geo["pmtQEmin_nm"])               cfg.pmtQEmin_nm              = geo["pmtQEmin_nm"].as<double>();
+        if (geo["pmtQEmax_nm"])               cfg.pmtQEmax_nm              = geo["pmtQEmax_nm"].as<double>();
+        if (cfg.detectorType != "sipm" && cfg.detectorType != "pmt")
+            throw std::runtime_error("SimConfig: geometry.detectorType must be 'sipm' or 'pmt', got '" +
+                                     cfg.detectorType + "'");
+        if (cfg.pmtDiameter_mm <= 0.0)
+            throw std::runtime_error("SimConfig: geometry.pmtDiameter_mm must be > 0");
+        if (cfg.pmtWindowThickness_mm < 0.0)
+            throw std::runtime_error("SimConfig: geometry.pmtWindowThickness_mm must be >= 0");
+        if (cfg.pmtQE < 0.0 || cfg.pmtQE > 1.0)
+            throw std::runtime_error("SimConfig: geometry.pmtQE must be in [0, 1]");
+        if (cfg.pmtQEmin_nm >= cfg.pmtQEmax_nm)
+            throw std::runtime_error("SimConfig: geometry.pmtQEmin_nm must be < pmtQEmax_nm");
     }
 
     if (auto src = doc["source"]) {
@@ -175,6 +199,7 @@ SimConfig SimConfig::fromFile(const std::string& path)
         if (src["centerZ_cm"])     cfg.centerZ_cm    = src["centerZ_cm"].as<double>();
         if (src["halfX_cm"])       cfg.halfX_cm      = src["halfX_cm"].as<double>();
         if (src["halfY_cm"])       cfg.halfY_cm      = src["halfY_cm"].as<double>();
+        if (src["radius_cm"])      cfg.radius_cm     = src["radius_cm"].as<double>();
         if (src["directionX"])     cfg.directionX    = src["directionX"].as<double>();
         if (src["directionY"])     cfg.directionY    = src["directionY"].as<double>();
         if (src["directionZ"])     cfg.directionZ    = src["directionZ"].as<double>();

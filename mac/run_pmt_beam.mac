@@ -1,0 +1,33 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# run_pmt_beam.mac  —  PMT readout: 14 mm diameter parallel VUV beam.
+#
+# Intended use (geometry from YAML, source from this macro):
+#   ./sim_lighttrap sim_config_pmt.yaml run_pmt_beam.mac
+#
+# Can also be run standalone (./sim_lighttrap run_pmt_beam.mac): the /detector/
+# commands below then switch the default geometry to the PMT readout.
+#
+# Coordinate reference (pmt mode): the PMT front face sits at z = 0.
+#   photocathode   ≈  z = 0 to +0.1 mm   (Ø 23 mm, bare — no window)
+#   LAr gap        ≈  z = -3 to 0 mm
+#   UV acrylic     ≈  z = -6 to -3 mm
+#   pTP film       ≈  z = -6.002 to -6 mm
+# The beam starts at z = -2 cm (14 mm in front of the pTP film) and travels +z.
+# ─────────────────────────────────────────────────────────────────────────────
+
+/detector/detectorType pmt
+/detector/pmtDiameter 23
+/detector/pmtWindowThick 0
+/detector/pmtQE 1.0
+/detector/pmtQEmin 110
+/detector/pmtQEmax 500
+/run/reinitializeGeometry
+
+/gps/particle opticalphoton
+/gps/energy 9.68 eV
+/gps/pos/type Plane
+/gps/pos/shape Circle
+/gps/pos/centre 0. 0. -2. cm
+/gps/pos/radius 7 mm
+/gps/direction 0 0 1
+/run/beamOn 10000
