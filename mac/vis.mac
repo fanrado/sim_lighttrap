@@ -15,7 +15,8 @@
 /vis/scene/add/scale 10 cm
 /vis/scene/add/axes
 /vis/scene/add/trajectories smooth
-/vis/scene/add/eventID
+# (no /vis/scene/add/eventID: the Qt3D driver cannot draw 2D text and would print
+#  the harmless "qt3D-0001 ... 2D drawing not yet implemented" warning instead)
 /vis/scene/endOfEventAction accumulate
 
 # File menu :
