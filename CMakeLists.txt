@@ -1,4 +1,7 @@
-cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
+# Geant4 11 itself needs CMake >= 3.16; the upper bound tells CMake we accept
+# all policies up to 3.31 (silences the "compatibility with < 3.10 is deprecated"
+# warning on CMake 4 without changing behaviour).
+cmake_minimum_required(VERSION 3.16...3.31 FATAL_ERROR)
 project(LightTrapSimulation)
 
 # ── Geant4 discovery (portable) ──────────────────────────────────────────────
@@ -21,6 +24,14 @@ include(${Geant4_USE_FILE})
 find_package(yaml-cpp QUIET)
 if (NOT yaml-cpp_FOUND)
   include(FetchContent)
+  # yaml-cpp 0.8.0 still declares cmake_minimum_required(VERSION 3.4), which
+  # CMake >= 4.0 rejects ("Compatibility with CMake < 3.5 has been removed").
+  # Let the fetched sources configure with the 3.5 policy floor; equivalent to
+  # passing -DCMAKE_POLICY_VERSION_MINIMUM=3.5 on the command line.
+  if (NOT DEFINED CMAKE_POLICY_VERSION_MINIMUM)
+    set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING
+        "Policy version floor for fetched dependencies (yaml-cpp 0.8.0 needs it on CMake >= 4)")
+  endif()
   FetchContent_Declare(
     yaml-cpp
     GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git

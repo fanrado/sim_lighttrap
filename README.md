@@ -36,6 +36,12 @@ part of this branch; it lives in `develop` and is developed independently.
    # cmake -DCMAKE_C_COMPILER=/usr/bin/cc -DCMAKE_CXX_COMPILER=/usr/bin/c++ -DGeant4_DIR=$GEANT4_CMAKE_DIR ..
    ```
 
+   Works with CMake 4 (tested 4.3.4): the fetched yaml-cpp 0.8.0 sources still
+   declare a CMake 3.4 minimum, which CMake 4 rejects, so `CMakeLists.txt`
+   sets `CMAKE_POLICY_VERSION_MINIMUM 3.5` for them. The remaining
+   "Compatibility with CMake < 3.10 will be removed" line is a harmless
+   deprecation warning from yaml-cpp's own file.
+
    This configures the project, locates all sources under `src/` and headers
    under `include/`, and copies the macros (`mac/`), input data (`input/`) and
    `sim_config.yaml` into the build directory.
