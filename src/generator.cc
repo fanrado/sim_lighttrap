@@ -6,24 +6,19 @@
 #include "G4VSolid.hh"
 #include "G4Box.hh"
 #include "G4Exception.hh"
+#include "Randomize.hh"
 #include <sstream>
 
 MyPrimaryGenerator::MyPrimaryGenerator()
 {
-  //fParticleGun = new G4ParticleGun(1); // particle per event
+  // Default source (overridden by the /gps/ commands of the YAML or the macro):
+  // a point source of 128 nm optical photons travelling along +z.
   G4ParticleTable *particleTable = G4ParticleTable::GetParticleTable();
-  G4ParticleDefinition *particle = particleTable->FindParticle("opticalphoton");  // examples: e-, e+, proton, gamma
+  G4ParticleDefinition *particle = particleTable->FindParticle("opticalphoton");
 
   G4ThreeVector pos(0., 0., 24.5*cm);
   G4ThreeVector mom(0., 0., 1.);
   G4double energy = 9.68 * eV;
-  //G4ThreeVector momentumUnitVector = G4RandomDirection();
-  //fParticleGun->SetParticleMomentumDirection(momentumUnitVector);
-
-  //fParticleGun->SetParticlePosition(pos);
-  //fParticleGun->SetParticleMomentumDirection(mom);
-  //fParticleGun->SetParticleMomentum(0.1*MeV);
-  //fParticleGun->SetParticleDefinition(particle);
 
   fGPS = new G4GeneralParticleSource();
   fGPS->GetCurrentSource()->SetParticleDefinition(particle);
@@ -31,20 +26,15 @@ MyPrimaryGenerator::MyPrimaryGenerator()
   fGPS->GetCurrentSource()->GetPosDist()->SetPosDisType("Point");
   fGPS->GetCurrentSource()->GetAngDist()->SetParticleMomentumDirection(mom);
   fGPS->GetCurrentSource()->GetEneDist()->SetMonoEnergy(energy);
-
-  // G4cout << "Primary particle generated in Constructor: pol: " << fGPS->GetCurrentSource()->GetParticlePolarization().mag2() << G4endl;
-
 }
 
 MyPrimaryGenerator::~MyPrimaryGenerator()
 {
-  //delete fParticleGun;
   delete fGPS;
 }
 
 void MyPrimaryGenerator::GeneratePrimaries(G4Event *anEvent)
 {
-  //fParticleGun->GeneratePrimaryVertex(anEvent);
   fGPS->GeneratePrimaryVertex(anEvent);
 
   // ── Guard: the primary vertex must lie inside the world box ────────────────
@@ -99,9 +89,4 @@ void MyPrimaryGenerator::GeneratePrimaries(G4Event *anEvent)
 
   // Set the random polarization vector for the optical photon
   fGPS->GetCurrentSource()->SetParticlePolarization(randomPol);
-
-  // G4cout << "Primary particle generated:" 
-  // << " pos: " << fGPS->GetCurrentSource()->GetParticlePosition()
-  // << " pol: " << fGPS->GetCurrentSource()->GetParticlePolarization()
-  // << G4endl;
 }

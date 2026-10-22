@@ -46,7 +46,6 @@ public:
 
   // Efficiency at a given wavelength [nm].
   G4double Efficiency(G4double wl_nm) const;
-  G4bool   HasTable() const { return !fTableWl.empty(); }
   G4String Description() const;   // one-line summary for the run printout
 
   // Load "<wavelength_nm> <QE>" (comments after '#', blank lines skipped);

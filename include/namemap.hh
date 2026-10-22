@@ -14,17 +14,6 @@ public:
     return (it != GetMap().end()) ? it->second : 0;
   }
   
-  // Decode: Look up the material name given an integer code.
-  // Returns "Unknown" if the code is not found.
-  static std::string Decode(int code) {
-    // Loop through the fixed map and return the matching key.
-    for (const auto& pair : GetMap()) {
-      if (pair.second == code)
-        return pair.first;
-    }
-    return "Unknown";
-  }
-
 private:
   // Returns the fixed mapping as a const reference.
   static const std::unordered_map<std::string, int>& GetMap() {

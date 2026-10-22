@@ -262,15 +262,13 @@ void MyLightTrapConstruction::DefinePTPMaterial()
   // which is the documented source of truth; macro-only runs use this table).
   G4double abslen[13]   = {10*m, 10*m, 10*m, 10*m, 0.0005*mm, 0.0005*mm, 0.0005*mm, 0.0005*mm,
                            0.0005*mm, 0.0005*mm, 0.0005*mm, 0.0005*mm, 0.0005*mm};
-  G4double emission[13] = {0., 0.0005, 0.002, 0.022, 0.0005, 0., 0., 0., 0., 0., 0., 0., 0.};
   G4double bulkabs[13]  = {1*m, 1*m, 1*m, 1*m, 100*m, 100*m, 100*m, 100*m,
                            100*m, 100*m, 100*m, 100*m, 100*m};
 
-  G4double buf_ri[13], buf_abs[13], buf_wls[13], buf_em[13];
+  G4double buf_ri[13], buf_abs[13], buf_wls[13];
   G4double* p_rindex   = resolveArray(fCfg.materials.ptp.rindex,      1., buf_ri,  rindex);
   G4double* p_bulkabs  = resolveArray(fCfg.materials.ptp.abslen_m,    m,  buf_abs, bulkabs);
   G4double* p_wlsabs   = resolveArray(fCfg.materials.ptp.wlsabslen_m, m,  buf_wls, abslen);
-  G4double* p_emission = resolveArray(fCfg.materials.ptp.wlscomponent, 1., buf_em, emission);
 
   G4MaterialPropertiesTable *mpt = new G4MaterialPropertiesTable();
   mpt->AddProperty("RINDEX",       energy, p_rindex,   13);
@@ -282,7 +280,6 @@ void MyLightTrapConstruction::DefinePTPMaterial()
   // built-in smooth default: asymmetric Gaussian peaking at 340 nm (blue σ=18,
   // red σ=30 nm), avoiding the coarse-grid piecewise-linear artifact. Real pTP
   // emission is not Gaussian — supply measured data via the file for accuracy.
-  (void)p_emission;  // superseded by addWLSEmission()
   addWLSEmission(mpt,
       fCfg.materials.ptp.emissionWl_nm, fCfg.materials.ptp.emissionIntensity,
       fCfg.materials.ptp.wlscomponent,
