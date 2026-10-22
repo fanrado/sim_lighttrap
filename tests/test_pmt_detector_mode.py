@@ -170,7 +170,11 @@ def test_run_macros_use_14mm_circular_beam(mac_file):
     assert re.search(r"^/gps/pos/type\s+Plane\s*$", mac, re.M)
     assert re.search(r"^/gps/pos/shape\s+Circle\s*$", mac, re.M)
     assert re.search(r"^/gps/pos/radius\s+7\s+mm\s*$", mac, re.M)
-    assert re.search(r"^/gps/pos/centre\s+0\.?\s+0\.?\s+-2\.?\s+cm\s*$", mac, re.M)
+    # on the beam axis, in front of the sample (z < -10 mm) and inside the default world (|z| < 182 mm)
+    m = re.search(r"^/gps/pos/centre\s+0\.?\s+0\.?\s+(\S+)\s+(\w+)\s*$", mac, re.M)
+    assert m, f"{mac_file}: /gps/pos/centre 0 0 <z> <unit> expected"
+    z_mm = float(m.group(1)) * {"cm": 10.0, "mm": 1.0, "m": 1000.0}[m.group(2)]
+    assert -182.0 < z_mm < -10.0, f"{mac_file}: beam start z = {z_mm} mm must be inside the world and before the sample"
     assert re.search(r"^/gps/direction\s+0\s+0\s+1\s*$", mac, re.M)
     assert "/gps/pos/halfx" not in mac and "Square" not in [l.split()[-1] for l in mac.splitlines() if l.startswith("/gps/pos/shape")]
     assert "/detector/" not in mac, "run macros must not need geometry commands: PMT is the only design"
