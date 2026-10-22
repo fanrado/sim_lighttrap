@@ -6,14 +6,8 @@
 # cylinder (MgF2 faceplate at z = 0, dark red photocathode Ø 23 mm behind it,
 # grey glass envelope). The 14 mm circular VUV beam is preloaded: use the Run
 # menu or "/run/beamOn 30" to see trajectories.
-#
-# Driver: OpenGL stored Qt (OGL). The experimental Qt3D driver did not draw the
-# WLS secondaries (the beam appeared to stop at the sample) although the run
-# produced them; if OGL is unavailable in your build, try "/vis/open TSG".
-# Trajectories are coloured by particle: optical photons blue, charged red/green.
-# Cross-check without a display: ./sim_lighttrap draw_offscreen.mac
 # ─────────────────────────────────────────────────────────────────────────────
-/vis/open OGL
+/vis/open Qt3D
 /vis/drawVolume
 /vis/viewer/set/viewpointVector -1 0 0
 /vis/viewer/set/autoRefresh true
@@ -21,11 +15,8 @@
 /vis/scene/add/scale 10 cm
 /vis/scene/add/axes
 /vis/scene/add/trajectories smooth
-/vis/modeling/trajectories/create/drawByParticleID
-/vis/modeling/trajectories/drawByParticleID-0/set opticalphoton blue
-/vis/modeling/trajectories/drawByParticleID-0/default/setDrawStepPts false
 /vis/scene/add/eventID
-/vis/scene/endOfEventAction accumulate 100
+/vis/scene/endOfEventAction accumulate
 
 # File menu :
 /gui/addMenu file File
