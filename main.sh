@@ -2,7 +2,8 @@
 # =============================================================================
 # main.sh — run the LightTrap first-layer + PMT simulation with fixed settings.
 #
-#   ./main.sh            (from the repository root; needs a built build/sim_lighttrap)
+#   ./main.sh            from the repository root (runs in build/), or
+#   cd build && ./main.sh   (cmake copies this script into build/ as well)
 #
 # Edit the variables below, nothing else. Every run ends with a summary block
 # (beam photons, WLS photons born in pTP, photons on the PMT, PMT hits).
@@ -45,12 +46,14 @@ PMT_QE=
 # overwrite each other). Leave empty ("") to keep output_apexltsim0.root.
 OUTPUT=output_${WITH_SAMPLE}_${WORLD_MEDIUM}.root
 
-# Build directory containing sim_lighttrap and the copied macros / data files.
+# Build directory containing sim_lighttrap and the copied macros / data files
+# (only used when this script is NOT already sitting next to sim_lighttrap).
 BUILD_DIR=build
 
 # ---- Run (no need to edit below) --------------------------------------------
 set -euo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/$BUILD_DIR"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -x "$HERE/sim_lighttrap" ]; then cd "$HERE"; else cd "$HERE/$BUILD_DIR"; fi
 [ -x ./sim_lighttrap ] || { echo "error: ./sim_lighttrap not found in $PWD — build the project first" >&2; exit 1; }
 
 ARGS=()

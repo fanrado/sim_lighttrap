@@ -60,6 +60,9 @@ file(GLOB DATA_FILES ${PROJECT_SOURCE_DIR}/input/*.dat)
 file(COPY ${DATA_FILES} DESTINATION ${PROJECT_BINARY_DIR})
 file(GLOB YAML_FILES ${PROJECT_SOURCE_DIR}/*.yaml)
 file(COPY ${YAML_FILES} DESTINATION ${PROJECT_BINARY_DIR})
+# Copy the run script too (it detects that it sits next to sim_lighttrap).
+file(COPY ${PROJECT_SOURCE_DIR}/main.sh DESTINATION ${PROJECT_BINARY_DIR}
+     FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 
 # Build the executable.
 add_executable(sim_lighttrap ${sources} ${headers})

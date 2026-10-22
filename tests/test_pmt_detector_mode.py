@@ -547,6 +547,10 @@ def test_main_sh_run_script():
         assert cli in sh
     assert "output_apexltsim0.root" in sh and "mv -f" in sh, "fixed output file must be renamed"
     assert subprocess.run(["bash", "-n", "main.sh"]).returncode == 0, "main.sh must parse"
+    assert 'if [ -x "$HERE/sim_lighttrap" ]; then cd "$HERE"; else cd "$HERE/$BUILD_DIR"; fi' in sh, \
+        "main.sh must run both from the repo root and from inside build/"
+    assert re.search(r"file\s*\(\s*COPY\s+\$\{PROJECT_SOURCE_DIR\}/main\.sh\s+DESTINATION\s+\$\{PROJECT_BINARY_DIR\}", read(CMAKE)), \
+        "cmake must copy main.sh into the build directory"
 
 
 def test_scan_script_runs_with_and_without_sample():
