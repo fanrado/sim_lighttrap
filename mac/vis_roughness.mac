@@ -20,15 +20,24 @@
 /run/reinitializeGeometry
 /run/initialize
 
+# Same camera setup as vis.mac (default up vector, so the mouse rotates freely):
+# beam comes from the left, sample in the middle, PMT on the right.
 /vis/open Qt3D
 /vis/drawVolume
 /vis/viewer/set/viewpointVector -1 0 0
-/vis/viewer/set/upVector 0 0 1
 /vis/viewer/set/autoRefresh true
+/vis/viewer/flush
+/vis/scene/add/scale 10 cm
 /vis/scene/add/axes
 /vis/scene/add/trajectories smooth
 /vis/scene/endOfEventAction accumulate
 
+/gui/addMenu camera Camera
+/gui/addButton camera "Side (beam left → PMT right)" "/vis/viewer/set/viewpointVector -1 0 0"
+/gui/addButton camera "Oblique"                      "/vis/viewer/set/viewpointThetaPhi 120 30 deg"
+/gui/addButton camera "From the beam"                "/vis/viewer/set/viewpointVector 0 0 -1"
+/gui/addButton camera "Zoom on the film (x8)"         "/vis/viewer/zoomTo 8"
+/gui/addButton camera "Zoom reset"                   "/vis/viewer/zoomTo 1"
 /gui/addMenu run Run
 /gui/addButton run "beamOn 40 (400 nm, through the bumpy film)" "/run/beamOn 40"
 /gui/addButton run "Redraw (rebuild view)" "/vis/viewer/rebuild"
