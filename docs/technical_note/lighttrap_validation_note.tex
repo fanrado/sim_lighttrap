@@ -1,0 +1,709 @@
+% =============================================================================
+% Technical note: validation of the sim_lighttrap Geant4 package
+% JINST template (jinstpub.sty, https://jinst.sissa.it/jinst/help/JINST_TeXclass.jsp)
+%
+% Build:  pdflatex lighttrap_validation_note
+%         pdflatex lighttrap_validation_note      % twice, for cross-references
+%
+% INTERNAL RECORD ONLY -- not intended for publication.
+% =============================================================================
+\documentclass[a4paper,11pt]{article}
+\pdfoutput=1
+
+\usepackage{jinstpub}
+
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  breaklines=true,
+  frame=single,
+  framesep=4pt,
+  rulecolor=\color{gray!50},
+  backgroundcolor=\color{gray!5},
+  columns=fullflexible,
+  keepspaces=true,
+}
+
+\title{\boldmath Validation of the \texttt{sim\_lighttrap} Geant4 optical
+simulation package}
+
+\author[a,1]{R.~Razakamiandra}
+\author[a]{and W.~Shi}
+
+\affiliation[a]{Department of Physics and Astronomy, Stony Brook University,\\
+Stony Brook, NY 11794, USA}
+
+\emailAdd{radofanantenan.razakamiandra@stonybrook.edu}
+
+\note[1]{Corresponding author.}
+
+\abstract{We report a code-level and run-level validation of
+\texttt{sim\_lighttrap}, a Geant4 application that models a two-stage
+wavelength-shifting (WLS) light-trap module immersed in liquid argon. The
+package was configured and compiled from a clean tree against Geant4~11.3.2
+(installed via Spack) and ROOT~6.40.02 on macOS/arm64, and exercised with its
+unit-test suite and with a set of controlled photon-transport runs. The build
+is clean and the source-level test suite passes in full. The photon-transport
+results, however, do not reproduce the behaviour the package documentation
+predicts for the selectable backplane reflector: the module collects
+$3.3\times$ \emph{fewer} photoelectrons with a reflective backplane than with
+no backplane at all. We trace this to three specific, independently verified
+properties of the current optical model --- an open (unmirrored, non-dichroic)
+front face on the blue-WLS slab, an optically coupled \texttt{dielectric\_metal}
+skin surface that suppresses total internal reflection at the back face, and a
+surface-finish/type combination that renders the nominal ``diffuse PTFE''
+option bit-for-bit identical to the specular Vikuiti option. We document the
+evidence for each, quantify the resulting efficiency chain, and list the
+follow-up items required before the package is used for detector-performance
+predictions. This note is an internal record; the findings are stated for human
+review and have not been independently confirmed.}
+
+\keywords{Simulation methods and programs; Photon detectors for UV, visible and
+IR photons; Noble liquid detectors; Detector modelling and simulations}
+
+\begin{document}
+\maketitle
+\flushbottom
+
+% =============================================================================
+\section{Scope and status}
+\label{sec:scope}
+
+This note records an independent read-through and execution-level validation of
+the \texttt{sim\_lighttrap} package at commit \texttt{389e967} (branch
+\texttt{develop}, 2026-07-21). It is an internal engineering record, not a
+physics result and not a publication. Two classes of statement appear below and
+should be read differently:
+
+\begin{itemize}
+\item \textbf{Verified.} Statements backed by a command that was executed and
+whose output is reproduced or summarised here. These include the build, the
+unit-test result, and every number in
+sections~\ref{sec:results}--\ref{sec:findings}.
+\item \textbf{Interpretation.} Statements about \emph{why} the simulation
+behaves as observed. These are supported by targeted experiments described in
+the text, but they are the author's reading of the evidence and require
+confirmation by a human reviewer familiar with the intended detector design.
+\end{itemize}
+
+No source file of the simulation was modified during this validation. All runs
+were performed in a scratch directory outside the repository working tree.
+
+% =============================================================================
+\section{Software environment}
+\label{sec:env}
+
+The host and toolchain used for the validation are listed in
+table~\ref{tab:env}. Geant4 is provided by a Spack installation; the relevant
+variants are recorded because several of them (notably \texttt{cxxstd=17} and
+the absence of \texttt{+tbb}) affect how the application is built and whether
+multithreaded event processing is available.
+
+\begin{table}[htbp]
+\centering
+\caption{\label{tab:env}Validation environment.}
+\begin{tabular}{ll}
+\toprule
+Component & Version / detail \\
+\midrule
+Host            & macOS (Darwin 25.6.0), Apple silicon (arm64) \\
+Geant4          & 11.3.2, installed with Spack \\
+Geant4 spec     & \texttt{geant4@11.3.2 +data +opengl +qt +threads} \\
+                & \texttt{\textasciitilde{}hdf5 \textasciitilde{}tbb \textasciitilde{}vecgeom \textasciitilde{}vtk \textasciitilde{}x11}, \texttt{cxxstd=17}, \texttt{build\_type=Release} \\
+Geant4 prefix   & \texttt{\$SPACK\_ROOT/opt/spack/darwin-m1/geant4-11.3.2-3saow3g...} \\
+ROOT            & 6.40.02 (Homebrew), used for output inspection and analysis \\
+Compiler        & Apple Clang, \texttt{/usr/bin/c++} \\
+CMake           & 4.x (Homebrew) \\
+yaml-cpp        & resolved by \texttt{find\_package}; \texttt{FetchContent} fallback available \\
+Python          & 3.13, \texttt{pytest} 9.1.1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Geant4 discovery.} \texttt{CMakeLists.txt} deliberately avoids a
+hard-coded Geant4 path and accepts, in order of precedence, \texttt{-DGeant4\_DIR},
+\texttt{-DCMAKE\_PREFIX\_PATH}, and the \texttt{GEANT4\_CMAKE\_DIR} environment
+variable. This is the correct pattern for a Spack-provided Geant4 and worked
+without modification.
+
+\paragraph{Toolchain caveat.} \label{par:conda} On the validation host a
+Miniconda \texttt{clang++} precedes the system compiler on \texttt{PATH}, and
+CMake selects it by default. Its linker driver fails the compiler-identification
+step with
+
+\begin{lstlisting}
+ld: -lto_library library filename must be 'libLTO.dylib'
+\end{lstlisting}
+
+which aborts configuration before Geant4 is even searched for. The failure is an
+environment artefact, not a defect of the package. Configuring with the system
+compiler explicitly avoids it, and this is the invocation used throughout:
+
+\begin{lstlisting}
+cmake -DCMAKE_C_COMPILER=/usr/bin/cc \
+      -DCMAKE_CXX_COMPILER=/usr/bin/c++ \
+      -DGeant4_DIR=$G4_PREFIX/lib/cmake/Geant4 \
+      /path/to/sim_lighttrap
+make -j8
+\end{lstlisting}
+
+The existing in-tree \texttt{build/CMakeCache.txt} already records
+\texttt{/usr/bin/c++}, so the working build was configured the same way. It is
+worth pinning the compiler in the project documentation.
+
+% =============================================================================
+\section{Package overview}
+\label{sec:package}
+
+\subsection{Layout}
+
+The application follows the conventional Geant4 example structure:
+\texttt{src/} and \texttt{include/} hold the C++ sources
+($\sim$1\,500 lines of implementation), \texttt{mac/} the Geant4 macros,
+\texttt{input/} the tabulated data files (SiPM photon-detection efficiency, WLS
+emission spectra), \texttt{analysis/} the ROOT/PyROOT post-processing,
+\texttt{tests/} a \texttt{pytest} suite, and \texttt{docs/} Org-mode design
+notes. A single YAML file, \texttt{sim\_config.yaml}, exposes the full set of
+tunable parameters.
+
+\subsection{Configuration system}
+
+Configuration is layered, which is a genuine strength of the package. Geometry,
+source and run parameters may be supplied by YAML, by Geant4 macro commands, or
+by both:
+
+\begin{lstlisting}
+./sim_lighttrap sim_config.yaml            # YAML only
+./sim_lighttrap run.mac                    # macro only
+./sim_lighttrap sim_config.yaml run.mac    # YAML first, macro overrides
+\end{lstlisting}
+
+\texttt{src/sim\_lighttrap.cc} distinguishes the two file types by extension,
+parses the YAML into a \texttt{SimConfig} struct (\texttt{src/config.cc}), and
+then \emph{replays} it through the same \texttt{G4UImanager} commands a macro
+would use (\texttt{/detector/...}, \texttt{/gps/...}), followed by
+\texttt{/run/reinitializeGeometry}. Routing YAML through the messenger rather
+than through a second code path means both entry points exercise identical
+logic, which is good practice.
+
+Per-material optical properties are also YAML-configurable on a shared 13-point
+wavelength grid $\{530, 425, 400, 340, 305, 160, 145, 135, 128, 125, 120, 115,
+106\}$\,nm. \texttt{validateOpticalArray()} (\texttt{include/config.hh}) enforces
+the 13-entry length at parse time and throws otherwise; any absent key falls
+back to a hard-coded default in \texttt{construction.cc}. The bounds guarantee
+this provides is what makes the unchecked fixed-size copies in
+\texttt{resolveArray()} and \texttt{addWLSEmission()} safe.
+
+WLS emission spectra additionally accept an arbitrary-length two-column file
+(\texttt{wlscomponent\_file}), which is converted to strictly ascending photon
+energy with duplicates dropped before being handed to Geant4 --- a correct
+handling of a requirement that is easy to get wrong. Precedence is
+file~$>$~inline 13-point~$>$~built-in smooth asymmetric Gaussian. In the
+as-shipped configuration both file entries are commented out, so the runs
+reported here use the built-in Gaussian defaults (pTP peak 340\,nm, blue-WLS
+peak 430\,nm).
+
+\subsection{Geometry}
+\label{sec:geometry}
+
+The module is built in \texttt{MyLightTrapConstruction::Construct()}
+(\texttt{src/construction.cc}). All $z$-coordinates are derived from a single
+reference --- the back face of the blue-WLS slab at $z=0$ --- so that changing
+any thickness shifts every downstream component consistently. This is a clean
+design and was verified by inspection. Photons travel in $+z$. The default stack
+is given in table~\ref{tab:geom}.
+
+\begin{table}[htbp]
+\centering
+\caption{\label{tab:geom}Default module stack. The $z$ range is given in the
+convention $z=0$ at the blue-WLS back face.}
+\begin{tabular}{llll}
+\toprule
+Component & Material & Thickness & $z$ range [mm] \\
+\midrule
+pTP WLS film            & \texttt{pTP} (C$_{18}$H$_{14}$)     & \SI{2}{\micro\meter} & $-12.002$ to $-12$ \\
+UV-transparent acrylic  & \texttt{uvTransAcrylic}             & \SI{3}{\milli\meter} & $-12$ to $-9$ \\
+LAr gap                 & \texttt{G4\_lAr} (world)            & \SI{3}{\milli\meter} & $-9$ to $-6$ \\
+Blue-WLS slab           & \texttt{bluewlsacrylic}             & \SI{6}{\milli\meter} & $-6$ to $0$ \\
+Backplane foil          & \texttt{acrylicMcMaster} + skin     & \SI{65}{\micro\meter} & $0$ to $0.065$ \\
+Backplane leak counter  & \texttt{G4\_lAr}                    & \SI{0.1}{\milli\meter} & $0.065$ to $0.165$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The module face is $15\times15$\,cm$^2$. Thirty SiPMs, each presenting a
+$6\times6$\,mm$^2$ face, are placed flush against the $\pm y$ edges of the
+blue-WLS slab (15 per edge, uniform pitch). Vikuiti foils cover the $\pm x$
+edges. The world is a liquid-argon box 60\,\% larger than the module on each
+side.
+
+Three additional volumes exist purely as instrumentation. They are built from
+the world material (LAr), so they are refractive-index-matched to their
+surroundings and introduce no optical boundary; they only count photons. The
+first-layer backplane counter is offset \SI{0.01}{\milli\meter} behind the
+first-layer back face so that totally internally reflected photons are not
+counted --- a careful and correct detail. Two of the three counters are
+pass-through (they do not kill the track); the backplane leak counter is
+terminal.
+
+Overlap checking is enabled on every placement (\texttt{checkOverlaps=true}) and
+reported \texttt{OK} for all volumes in every configuration run.
+
+\subsection{Physics and primary generation}
+
+The physics list (\texttt{src/physics.cc}) registers
+\texttt{G4EmStandardPhysics} and \texttt{G4OpticalPhysics} only. For a study
+whose primaries are optical photons this is adequate, though it means the
+package cannot currently be driven by ionising radiation depositing energy in
+the argon.
+
+Primaries are generated with \texttt{G4GeneralParticleSource}
+(\texttt{src/generator.cc}). The default run fires \SI{9.68}{\electronvolt}
+(\SI{128}{\nano\meter}) optical photons from a $15\times15$\,cm$^2$ planar
+square source at $z=\SI{-2}{\centi\meter}$, directed along $+z$.
+
+\subsection{Output data model}
+
+\texttt{MyRunAction} (\texttt{src/run.cc}) defines nine ntuples, written to
+\texttt{output\_apexltsim<runID>.root}. They are summarised in
+table~\ref{tab:ntuples}.
+
+\begin{table}[htbp]
+\centering
+\caption{\label{tab:ntuples}Output ntuples.}
+\begin{tabular}{cll}
+\toprule
+ID & Name & Content \\
+\midrule
+0 & \texttt{SiPMPhotons}          & every photon reaching a SiPM face (before PDE) \\
+1 & \texttt{SiPMHits}             & subset passing the per-wavelength PDE roll \\
+2 & \texttt{Energy}               & deposited energy per event \\
+3 & \texttt{Primary}              & primary particle kinematics \\
+4 & \texttt{WLSPhoton}            & WLS / scintillation photon births \\
+5 & \texttt{OpticalValidation}    & primary reflection / incidence bookkeeping \\
+6 & \texttt{SecondLayerBackplane} & photons reaching the backplane leak counter \\
+7 & \texttt{FirstLayerBackplane}  & crossings of the first-layer back face \\
+8 & \texttt{FirstLayerEdges}      & crossings at the first-layer $\pm x$ edges \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Ntuples 6--8 share a common fill in \texttt{MyLeakDetector::ProcessHits} and
+carry a \texttt{forward} flag ($1$ if $p_z>0$) alongside the direction cosine,
+so forward and back-reflected traffic can be separated in analysis. This flag is
+used extensively in section~\ref{sec:findings}. Detected hits are produced by
+rolling against the tabulated Broadcom PDE curve in
+\texttt{input/pde\_broadcom.dat} (401 points, peak $0.63$ at \SI{420}{\nano\meter}).
+
+% =============================================================================
+\section{Validation procedure and results}
+\label{sec:results}
+
+\subsection{Build}
+
+Configuration and compilation from a clean out-of-source build directory
+succeeded with the invocation of section~\ref{sec:env}: \textbf{exit status 0,
+zero compiler warnings, zero errors}, producing the \texttt{sim\_lighttrap}
+executable. CMake emits one warning originating inside the Qt6 dependency chain
+pulled in by \texttt{Geant4Config.cmake} (a request to link the directory
+\texttt{/usr/X11R6/lib}, which CMake drops). It is upstream and harmless.
+
+\subsection{Unit tests}
+
+The \texttt{pytest} suite is a source-level suite: it inspects the C++ and YAML
+sources for expected declarations, parameter names and documentation, and
+requires neither a build nor a simulation run. It completed as
+
+\begin{lstlisting}
+319 passed, 6 skipped in 2.77s
+\end{lstlisting}
+
+This confirms that the source text is internally consistent --- the messenger
+commands, YAML keys, ntuple definitions and README statements agree with one
+another. It is worth being explicit, however, that no test in this suite
+executes the simulation or asserts anything about photon transport. The suite
+therefore cannot detect the behaviour reported in section~\ref{sec:findings}, and
+its passing should not be read as physics validation.
+
+\subsection{Transport runs}
+
+Four configurations were run, each with $2\times10^{4}$ primary photons and
+otherwise the shipped defaults. Three use the selectable backplane reflector
+options; the fourth is a diagnostic described in
+section~\ref{sec:findings}. Results are given in table~\ref{tab:eff}, computed
+with the package's own \texttt{analysis/analyze\_efficiency.py}.
+
+\begin{table}[htbp]
+\centering
+\caption{\label{tab:eff}Efficiency chain for the three backplane options,
+$N_{\text{primary}}=2\times10^{4}$ VUV photons at \SI{128}{\nano\meter}.
+Uncertainties are the binomial errors reported by the package's analysis script.}
+\begin{tabular}{lccc}
+\toprule
+Quantity & \texttt{vikuiti} & \texttt{ptfe} & \texttt{none} \\
+\midrule
+pTP WLS photons $N_{\text{pTP}}$        & 19410 & 19415 & 19464 \\
+$\varepsilon_{\text{WLS1}}=N_{\text{pTP}}/N_{\text{primary}}$
+  & $97.05\pm0.12\,\%$ & $97.08\pm0.12\,\%$ & $97.32\pm0.11\,\%$ \\
+Blue-WLS photons $N_{\text{blue}}$      & 10658 & 10598 & 10938 \\
+$N_{\text{blue}}/N_{\text{pTP}}$
+  & $54.91\pm0.36\,\%$ & $54.59\pm0.36\,\%$ & $56.20\pm0.36\,\%$ \\
+\midrule
+Photons at SiPM face $N_{\text{at SiPM}}$ & 1019 & 1014 & \textbf{3493} \\
+Collection $N_{\text{at SiPM}}/N_{\text{blue}}$
+  & $9.56\pm0.29\,\%$ & $9.57\pm0.29\,\%$ & $\mathbf{31.94\pm0.45\,\%}$ \\
+Detected $N_{\text{hits}}$              & 616 & 601 & \textbf{2046} \\
+Detection $N_{\text{hits}}/N_{\text{blue}}$
+  & $5.78\pm0.23\,\%$ & $5.67\pm0.23\,\%$ & $\mathbf{18.71\pm0.37\,\%}$ \\
+Average PDE $N_{\text{hits}}/N_{\text{at SiPM}}$
+  & $60.5\pm1.5\,\%$ & $59.3\pm1.5\,\%$ & $58.6\pm0.8\,\%$ \\
+\midrule
+\textbf{p.e.\ per primary} $N_{\text{hits}}/N_{\text{primary}}$
+  & $\mathbf{3.08\pm0.12\,\%}$ & $\mathbf{3.01\pm0.12\,\%}$ & $\mathbf{10.23\pm0.21\,\%}$ \\
+\midrule
+\texttt{SecondLayerBackplane} (ntuple 6) & 0 & 1 & 3028 \\
+\texttt{FirstLayerEdges} (ntuple 8)      & 579 & 581 & 510 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two features of table~\ref{tab:eff} are behaving as designed and are worth
+recording as positive results. First, the first-stage conversion efficiency
+$\varepsilon_{\text{WLS1}}\approx97\,\%$ is stable across all configurations, as
+it must be: the backplane is downstream of the pTP film and cannot affect it.
+Second, the average realised PDE, $58$--$60\,\%$, is consistent with the
+Broadcom curve peak of $63\,\%$ folded against a $\sim$\SI{430}{\nano\meter}
+emission spectrum. The first-stage optical model and the PDE application are
+therefore self-consistent.
+
+The remaining entries are not as designed, and are the subject of the next
+section.
+
+% =============================================================================
+\section{Findings}
+\label{sec:findings}
+
+\subsection{F1: the backplane reflector reduces light collection by \texorpdfstring{$3.3\times$}{3.3x}}
+\label{sec:f1}
+
+The package README states the expected ordering of the three backplane options
+explicitly:
+
+\begin{quote}
+``\emph{Collection / detection efficiency (\texttt{SiPMHits}, ntuple 1) ---
+typically \texttt{vikuiti} $\geq$ \texttt{ptfe} $>$ \texttt{none}.}''
+\end{quote}
+
+The simulation produces the opposite ordering, by a large margin. From
+table~\ref{tab:eff}, removing the reflector raises the photoelectron yield per
+primary from $3.08\,\%$ to $10.23\,\%$, a factor $3.3$. The separation is far
+outside the quoted uncertainties. Adding a nominally $98\,\%$ reflective
+backplane to this geometry makes the module substantially \emph{worse}.
+
+\paragraph{Evidence for the mechanism.} Three experiments localise the cause.
+
+\emph{(i) It is not absorption at the foil.} Setting the Vikuiti reflectivity to
+$1.0$ at every grid point --- a lossless mirror --- gives $N_{\text{hits}}=636$,
+statistically indistinguishable from the $616$ obtained at $R=0.98$ and still
+far below the $2046$ obtained with no foil. Per-bounce absorption in the foil is
+therefore not the loss channel.
+
+\emph{(ii) The lost photons are blue, and they leave through the front of the
+module.} The wavelength spectrum at the SiPM face shows that the deficit is
+confined entirely to the \SI{400}{}--\SI{530}{\nano\meter} band emitted by the
+blue-WLS slab; the \SI{305}{}--\SI{400}{\nano\meter} pTP component is unchanged
+between configurations. Splitting the first-layer backplane counter (ntuple 7)
+by the \texttt{forward} flag and by wavelength locates where that blue light
+goes (table~\ref{tab:leak}).
+
+\begin{table}[htbp]
+\centering
+\caption{\label{tab:leak}Crossings of the first-layer backplane counter
+(ntuple 7), split by direction and wavelength. ``Backward, blue'' counts blue
+photons travelling in $-z$, i.e.\ out of the front of the module. These are
+crossings, not unique photons, but the forward blue rate is small enough that
+multiple counting is a minor correction.}
+\begin{tabular}{lccc}
+\toprule
+Selection & \texttt{vikuiti} & \texttt{ptfe} & \texttt{none} \\
+\midrule
+Forward,  UV   ($\lambda<\SI{400}{\nano\meter}$) & 10556 & 10550 & 10588 \\
+Forward,  blue ($\lambda>\SI{400}{\nano\meter}$) & 1152  & 1122  & 574 \\
+Backward, UV   ($\lambda<\SI{400}{\nano\meter}$) & 528   & 538   & 496 \\
+\textbf{Backward, blue} ($\lambda>\SI{400}{\nano\meter}$)
+                                                 & \textbf{8805} & \textbf{8414} & \textbf{2521} \\
+\midrule
+Backward blue / $N_{\text{blue}}$                & $83\,\%$ & $79\,\%$ & $23\,\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+With the reflector in place, $\sim$\,$83\,\%$ of all blue photons produced in
+the slab exit through the \emph{front} of the module and are lost to the world
+volume. With no reflector this falls to $23\,\%$; the rest either escape through
+the back --- where they are counted by the leak detector, 3028 entries --- or
+reach the SiPMs.
+
+\emph{(iii) Interpretation.} The blue-WLS slab is a planar waveguide whose
+guided modes are defined by total internal reflection at the
+slab($n=1.58$)/LAr($n\approx1.23$) interfaces, giving a critical angle of
+$\approx51^{\circ}$. The back face carries a \texttt{G4LogicalSkinSurface} of
+type \texttt{dielectric\_metal}, placed flush against the slab. That surface
+\emph{replaces} the dielectric interface: a photon arriving at the back face no
+longer undergoes total internal reflection but a metallic reflection, which is
+specular and therefore preserves the polar angle with respect to $z$. A ray
+outside the guiding cone stays outside it. The mirror consequently cannot
+convert an escaping mode into a trapped mode; it can only send the photon across
+the slab to the opposite face --- which, critically, is \emph{open}. There is no
+reflector and no dichroic filter on the front ($-z$) face of the blue-WLS slab
+anywhere in the geometry. The reflector thus converts a back-face loss, which
+the leak counter at least records, into a front-face loss out of the detector,
+and additionally gives each photon repeated opportunities to find the open face.
+
+This reading is consistent with every measurement above, but it is an
+interpretation and should be confirmed by a reviewer who knows the intended
+optical design. In particular, if the physical device is meant to include a
+dichroic filter on its entrance window --- transmitting the \SI{340}{}--\SI{430}{\nano\meter}
+pTP light inward while reflecting the \SI{430}{\nano\meter} blue light back in,
+which is the defining element of a light trap of this class --- then that
+component is simply absent from the geometry, and its absence is sufficient to
+explain the entire effect. No occurrence of a dichroic or filter volume exists
+in \texttt{src/}, \texttt{include/}, \texttt{sim\_config.yaml} or the Org-mode
+design notes.
+
+\subsection{F2: the PTFE option is bit-for-bit identical to the Vikuiti option}
+\label{sec:f2}
+
+The package presents the backplane choice as a specular-versus-diffuse
+comparison. \texttt{DefinePTFEOpticalSurface()} sets
+
+\begin{lstlisting}
+PTFE->SetType(dielectric_metal);
+PTFE->SetFinish(groundfrontpainted);   // "Lambertian diffuse reflection"
+PTFE->SetModel(unified);
+\end{lstlisting}
+
+In Geant4's \texttt{G4OpBoundaryProcess}, \texttt{groundfrontpainted} selects
+Lambertian reflection only on the \texttt{dielectric\_dielectric} branch. On the
+\texttt{dielectric\_metal} branch, only \texttt{ground} and
+\texttt{groundbackpainted} sample a perturbed facet normal; every other finish,
+including \texttt{groundfrontpainted}, reflects about the unperturbed surface
+normal, i.e.\ specularly. The combination as written therefore yields a specular
+mirror, not a diffuse one.
+
+\paragraph{Evidence.} The simulation uses a fixed random seed and no
+randomisation (section~\ref{sec:repro}), so two configurations that differ only
+in a label produce bit-identical output. Raising the PTFE reflectivity from
+$0.95$ to $0.98$ --- making its only remaining difference from Vikuiti disappear
+--- reproduces the Vikuiti run exactly (table~\ref{tab:ptfe}):
+
+\begin{table}[htbp]
+\centering
+\caption{\label{tab:ptfe}PTFE at $R=0.98$ versus Vikuiti at $R=0.98$, same seed.}
+\begin{tabular}{lcc}
+\toprule
+Ntuple & \texttt{vikuiti}, $R=0.98$ & \texttt{ptfe}, $R=0.98$ \\
+\midrule
+\texttt{SiPMPhotons}          & 1019  & 1019 \\
+\texttt{SiPMHits}             & 616   & 616 \\
+\texttt{SecondLayerBackplane} & 0     & 0 \\
+\texttt{FirstLayerBackplane}  & 21041 & 21041 \\
+\texttt{FirstLayerEdges}      & 579   & 579 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Every counter agrees exactly. The two options differ only in the reflectivity
+number; the specular-versus-diffuse comparison the package advertises is not
+being performed. Note that this also means F1 cannot be rescued by the diffuse
+option: a genuinely Lambertian backplane \emph{would} randomise the polar angle
+and could feed photons back into guided modes, so it is a physically meaningful
+thing to test --- but it has not yet been tested.
+
+\subsection{F3: the backplane leak counter reads zero whenever a foil is present}
+\label{sec:f3}
+
+The README and the in-code comment describe ntuple 6 as recording ``every photon
+transmitted through the backplane ($\sim2\,\%$ of those hitting it)''. It records
+none: table~\ref{tab:eff} gives 0 entries for \texttt{vikuiti} and 1 for
+\texttt{ptfe}, against an expectation of several hundred if $2$--$5\,\%$ of the
+$\sim10^{4}$ incident photons were transmitted.
+
+This is correct Geant4 behaviour and incorrect documentation. A
+\texttt{dielectric\_metal} surface has two outcomes only: reflection with
+probability $R$, or absorption with probability $1-R$. It never transmits. The
+$(1-R)$ fraction is destroyed at the surface and never reaches the counter
+\SI{65}{\micro\meter} behind it. The counter functions correctly in the
+\texttt{none} configuration (3028 entries), where there is no skin surface and
+the photons genuinely cross a dielectric interface.
+
+The practical consequence is that the back-face escape observable is unavailable
+for exactly the configurations in which it would be used, and that any analysis
+comparing \texttt{SecondLayerBackplane} across foil options --- which the README
+suggests doing --- compares a real measurement against a structural zero.
+
+\subsection{F4: primary photon polarisation is set one event late}
+\label{sec:f4}
+
+Every run emits the Geant4 warning \texttt{G4Exception : ZeroPolarization}.
+In \texttt{MyPrimaryGenerator::GeneratePrimaries}
+(\texttt{src/generator.cc}) the vertex is created first and the polarisation is
+assigned to the source afterwards:
+
+\begin{lstlisting}
+fGPS->GeneratePrimaryVertex(anEvent);        // vertex created here
+...
+fGPS->GetCurrentSource()->SetParticlePolarization(randomPol);  // applied later
+\end{lstlisting}
+
+The polarisation set at the end of event $n$ is therefore the one carried by the
+primary of event $n+1$; the first event is generated with zero polarisation, and
+every subsequent event uses the previous event's vector. Swapping the two
+statements resolves both the warning and the off-by-one.
+
+Separately, the sampling range is a quarter turn rather than a full one:
+
+\begin{lstlisting}
+// G4double phi = G4UniformRand() * 2.0 * CLHEP::pi;   // full range, commented out
+G4double phi = G4UniformRand() * 0.5 * CLHEP::pi;      // active
+\end{lstlisting}
+
+so the polarisation azimuth is confined to $[0,\pi/2)$ and the primaries are
+partially polarised rather than unpolarised. For the unpolarised-source study
+intended here the full $2\pi$ range is the appropriate choice. The impact on the
+present results is expected to be modest, since the dominant signal is
+wavelength-shifted light whose polarisation is reset at emission, but it affects
+the Fresnel treatment of the primaries at the first interface and should be
+corrected before any surface-reflectivity study.
+
+\subsection{F5: minor observations}
+\label{sec:f5}
+
+\begin{description}
+\item[No bulk absorption in the blue-WLS slab.]
+\texttt{DefineBlueWLSMaterial()} sets \texttt{RINDEX} and \texttt{WLSABSLENGTH}
+but no \texttt{ABSLENGTH}; \texttt{DefineAcrylicMaterial()} sets only
+\texttt{RINDEX}. Geant4 treats a missing \texttt{ABSLENGTH} as infinite, so the
+slab and the foil bodies are bulk-lossless. Given that the intended geometry
+guides light over $\sim$\SI{15}{\centi\meter} with many bounces, this is an
+optimistic assumption and should be replaced with a measured attenuation length.
+
+\item[Fixed output filename in the current working directory.]
+\texttt{MyRunAction::BeginOfRunAction} writes
+\texttt{output\_apexltsim<runID>.root} to the process working directory, with
+run~0 always producing the same name. A previous long production file in
+\texttt{build/} was destroyed this way. All runs for this note were performed in
+a scratch directory for that reason. A configurable output path would remove a
+standing hazard.
+
+\item[Global mutation of a NIST material.] \texttt{DefineWorldMaterial()}
+retrieves \texttt{G4\_lAr} from the NIST manager and attaches a properties table
+to it, mutating the shared instance rather than a private copy. Harmless in this
+single-geometry application; a latent problem if a second argon volume with
+different properties is ever added.
+
+\item[Deferred ntuple row in \texttt{OpticalValidation}.]
+\texttt{src/tracking.cc} fills columns 0--3 and 5--7 in
+\texttt{PreUserTrackingAction} and column 4 plus \texttt{AddNtupleRow} in
+\texttt{PostUserTrackingAction}. This is correct in sequential mode, which the
+application uses (\texttt{G4RunManager}), but relies on per-thread ntuple state
+persisting across the track and would need review before enabling
+multithreading.
+
+\item[\texttt{FirstLayerBackplane} exceeds the primary count.] 21041 entries for
+$2\times10^{4}$ primaries is expected and not a defect: the counter is
+pass-through, so a single photon may cross it more than once, and the
+\texttt{forward} flag is provided precisely so analyses can separate the two
+directions. It is noted here only because the raw count invites
+misinterpretation.
+\end{description}
+
+% =============================================================================
+\section{Reproducibility}
+\label{sec:repro}
+
+No seed is set anywhere in \texttt{src/}, \texttt{include/} or \texttt{mac/}, so
+every run starts from the Geant4 default engine state. Running the same
+configuration twice gave $N_{\text{hits}}=616$ both times --- identical to the
+last event.
+
+This has a useful consequence and a limiting one. It makes the comparisons in
+this note exact: the three backplane configurations differ only in the geometry
+under test, with no statistical fluctuation between them, which is what allows
+the bit-identity argument of section~\ref{sec:f2}. But it also means statistics
+cannot be accumulated by repeating a run, and that the uncertainties quoted in
+table~\ref{tab:eff} describe a single sample rather than a spread over
+independent samples. Adding a \texttt{/random/setSeeds} hook, exposed through
+the YAML configuration, would let both modes be used deliberately.
+
+The full set of commands used for this validation is recorded in
+\texttt{docs/technical\_note/README.md} alongside this source.
+
+% =============================================================================
+\section{Summary and recommended follow-up}
+\label{sec:summary}
+
+The engineering state of \texttt{sim\_lighttrap} is good. It builds cleanly and
+without warnings against a Spack-provided Geant4~11.3.2, its layered
+YAML/macro configuration routes both entry points through the same messenger
+code, its optical-property tables are validated at parse time, its geometry is
+parameterised from a single reference coordinate with overlap checking enabled
+throughout, and its 319-test source-level suite passes in full. The first WLS
+stage and the PDE application are self-consistent and behave as intended.
+
+The optical model of the second stage is not yet giving trustworthy
+detector-performance numbers. In the shipped configuration the module collects
+$3.3\times$ fewer photoelectrons with its reflective backplane than without it,
+the reverse of the documented expectation. The evidence assembled here points to
+an open front face on the blue-WLS slab --- no reflector and, in particular, no
+dichroic filter --- combined with an optically coupled \texttt{dielectric\_metal}
+back surface that suppresses total internal reflection where the waveguide
+relies on it. Two of the three diagnostics intended to detect exactly this class
+of problem are themselves compromised: the diffuse-reflector option is not
+diffuse, and the back-face leak counter is structurally zero whenever a foil is
+present.
+
+Recommended follow-up, in priority order:
+
+\begin{enumerate}
+\item \textbf{Confirm the intended optical design of the front face.} If a
+dichroic filter window is part of the device, add it to the geometry; F1 is
+expected to resolve with it in place. If the front face is genuinely open, then
+the backplane reflector is counterproductive by construction and the README's
+expected ordering should be corrected. This decision gates everything else.
+\item \textbf{Fix the PTFE surface} (F2) --- either \texttt{SetType(dielectric\_dielectric)}
+with \texttt{groundfrontpainted}, or \texttt{dielectric\_metal} with
+\texttt{ground} and a non-zero \texttt{SigmaAlpha} --- so that a genuine
+specular-versus-diffuse comparison becomes possible.
+\item \textbf{Correct the documentation of ntuple 6} (F3), and if a real
+transmitted fraction is needed, model the foil as a dielectric stack rather than
+a metal.
+\item \textbf{Reorder the polarisation assignment and restore the $2\pi$ azimuth
+range} (F4).
+\item \textbf{Add seed control} (section~\ref{sec:repro}) and \textbf{a
+configurable output path} (F5), and \textbf{introduce a measured bulk
+attenuation length} for the blue-WLS slab.
+\item \textbf{Add at least one execution-level regression test.} The present
+suite is source-level only and passed in full while the transport behaviour
+described here was present. A short run asserting the sign of the
+reflector-versus-no-reflector difference would have caught F1 immediately.
+\end{enumerate}
+
+% =============================================================================
+\section*{Acknowledgments}
+\addcontentsline{toc}{section}{Acknowledgments}
+
+The code reading, build and run validation, diagnostic experiments and the
+drafting of this note were carried out with the assistance of an AI coding
+agent (Anthropic Claude, via Claude Code). The agent executed all builds, test
+runs and simulation runs reported here and produced the first draft of this
+document. All findings, in particular the mechanism proposed in
+section~\ref{sec:f1}, are pending review and confirmation by the authors. This
+note is an internal record and is not intended for publication.
+
+\end{document}
