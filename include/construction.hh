@@ -30,6 +30,7 @@ public:
   G4bool   WithSample()      const { return fWithSample; }
   G4String WorldMedium()     const { return fWorldMedium; }
   G4double GapThickness()    const { return LArthickness; }
+  G4double PTPSigmaAlpha()   const { return pTPsigmaAlpha; }
   G4double WorldHalfZ()      const;   // effective value (auto resolved)
   G4double PMTDiameter()     const { return pmtDiameter; }
   G4double WindowThickness() const { return pmtWindowThickness; }

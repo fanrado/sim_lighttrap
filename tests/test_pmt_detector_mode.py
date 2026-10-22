@@ -494,6 +494,22 @@ def test_qt_session_opens_with_yaml_and_vis_macro():
     assert not expr.strip().startswith("!hasConfig &&"), "the viewer must not be disabled by a YAML config"
 
 
+def test_roughness_demo_macros_and_script():
+    demo = read("mac/roughness_demo.mac")
+    assert re.search(r"^/detector/pTPsigmaAlpha\s+0\.8", demo, re.M)
+    assert re.search(r"^/run/reinitializeGeometry", demo, re.M) and re.search(r"^/run/initialize", demo, re.M)
+    assert re.search(r"^/gps/energy\s+3\.0996\s+eV", demo, re.M), "400 nm beam: pTP must not absorb it"
+    assert demo.index("/run/initialize") < demo.index("/run/beamOn")
+    off = read("mac/roughness_off.mac")
+    assert re.search(r"^/detector/pTPsigmaAlpha\s+0\.0", off, re.M) and re.search(r"^/gps/energy\s+9\.68\s+eV", off, re.M)
+    panel = read("mac/draw_roughness_panel.mac")
+    assert "{sa}" in panel and "{out}" in panel and "TSG_OFFSCREEN" in panel
+    vis = read("mac/vis.mac")
+    assert "roughness_demo.mac" in vis and "roughness_off.mac" in vis
+    sh = read("scripts/draw_roughness.sh")
+    assert "/control/alias sa" in sh and "draw_roughness_panel.mac" in sh
+
+
 def test_scan_script_runs_with_and_without_sample():
     src = read("scripts/scan_wavelength.py")
     assert "with_sample=" in src and '"--sample"' in src

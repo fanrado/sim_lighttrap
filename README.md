@@ -271,6 +271,25 @@ driver segfaults, and the offscreen z-buffer renderer skips translucent
 surfaces and needs `/vis/viewer/set/culling invisible true` (otherwise the
 invisible world box is drawn and hides everything); the macro handles both.
 
+**Seeing the pTP surface roughness (`sigmaAlpha`).** `sigmaAlpha` is not a
+geometric feature: Geant4's UNIFIED model keeps the pTP faces flat and tilts the
+micro-facet normal by a random angle (RMS `sigmaAlpha`) at each crossing, so it
+cannot be drawn in the volume view. It is visible through the photon
+directions: send a 400 nm beam, which the pTP does **not** absorb, through the
+sample and compare a smooth surface with an exaggerated one.
+
+```bash
+cd build && ./sim_lighttrap                 # Qt: Run → "Roughness demo" (sigmaAlpha 0.8 rad, 400 nm), "Roughness off"
+scripts/draw_roughness.sh                   # headless panels roughness/rough_sa{0.0,0.3,0.8}.png
+scripts/draw_roughness.sh 0.0 0.1 0.5 1.0   # your own values (rad)
+```
+
+Measured with 2000 photons at 400 nm (fraction of photons leaving the sample
+within 2.6° of the beam axis): 99.7 % at `sigmaAlpha` 0, 1.9 % at 0.3 rad,
+0.4 % at 0.8 rad; photons reaching the photocathode 1712 / 1734 / 979.
+Reference panels: `docs/figures/pmt_mode/roughness_sa0.0.png` and
+`roughness_sa0.8.png`.
+
 A data-side check (beam footprint on the film, hit map on the photocathode, and
 the z of every recorded photon point against the layer planes):
 

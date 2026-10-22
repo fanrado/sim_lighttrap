@@ -159,7 +159,8 @@ void MyRunAction::EndOfRunAction(const G4Run* run)
   };
   G4cout << "\n============ sim_lighttrap run " << run->GetRunID() << " summary ============\n";
   if (det)
-    G4cout << "  sample (pTP on acrylic) : " << (det->WithSample() ? "IN the beam (with_sample=on)" : "ABSENT (with_sample=off, reference run)") << "\n"
+    G4cout << "  sample (pTP on acrylic) : " << (det->WithSample() ? "IN the beam (with_sample=on)" : "ABSENT (with_sample=off, reference run)")
+           << (det->WithSample() ? "   pTP surface sigmaAlpha " + std::to_string(det->PTPSigmaAlpha()).substr(0, 5) + " rad" : "") << "\n"
            << "  world medium            : " << det->WorldMedium()
            << "   gap " << det->GapThickness()/mm << " mm, PMT faceplate " << det->WindowThickness()/mm
            << " mm, photocathode Ø " << det->PMTDiameter()/mm << " mm\n"

@@ -1,0 +1,26 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# roughness_demo.mac — make the pTP surface roughness (sigmaAlpha) visible.
+#
+# sigmaAlpha is NOT a geometric feature: Geant4's UNIFIED model keeps the pTP
+# faces flat and tilts the micro-facet normal by a random angle (RMS sigmaAlpha)
+# at every surface crossing. It can therefore only be seen through the photon
+# directions. This demo sends a 400 nm beam — which the pTP film does NOT absorb,
+# so the beam goes through the sample — with an exaggerated sigmaAlpha = 0.8 rad
+# (~46°): instead of staying collimated to the PMT, the transmitted beam fans out
+# behind the sample. Compare with roughness_off.mac (sigmaAlpha = 0, 128 nm).
+#
+# Qt session:  Run menu → "Roughness demo"  (or /control/execute roughness_demo.mac)
+# Measured (2000 photons, 400 nm): photons leaving layer 1 within 2.6° of the
+# axis — 99.7 % at sigmaAlpha 0, 1.9 % at 0.3 rad, 0.4 % at 0.8 rad.
+# ─────────────────────────────────────────────────────────────────────────────
+/detector/pTPsigmaAlpha 0.8
+/run/reinitializeGeometry
+/run/initialize
+/gps/particle opticalphoton
+/gps/energy 3.0996 eV
+/gps/pos/type Plane
+/gps/pos/shape Circle
+/gps/pos/centre 0. 0. -2. cm
+/gps/pos/radius 7 mm
+/gps/direction 0 0 1
+/run/beamOn 40
