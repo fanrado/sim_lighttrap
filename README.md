@@ -145,6 +145,20 @@ end-of-run summary.
   `lar` run are. Also `geometry.worldMedium` in the YAML and
   `/detector/worldMedium` in a macro.
 
+- **Rough pTP film (`rough=on`, `ROUGH=on` in `main.sh`):**
+
+  ```bash
+  ./sim_lighttrap sim_config.yaml run.mac rough=on
+  ```
+
+  Every macro then applies `mac/roughness_knobs.mac` before the run: the pTP
+  surface roughness `sigmaAlpha` (micro-facet RMS slope, the physics setting
+  used by the production runs; placeholder 0.1 rad, tune it to the
+  measurement). The viewer and render macros additionally switch on the
+  exaggerated bumpy film described below. With `rough=off` the film is exactly
+  what the YAML says (`pTPsigmaAlpha_rad`, 0 = smooth). The end-of-run summary
+  prints the `sigmaAlpha` in effect.
+
 - **The beam source must be inside the world box.** The world is a box of
   half-length `0.6 × lightTrapSize` in x and y and `0.6 × lightTrapSize + pmtLength`
   (18.2 cm) in z. Geant4 gives no warning for a primary vertex outside the
@@ -290,17 +304,21 @@ cd build && ./sim_lighttrap vis_roughness.mac
 That opens the viewer with an exaggerated, physically bumpy pTP film (random
 height map on the beam-facing face: 1 mm film, 30 × 30 bumps of 5 mm, 0.3 mm
 RMS) and sends a 400 nm beam, which pTP does not absorb, through it; each ray
-is deflected by the bump it hits. The three knobs (film thickness, bumps per
-side, RMS bump height) live in **one file, `roughness_knobs.mac`**, shared by
-the viewer and by the headless renders:
+is deflected by the bump it hits. All roughness settings live in **one file,
+`roughness_knobs.mac`**, in two blocks: the physics block (`sigmaAlpha`,
+applied by every macro with `rough=on`) and the visual block (film thickness,
+bumps per side, RMS bump height), which is applied only when the macro alias
+`{ROUGHDEMO}` is 1. `vis_roughness.mac` and `draw_offscreen.mac` set that alias
+themselves; `sim_lighttrap` defines it as 0, so `run.mac` and the other batch
+macros never get the 1 mm film:
 
 ```bash
 ./sim_lighttrap draw_offscreen.mac rough=on    # same bumpy film, PNGs incl. pmt_geom_film_closeup.png
 ```
 
-(`ROUGH=1` in the environment does the same.) The same three settings exist in
-the YAML as `pTPgeomRoughCells`, `pTPgeomRoughAmplitude_mm`, `pTPgeomRoughSeed`
-(default off = flat film) for production runs.
+(`ROUGH=1` in the environment does the same.) The three visual settings also
+exist in the YAML as `pTPgeomRoughCells`, `pTPgeomRoughAmplitude_mm`,
+`pTPgeomRoughSeed` (default off = flat film).
 
 Note the physics: a real 2 µm film has sub-wavelength roughness that Geant4
 models statistically with `pTPsigmaAlpha_rad` (micro-facet RMS slope); it is

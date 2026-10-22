@@ -14,6 +14,11 @@
 # photons directed in +z toward the detector module.
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Rough pTP film: started with rough=on (main.sh: ROUGH=on) the physics
+# roughness of roughness_knobs.mac (pTP surface sigmaAlpha) is applied here;
+# with rough=off the film stays as configured in the YAML.
+/control/if {ROUGH} == 1 roughness_knobs.mac
+
 /gps/particle opticalphoton
 
 # --- Source position (inside LAr, 8 mm in front of pTP film) ---

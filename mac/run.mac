@@ -8,9 +8,15 @@
 #   UV acrylic     ≈  z = -10 to -7 mm
 #   pTP film       ≈  z = -10.002 to -10 mm
 #
-# The beam starts at z = -2 cm (10 mm in front of the pTP film), inside LAr,
+# The beam starts at z = -2 cm (10 mm in front of the pTP film), in the world
+# medium (argon gas by default),
 # centred on the PMT axis, and travels in +z.
 # ─────────────────────────────────────────────────────────────────────────────
+
+# Rough pTP film: started with rough=on (main.sh: ROUGH=on) the physics
+# roughness of roughness_knobs.mac (pTP surface sigmaAlpha) is applied here;
+# with rough=off the film stays as configured in the YAML.
+/control/if {ROUGH} == 1 roughness_knobs.mac
 
 /gps/particle opticalphoton
 /gps/energy 9.68 eV

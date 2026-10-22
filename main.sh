@@ -19,12 +19,13 @@ WITH_SAMPLE=on
 #                                                 lar = liquid argon,  vacuum = n = 1
 WORLD_MEDIUM=gar
 
-# Rough pTP film?  off = flat film (physics runs; roughness = pTPsigmaAlpha in the YAML)
-#                  on  = bumpy demonstrator film from mac/roughness_knobs.mac
-#                  Only draw_offscreen.mac reads this switch. vis_roughness.mac
-#                  ALWAYS shows the bumpy film (that is its purpose), run.mac &
-#                  co. never do; the script warns about inconsistent combinations.
-ROUGH=off
+# Rough pTP film?  on  = every macro applies mac/roughness_knobs.mac: pTP surface
+#                        roughness (sigmaAlpha, the physics setting used by the
+#                        production runs); vis_roughness.mac and draw_offscreen.mac
+#                        additionally show the exaggerated bumpy 1 mm film
+#                  off = film exactly as configured in the YAML (pTPsigmaAlpha_rad)
+#                  vis_roughness.mac ALWAYS applies the knobs (that is its purpose).
+ROUGH=on
 
 # Geant4 macro (in mac/, copied to build/ by cmake):
 #   run.mac              10 000 photons, 128 nm, 14 mm beam          (batch)
@@ -65,8 +66,6 @@ ARGS+=("$MACRO" "with_sample=$WITH_SAMPLE" "world_medium=$WORLD_MEDIUM" "rough=$
 
 case "$MACRO" in
   vis_roughness.mac) [ "$ROUGH" = on ] || echo "# note: vis_roughness.mac always applies roughness_knobs.mac (bumpy film); ROUGH=$ROUGH is ignored" ;;
-  draw_offscreen.mac) ;;
-  *) [ "$ROUGH" = off ] || echo "# note: ROUGH=on has no effect with $MACRO (only draw_offscreen.mac reads it); the film stays as configured in the YAML" ;;
 esac
 echo "# $(date '+%F %T')  ./sim_lighttrap ${ARGS[*]}"
 ./sim_lighttrap "${ARGS[@]}"
