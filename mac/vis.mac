@@ -3,8 +3,9 @@
 # with no arguments, or ./sim_lighttrap vis.mac).
 #
 # Shows the first layer (pTP film: yellow, UV acrylic: light blue) and the PMT
-# photocathode (dark red disc, Ø 23 mm, at z = 0). The 14 mm circular VUV beam
-# is preloaded: use the Run menu or "/run/beamOn 30" to see trajectories.
+# cylinder (MgF2 faceplate at z = 0, dark red photocathode Ø 23 mm behind it,
+# grey glass envelope). The 14 mm circular VUV beam is preloaded: use the Run
+# menu or "/run/beamOn 30" to see trajectories.
 # ─────────────────────────────────────────────────────────────────────────────
 /vis/open Qt3D
 /vis/drawVolume

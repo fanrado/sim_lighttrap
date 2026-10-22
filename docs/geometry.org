@@ -9,7 +9,7 @@ The +z axis points into the detector (along the beam direction).
 All z-positions are derived from a single reference:
 
 #+BEGIN_EXAMPLE
-  kPMTFrontZ = 0   (front face of the PMT: window if present, else photocathode)
+  kPMTFrontZ = 0   (front face of the PMT faceplate; bare photocathode if the faceplate is disabled)
 #+END_EXAMPLE
 
 Every other z-coordinate is computed from the messenger parameters in ~Construct()~
@@ -20,15 +20,18 @@ so that changing any thickness shifts all upstream components automatically.
 #+BEGIN_EXAMPLE
 z = −20 mm   · · · · · · · · · ·   beam source plane (Ø 14 mm, travelling +z)
 
-z = −6 mm   ┌────────────────────────┐  pTP film (2 µm)     ← WLS stage
+z = −10 mm  ┌────────────────────────┐  pTP film (2 µm)     ← WLS stage
             ├────────────────────────┤
             │  UV-transparent        │
             │  acrylic  (3 mm)       │  ← carrier for pTP
-z = −3 mm   └────────────────────────┘  ← FirstLayerBackplane counter 0.01 mm behind
-                  [3 mm LAr gap]
-z =  0 mm        ┌──────────┐          ← PMT front face (optional MgF2 window)
-                 │ cathode  │  Ø 23 mm, 0.1 mm thick, terminal QE counter
-                 └──────────┘
+z = −7 mm   └────────────────────────┘  ← FirstLayerBackplane counter 0.01 mm behind
+                  [7 mm LAr gap]
+z =  0 mm        ┌────────────┐        ← MgF2 faceplate, Ø 28.2 mm, 1.5 mm thick
+z = 1.5 mm       │ ▒cathode▒  │        ← photocathode Ø 23 mm, 0.1 mm, terminal QE counter
+                 │            │
+                 │  vacuum    │        ← Hamamatsu R6836 body, opaque glass wall (1 mm)
+                 │            │
+z = 92 mm        └────────────┘        ← glass end cap
 
             ╎                        ╎   ← FirstLayerEdges counters on the ±x
             ╎   first layer (15 cm)  ╎     faces of the first-layer stack
@@ -100,7 +103,7 @@ implicitly by the world LAr volume (no separate volume needed).
 
 | Parameter | Value / Source                       |
 |-----------+--------------------------------------|
-| Thickness | 3 mm (= LArthickness, tunable)       |
+| Thickness | 7 mm (= LArthickness, tunable)       |
 | Material  | G4_lAr                               |
 
 ** First-Layer Counters (validation)
@@ -113,20 +116,25 @@ whose sensitive detectors are *pass-through* counters (the photon continues).
 | FirstLayerBackplane | behind the acrylic back face, 0.01 mm standoff (TIR-aware) | 4 |
 | FirstLayerEdges     | flush on the ±x faces of the pTP + acrylic stack     | 5      |
 
-** PMT Readout
+** PMT Readout (Hamamatsu R6836)
 
-A PMT faces the first layer across the LAr gap. The PMT front face defines z = 0.
+A PMT faces the first layer across the 7 mm LAr gap; its faceplate front
+defines z = 0. Dimensions follow the R6836 datasheet (TPMH1264E): tube and
+faceplate Ø 28.2 ± 0.8 mm, photocathode Ø 23 mm min. effective area, body
+92 ± 2 mm, MgF2 window, Cs-Te photocathode (115–320 nm).
 
 | Property              | Value                                               |
 |-----------------------+-----------------------------------------------------|
-| Photocathode          | G4Tubs disc, Ø ~pmtDiameter_mm~ (default 23 mm), 0.1 mm thick |
-| Window (optional)     | MgF2 G4Tubs, ~pmtWindowThickness_mm~ (default 0 = bare)      |
-| Photocathode material | same as the volume in front (LAr, or MgF2 behind a window), so no Fresnel boundary |
+| Faceplate             | MgF2 G4Tubs, Ø ~pmtTubeDiameter_mm~ (28.2 mm), ~pmtWindowThickness_mm~ thick (1.5 mm — not on the datasheet, assumption; 0 = bare photocathode) |
+| Photocathode          | G4Tubs disc, Ø ~pmtDiameter_mm~ (23 mm), 0.1 mm thick, on the inner faceplate surface (daughter of the vacuum) |
+| Photocathode material | same as the faceplate (MgF2; LAr if the faceplate is disabled), so no Fresnel boundary at its face |
+| Vacuum interior       | G4_Galactic with RINDEX = 1, r < R_tube − wall, from the faceplate to the end cap |
+| Envelope / end cap    | G4_Pyrex_Glass without optical properties → perfectly absorbing; wall ~pmtWallThickness_mm~ (1 mm); length ~pmtLength_mm~ (92 mm) |
 | Sensitive detector    | ~MyPMTDetector~: terminal counter, flat QE ~pmtQE~ inside [~pmtQEmin_nm~, ~pmtQEmax_nm~] (default 1.0 over 110–500 nm), 0 outside |
 | Output                | ntuple 6 ~PMTPhotons~ (pre-QE), ntuple 7 ~PMTHits~ (post-QE) |
-| Not modelled          | PMT body/housing, photocathode reflectivity, window AR coating |
+| Not modelled          | dynodes, pins, photocathode reflectivity, faceplate AR coating, real Cs-Te QE curve |
 
-** MgF2 Window Material
+** MgF2 Faceplate Material
 
 | Property         | Value                                                   |
 |------------------+---------------------------------------------------------|
@@ -139,11 +147,14 @@ A PMT faces the first layer across the LAr gap. The PMT front face defines z = 0
 #+BEGIN_EXAMPLE
 /detector/pTPlayerthickness  <double> # pTP film thickness [mm]
 /detector/uvAcrylicThick     <double> # UV acrylic carrier thickness [mm]
-/detector/LArthickness       <double> # LAr gap: first-layer back face → PMT front face [mm]
+/detector/LArthickness       <double> # LAr gap: back of the acrylic → PMT faceplate [mm] (7)
 /detector/lighttrapsize      <double> # first-layer side length [mm]
 /detector/pTPsigmaAlpha      <double> # pTP surface facet-slope RMS [rad]
-/detector/pmtDiameter        <double> # photocathode diameter [mm]
-/detector/pmtWindowThick     <double> # MgF2 window thickness [mm], 0 = none
+/detector/pmtDiameter        <double> # photocathode diameter [mm] (23)
+/detector/pmtTubeDiameter    <double> # tube / faceplate diameter [mm] (28.2)
+/detector/pmtLength          <double> # faceplate front → end of glass body [mm] (92)
+/detector/pmtWindowThick     <double> # MgF2 faceplate thickness [mm] (1.5), 0 = none
+/detector/pmtWallThick       <double> # envelope wall / end-cap thickness [mm] (1)
 /detector/pmtQE              <double> # flat QE inside the band
 /detector/pmtQEmin           <double> # QE band lower edge [nm]
 /detector/pmtQEmax           <double> # QE band upper edge [nm]

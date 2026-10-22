@@ -2,11 +2,13 @@
 
 Geant4 simulation of the LightTrap **first layer** (a p-terphenyl (pTP) WLS film
 deposited on a UV-transparent acrylic carrier) read out by a **PMT**, as in the
-VUV bench measurement. A 14 mm diameter parallel VUV beam (128 nm by default)
-hits the pTP film; the shifted light crosses a LAr gap to a 23 mm photocathode
-modelled with a flat quantum efficiency (100 % over 110–500 nm to start with).
-Primary photons, WLS emission, first-layer escape counters and PMT hits are
-written to ROOT ntuples.
+VUV bench transmission measurement. A 14 mm diameter parallel VUV beam (128 nm
+by default) hits the pTP film; the light leaving the back of the acrylic
+crosses a 7 mm gap to a Hamamatsu **R6836** modelled as a physical cylinder
+(Ø 28.2 mm × 92 mm, MgF2 faceplate, Ø 23 mm photocathode on its inner face,
+vacuum interior, opaque glass envelope) with a flat quantum efficiency (100 %
+over 110–500 nm to start with). Primary photons, WLS emission, first-layer
+escape counters and PMT hits are written to ROOT ntuples.
 
 The two-layer design (blue-WLS slab + edge SiPMs + reflector foils) is **not**
 part of this branch; it lives in `develop` and is developed independently.
@@ -47,28 +49,41 @@ part of this branch; it lives in `develop` and is developed independently.
 
 ## Geometry
 
-Along `+z` (the PMT front face sits at `z = 0`; the beam travels in `+z`):
+Along `+z` (the PMT faceplate front sits at `z = 0`; the beam travels in `+z`):
 
 ```
-beam (z = -2 cm) ──► pTP film (2 µm) / UV acrylic (3 mm) ──► [LAr gap, 3 mm] ──► [MgF2 window, optional] ──► photocathode (Ø 23 mm)
-                     z = -6.002 .. -3 mm                                        z = 0 .. 0.1 mm
+beam (z = -2 cm) ──► pTP film (2 µm) / UV acrylic (3 mm) ──► [LAr gap, 7 mm] ──► MgF2 faceplate ──► photocathode (Ø 23 mm) ──► vacuum ──► glass end cap
+                     z = -10.002 .. -7 mm                                        z = 0 .. 1.5 mm   z = 1.5 .. 1.6 mm                   z = 91 .. 92 mm
 ```
+
+The PMT follows the Hamamatsu R6836 dimensional outline (datasheet TPMH1264E):
+tube and faceplate Ø 28.2 ± 0.8 mm, photocathode Ø 23 mm minimum effective
+area, body length 92 ± 2 mm, MgF2 window, Cs-Te photocathode. The faceplate
+thickness is **not** on the datasheet; 1.5 mm is an assumption
+(`pmtWindowThickness_mm`). The tube side wall and end cap are borosilicate
+glass without optical properties, i.e. perfectly absorbing (dynodes and pins
+are not modelled). Light entering the faceplate outside the 23 mm photocathode
+refracts into the vacuum and is absorbed on the envelope.
 
 | YAML key (`geometry:`)   | Messenger                  | Default | Meaning |
 |--------------------------|----------------------------|---------|---------|
 | `pTPlayerThickness_mm`   | `/detector/pTPlayerthickness` | 0.002 | pTP WLS film thickness |
 | `uvAcrylicThickness_mm`  | `/detector/uvAcrylicThick` | 3.0     | UV-transparent acrylic carrier |
-| `LArThickness_mm`        | `/detector/LArthickness`   | 3.0     | LAr gap, first-layer back face → PMT front face |
+| `LArThickness_mm`        | `/detector/LArthickness`   | 7.0     | LAr gap, back of the acrylic → PMT faceplate |
 | `lightTrapSize_cm`       | `/detector/lighttrapsize`  | 15.0    | square first-layer side |
 | `pTPsigmaAlpha_rad`      | `/detector/pTPsigmaAlpha`  | 0.0     | pTP surface facet-slope RMS (0 = smooth) |
 | `pmtDiameter_mm`         | `/detector/pmtDiameter`    | 23      | photocathode (sensitive) diameter |
-| `pmtWindowThickness_mm`  | `/detector/pmtWindowThick` | 0       | MgF2 entrance window; 0 = bare photocathode |
+| `pmtTubeDiameter_mm`     | `/detector/pmtTubeDiameter`| 28.2    | tube / faceplate outer diameter |
+| `pmtLength_mm`           | `/detector/pmtLength`      | 92      | faceplate front → end of the glass body |
+| `pmtWindowThickness_mm`  | `/detector/pmtWindowThick` | 1.5     | MgF2 faceplate thickness (assumption); 0 = bare photocathode |
+| `pmtWallThickness_mm`    | `/detector/pmtWallThick`   | 1.0     | opaque envelope side wall / end cap |
 | `pmtQE`                  | `/detector/pmtQE`          | 1.0     | flat quantum efficiency inside the QE band |
 | `pmtQEmin_nm`            | `/detector/pmtQEmin`       | 110     | QE band lower edge [nm] |
 | `pmtQEmax_nm`            | `/detector/pmtQEmax`       | 500     | QE band upper edge [nm]; QE = 0 outside |
 
-The photocathode is a thin disc whose material matches the volume in front of
-it (LAr, or MgF2 behind a window), so it adds no optical boundary: every photon
+The photocathode is a thin disc on the inner faceplate surface whose material
+matches the faceplate (MgF2; LAr if the faceplate is disabled), so it adds no
+optical boundary: every photon
 reaching it is killed and recorded in `PMTPhotons` (pre-QE), and with
 probability `pmtQE` inside the band also in `PMTHits` (post-QE). Both trees
 carry `eventID, fX, fY, fZ, fT, fwl, fcosTheta, primary`, where `primary = 1`
@@ -112,7 +127,7 @@ face, 0.01 mm behind the acrylic so TIR-trapped light is not counted, and
   | `run`      | number of events |
   | `materials`| per-material optical properties: `ptp`, `uvAcrylic`, `lar`, `mgf2` |
 
-  Example — thicker gap, 2 mm MgF2 window, 100k events:
+  Example — larger gap, 2 mm faceplate, 100k events:
 
   ```yaml
   geometry:
@@ -121,6 +136,17 @@ face, 0.01 mm behind the acrylic so TIR-trapped light is not counted, and
   run:
     nEvents: 100000
   ```
+
+**Transmission spectrum scan.** The bench measurement scans the beam
+wavelength; `scripts/scan_wavelength.py` runs the simulation once per
+wavelength (each run in its own scratch directory, so the fixed output name is
+never overwritten) and tabulates photocathode hits per beam photon, split into
+unshifted (transmitted) and pTP-shifted light:
+
+```bash
+python3.13 scripts/scan_wavelength.py --build build --events 5000 --wl 115 120 128 140 160 200 250 300
+python3.13 scripts/scan_wavelength.py --build build --events 5000 --range 110 320 10   # 110..320 nm in 10 nm steps
+```
 
 Output: `output_apexltsim<runID>.root` in the working directory, with trees
 `Energy`, `Primary`, `WLSPhoton`, `OpticalValidation`, `FirstLayerBackplane`,
@@ -137,7 +163,8 @@ cd build
 ```
 
 `draw_offscreen.mac` renders the geometry with the TOOLSSG offscreen driver (no
-display needed) from behind, from the side, and with 30 beam events, and dumps
+display needed) obliquely, from the PMT side, from the side (whole tube and a
+close-up of the 7 mm gap), and with 30 beam events, and dumps
 the volume tree with ASCIITree. Reference renders are kept in
 `docs/figures/pmt_mode/`. Two caveats of this Geant4 build: the `RayTracer`
 driver segfaults, and the offscreen z-buffer renderer skips translucent

@@ -32,11 +32,14 @@ private:
   // ── Tunable geometry parameters (set via /detector/ messenger or defaults) ──
   G4double pTPlayerthickness;     // pTP WLS film thickness           (default 2 µm)
   G4double uvAcrylicThickness;    // UV-transparent acrylic thickness  (default 3 mm)
-  G4double LArthickness;          // LAr gap: first layer → PMT face   (default 3 mm)
+  G4double LArthickness;          // LAr gap: first layer → PMT face   (default 7 mm)
   G4double lighttrapsize;         // square first-layer side length    (default 15 cm)
   G4double pTPsigmaAlpha;         // pTP surface facet-slope RMS [rad]  (default 0 = smooth)
   G4double pmtDiameter;           // PMT photocathode diameter            (default 23 mm)
-  G4double pmtWindowThickness;    // MgF2 entrance window; 0 = none       (default 0)
+  G4double pmtTubeDiameter;       // tube / faceplate outer diameter      (default 28.2 mm)
+  G4double pmtLength;             // faceplate front → end of glass body  (default 92 mm)
+  G4double pmtWindowThickness;    // MgF2 faceplate; 0 = bare cathode     (default 1.5 mm)
+  G4double pmtWallThickness;      // opaque envelope wall / end cap       (default 1 mm)
   G4double pmtQE;                 // flat QE inside the band              (default 1.0)
   G4double pmtQEmin_nm;           // QE band lower edge [nm]              (default 110)
   G4double pmtQEmax_nm;           // QE band upper edge [nm]              (default 500)
@@ -51,12 +54,13 @@ private:
   G4LogicalVolume   *logicpTPlayer, *logicUVAcrylic;
   G4VPhysicalVolume *physpTPlayer,  *physUVAcrylic;
 
-  // ── PMT readout: window (optional) + photocathode ────────────────────────────
-  // The photocathode is a thin disc of pmtDiameter facing the first layer across
-  // the LAr gap; its SD is a terminal QE counter.
-  G4Tubs            *PMTWindow,      *PMTPhotocathode;
-  G4LogicalVolume   *logicPMTWindow, *logicPMTPhotocathode;
-  G4VPhysicalVolume *physPMTWindow,  *physPMTPhotocathode;
+  // ── PMT readout: Hamamatsu R6836-like cylinder ───────────────────────────────
+  // MgF2 faceplate (full tube diameter) → photocathode disc (pmtDiameter) on its
+  // inner face → vacuum interior → opaque glass side wall and end cap.  The
+  // photocathode SD is a terminal QE counter.
+  G4Tubs            *PMTWindow,      *PMTPhotocathode,      *PMTVacuum,      *PMTEnvelope,      *PMTEndCap;
+  G4LogicalVolume   *logicPMTWindow, *logicPMTPhotocathode, *logicPMTVacuum, *logicPMTEnvelope, *logicPMTEndCap;
+  G4VPhysicalVolume *physPMTWindow,  *physPMTPhotocathode,  *physPMTVacuum,  *physPMTEnvelope,  *physPMTEndCap;
 
   // ── First-layer backplane counter: pass-through counter in the LAr gap ───────
   G4Box             *FirstLayerExitDet;
@@ -80,12 +84,15 @@ private:
   G4Material *uvTransAcrylic;  // UV-transparent PMMA carrier for pTP film
   G4Material *worldMat;        // liquid argon (LAr)
   G4Material *mgf2;            // magnesium fluoride — VUV-transparent PMT window
+  G4Material *pmtVacuum;       // PMT interior (G4_Galactic, RINDEX = 1)
+  G4Material *pmtGlass;        // PMT envelope (borosilicate, no optical properties → opaque)
 
   void DefineMaterials();
   void DefinePTPMaterial();
   void DefineUVTransparentAcrylicMaterial();
   void DefineWorldMaterial();
   void DefineMgF2Material();
+  void DefinePMTBodyMaterials();
 
   const G4double EVUM; // hc constant in eV·µm: 1.239841939 eV·µm (wavelength ↔ energy)
   G4double energy[13]; // 13 sampled photon energies covering VUV to visible (115–145 nm densified)

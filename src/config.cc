@@ -139,7 +139,10 @@ SimConfig SimConfig::fromFile(const std::string& path)
         if (geo["lightTrapSize_cm"])          cfg.lightTrapSize_cm         = geo["lightTrapSize_cm"].as<double>();
         if (geo["pTPsigmaAlpha_rad"])         cfg.pTPsigmaAlpha_rad        = geo["pTPsigmaAlpha_rad"].as<double>();
         if (geo["pmtDiameter_mm"])            cfg.pmtDiameter_mm           = geo["pmtDiameter_mm"].as<double>();
+        if (geo["pmtTubeDiameter_mm"])        cfg.pmtTubeDiameter_mm       = geo["pmtTubeDiameter_mm"].as<double>();
+        if (geo["pmtLength_mm"])              cfg.pmtLength_mm             = geo["pmtLength_mm"].as<double>();
         if (geo["pmtWindowThickness_mm"])     cfg.pmtWindowThickness_mm    = geo["pmtWindowThickness_mm"].as<double>();
+        if (geo["pmtWallThickness_mm"])       cfg.pmtWallThickness_mm      = geo["pmtWallThickness_mm"].as<double>();
         if (geo["pmtQE"])                     cfg.pmtQE                    = geo["pmtQE"].as<double>();
         if (geo["pmtQEmin_nm"])               cfg.pmtQEmin_nm              = geo["pmtQEmin_nm"].as<double>();
         if (geo["pmtQEmax_nm"])               cfg.pmtQEmax_nm              = geo["pmtQEmax_nm"].as<double>();
@@ -147,6 +150,12 @@ SimConfig SimConfig::fromFile(const std::string& path)
             throw std::runtime_error("SimConfig: geometry.pmtDiameter_mm must be > 0");
         if (cfg.pmtWindowThickness_mm < 0.0)
             throw std::runtime_error("SimConfig: geometry.pmtWindowThickness_mm must be >= 0");
+        if (cfg.pmtTubeDiameter_mm <= cfg.pmtDiameter_mm)
+            throw std::runtime_error("SimConfig: geometry.pmtTubeDiameter_mm must exceed pmtDiameter_mm (photocathode)");
+        if (cfg.pmtWallThickness_mm <= 0.0 || 2.0 * cfg.pmtWallThickness_mm >= cfg.pmtTubeDiameter_mm - cfg.pmtDiameter_mm)
+            throw std::runtime_error("SimConfig: geometry.pmtWallThickness_mm must be > 0 and leave room for the photocathode inside the tube");
+        if (cfg.pmtLength_mm <= cfg.pmtWindowThickness_mm + cfg.pmtWallThickness_mm)
+            throw std::runtime_error("SimConfig: geometry.pmtLength_mm must exceed window + end-cap thickness");
         if (cfg.pmtQE < 0.0 || cfg.pmtQE > 1.0)
             throw std::runtime_error("SimConfig: geometry.pmtQE must be in [0, 1]");
         if (cfg.pmtQEmin_nm >= cfg.pmtQEmax_nm)

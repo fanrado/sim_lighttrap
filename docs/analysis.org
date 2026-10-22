@@ -121,7 +121,8 @@ columns as ntuple 6.
 
 ~analysis/analyze_efficiency.py~ prints this chain; ~analysis/Analyze_out.C~
 produces a per-tree summary PDF; ~analysis/plot_pmt_validation.py~ makes the
-beam-footprint / hit-map / z-stack validation figure.
+beam-footprint / hit-map / z-stack validation figure; ~scripts/scan_wavelength.py~
+repeats the run over beam wavelengths for the transmission spectrum.
 
 * Input Data
 

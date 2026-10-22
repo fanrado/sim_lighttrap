@@ -33,31 +33,43 @@
 /vis/geometry/set/colour logicpTPlayer 0 1 0.85 0 1
 /vis/geometry/set/colour logicUVAcrylic 0 0.45 0.75 1 1
 /vis/geometry/set/colour logicPMTPhotocathode 0 0.75 0.1 0.1 1
+/vis/geometry/set/colour logicPMTWindow 0 0.85 0.9 1 1
+/vis/geometry/set/colour logicPMTEnvelope 0 0.6 0.6 0.65 1
+/vis/geometry/set/colour logicPMTEndCap 0 0.6 0.6 0.65 1
+/vis/geometry/set/visibility logicPMTVacuum 0 false
 /vis/geometry/set/visibility logicFirstLayerExitDet 0 false
 /vis/geometry/set/visibility logicFirstLayerEdgeDet 0 false
 /vis/viewer/set/background 1 1 1
 /vis/scene/add/axes 0 0 0 20 mm
 
-# 1) seen from behind the PMT (+z), oblique: 15 cm first layer + 23 mm disc
-/vis/tsg/offscreen/set/file pmt_geom_back_oblique.png
-/vis/viewer/set/viewpointThetaPhi 35 40 deg
+# 1) oblique from the beam side (-z): 15 cm first layer with the PMT tube behind it
+/vis/tsg/offscreen/set/file pmt_geom_oblique.png
+/vis/viewer/set/viewpointThetaPhi 125 40 deg
 /vis/viewer/set/upVector 0 1 0
 /vis/viewer/zoomTo 1
 /vis/viewer/flush
 
-# 2) straight back view: disc diameter vs module
+# 2) straight view from the PMT side (+z): tube / faceplate diameter vs module
 /vis/tsg/offscreen/set/file pmt_geom_back.png
 /vis/viewer/set/viewpointVector 0 0 1
 /vis/viewer/set/upVector 0 1 0
 /vis/viewer/zoomTo 1
 /vis/viewer/flush
 
-# 3) side view (looking along +x), slightly tilted so faces are lit: layer stack + gap + disc
+# 3) side view (looking along +x): whole PMT cylinder behind the first layer
 /vis/tsg/offscreen/set/file pmt_geom_side.png
-/vis/viewer/set/viewpointVector -1 -0.15 0.25
+/vis/viewer/set/viewpointVector -1 -0.15 0.1
+/vis/viewer/set/upVector 0 0 1
+/vis/viewer/set/targetPoint 0 0 40 mm
+/vis/viewer/zoomTo 1.6
+/vis/viewer/flush
+
+# 3b) side close-up on the gap: acrylic back face, 7 mm LAr gap, faceplate, photocathode
+/vis/tsg/offscreen/set/file pmt_geom_side_gap.png
+/vis/viewer/set/viewpointVector -1 -0.15 0.1
 /vis/viewer/set/upVector 0 0 1
 /vis/viewer/set/targetPoint 0 0 -3 mm
-/vis/viewer/zoomTo 5
+/vis/viewer/zoomTo 7
 /vis/viewer/flush
 
 # 4) side view with 30 beam photons (circle, Ø14 mm) and their WLS daughters
@@ -69,7 +81,7 @@
 /vis/viewer/set/viewpointVector -1 0 0
 /vis/viewer/set/upVector 0 0 1
 /vis/viewer/set/targetPoint 0 0 -8 mm
-/vis/viewer/zoomTo 3
+/vis/viewer/zoomTo 2.5
 /gps/particle opticalphoton
 /gps/energy 9.68 eV
 /gps/pos/type Plane

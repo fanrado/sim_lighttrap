@@ -41,15 +41,21 @@ NAMEMAP_HH      = "include/namemap.hh"
 CMAKE           = "CMakeLists.txt"
 
 PMT_KEYS = {
-    "pmtDiameter_mm": 23.0,
-    "pmtWindowThickness_mm": 0.0,
+    "pmtDiameter_mm": 23.0,          # R6836 photocathode min. effective area
+    "pmtTubeDiameter_mm": 28.2,      # R6836 tube / faceplate diameter
+    "pmtLength_mm": 92.0,            # R6836 body length
+    "pmtWindowThickness_mm": 1.5,    # MgF2 faceplate (assumption)
+    "pmtWallThickness_mm": 1.0,
     "pmtQE": 1.0,
     "pmtQEmin_nm": 110.0,
     "pmtQEmax_nm": 500.0,
 }
 MESSENGER = {
     "pmtDiameter_mm": "/detector/pmtDiameter",
+    "pmtTubeDiameter_mm": "/detector/pmtTubeDiameter",
+    "pmtLength_mm": "/detector/pmtLength",
     "pmtWindowThickness_mm": "/detector/pmtWindowThick",
+    "pmtWallThickness_mm": "/detector/pmtWallThick",
     "pmtQE": "/detector/pmtQE",
     "pmtQEmin_nm": "/detector/pmtQEmin",
     "pmtQEmax_nm": "/detector/pmtQEmax",
@@ -106,6 +112,15 @@ def test_pmt_yaml_pmt_parameters(pmt_doc, key, value):
 
 def test_pmt_yaml_photocathode_is_23mm(pmt_doc):
     assert pmt_doc["geometry"]["pmtDiameter_mm"] == pytest.approx(23.0)
+
+
+def test_pmt_yaml_r6836_tube_and_7mm_gap(pmt_doc):
+    g = pmt_doc["geometry"]
+    assert g["pmtTubeDiameter_mm"] == pytest.approx(28.2), "R6836 faceplate/tube Ø 28.2 mm"
+    assert g["pmtLength_mm"] == pytest.approx(92.0), "R6836 body length 92 mm"
+    assert g["pmtTubeDiameter_mm"] > g["pmtDiameter_mm"], "window is wider than the photocathode"
+    assert g["pmtWindowThickness_mm"] > 0.0, "the R6836 has an MgF2 faceplate"
+    assert g["LArThickness_mm"] == pytest.approx(7.0), "PMT 7 mm behind the back of the acrylic"
 
 
 def test_pmt_yaml_qe_band_is_110_to_500nm_at_100pct(pmt_doc):
@@ -195,7 +210,9 @@ def test_config_hh_has_pmt_fields():
     for gone in ("detectorType", "nSiPMs", "pTPSubstrateThickness_mm", "backplaneFoil",
                  "BlueWLSConfig", "VikuitiConfig", "PTFEConfig", "AcrylicMcMasterConfig"):
         assert gone not in hh, f"two-layer field {gone} must not be on this branch"
-    for field, default in (("pmtDiameter_mm", "23.0"), ("pmtWindowThickness_mm", "0.0"),
+    for field, default in (("pmtDiameter_mm", "23.0"), ("pmtTubeDiameter_mm", "28.2"),
+                           ("pmtLength_mm", "92.0"), ("pmtWindowThickness_mm", "1.5"),
+                           ("pmtWallThickness_mm", "1.0"), ("LArThickness_mm", "7.0"),
                            ("pmtQE", "1.0"), ("pmtQEmin_nm", "110.0"), ("pmtQEmax_nm", "500.0")):
         assert re.search(rf"double\s+{field}\s*=\s*{re.escape(default)}", hh), f"{field} default {default}"
     assert re.search(r"double\s+radius_cm\s*=", hh)
@@ -212,6 +229,8 @@ def test_config_cc_parses_and_validates():
         assert gone not in cc, f"two-layer key {gone} must not be parsed on this branch"
     # invalid ranges are rejected
     assert "pmtDiameter_mm <= 0.0" in cc
+    assert "pmtTubeDiameter_mm <= cfg.pmtDiameter_mm" in cc
+    assert "pmtLength_mm <= cfg.pmtWindowThickness_mm + cfg.pmtWallThickness_mm" in cc
     assert "pmtQEmin_nm >= cfg.pmtQEmax_nm" in cc
 
 
@@ -236,6 +255,10 @@ def test_messenger_properties_declared(construction_code, cmd):
 
 def test_construction_defaults(construction_code):
     assert re.search(r"pmtDiameter\s*=\s*23\.\s*\*\s*mm", construction_code)
+    assert re.search(r"pmtTubeDiameter\s*=\s*28\.2\s*\*\s*mm", construction_code)
+    assert re.search(r"pmtLength\s*=\s*92\.\s*\*\s*mm", construction_code)
+    assert re.search(r"pmtWindowThickness\s*=\s*1\.5\s*\*\s*mm", construction_code)
+    assert re.search(r"LArthickness\s*=\s*7\.\s*\*\s*mm", construction_code)
     assert re.search(r"pmtQE\s*=\s*1\.0", construction_code)
     assert re.search(r"pmtQEmin_nm\s*=\s*110\.", construction_code)
     assert re.search(r"pmtQEmax_nm\s*=\s*500\.", construction_code)
@@ -243,21 +266,43 @@ def test_construction_defaults(construction_code):
 
 def test_photocathode_is_a_tubs_disc_of_pmt_diameter(construction_code):
     assert '#include "G4Tubs.hh"' in read(CONSTRUCTION_HH)
-    m = re.search(r'PMTPhotocathode\s*=\s*new\s+G4Tubs\s*\(\s*"PMTPhotocathode"\s*,\s*0\.\s*,\s*rPMT', construction_code)
-    assert m, "photocathode must be a full G4Tubs disc of radius rPMT"
-    assert re.search(r"rPMT\s*=\s*pmtDiameter\s*/\s*2\.", construction_code)
+    m = re.search(r'PMTPhotocathode\s*=\s*new\s+G4Tubs\s*\(\s*"PMTPhotocathode"\s*,\s*0\.\s*,\s*rCath', construction_code)
+    assert m, "photocathode must be a full G4Tubs disc of radius rCath"
+    assert re.search(r"rCath\s*=\s*pmtDiameter\s*/\s*2\.", construction_code)
 
 
-def test_window_is_optional_mgf2(construction_code):
-    assert re.search(r"if\s*\(\s*pmtWindowThickness\s*>\s*0\.\s*\)\s*\{[^}]*new\s+G4Tubs\s*\(\s*\"PMTWindow\"", construction_code, re.S)
+def test_faceplate_is_full_tube_diameter_mgf2(construction_code):
+    """The MgF2 window spans the 28.2 mm tube, not just the 23 mm photocathode."""
+    assert re.search(r"if\s*\(\s*tWin\s*>\s*0\.\s*\)\s*\{[^}]*new\s+G4Tubs\s*\(\s*\"PMTWindow\"\s*,\s*0\.\s*,\s*rTube", construction_code, re.S)
+    assert re.search(r"rTube\s*=\s*pmtTubeDiameter\s*/\s*2\.", construction_code)
     assert re.search(r'new\s+G4LogicalVolume\s*\(\s*PMTWindow\s*,\s*mgf2', construction_code)
     assert re.search(r'FindOrBuildMaterial\s*\(\s*"G4_MAGNESIUM_FLUORIDE"', construction_code)
     assert "DefineMgF2Material();" in construction_code
 
 
+def test_pmt_body_vacuum_envelope_endcap(construction_code):
+    """Physical cylinder: vacuum interior (RINDEX 1) holding the photocathode, opaque glass wall + end cap."""
+    assert re.search(r'FindOrBuildMaterial\s*\(\s*"G4_Galactic"', construction_code)
+    assert re.search(r'FindOrBuildMaterial\s*\(\s*"G4_Pyrex_Glass"', construction_code)
+    assert re.search(r'new\s+G4Tubs\s*\(\s*"PMTVacuum"\s*,\s*0\.\s*,\s*rInner', construction_code)
+    assert re.search(r'new\s+G4Tubs\s*\(\s*"PMTEnvelope"\s*,\s*rInner\s*,\s*rTube', construction_code), "side wall is a hollow tube"
+    assert re.search(r'new\s+G4Tubs\s*\(\s*"PMTEndCap"\s*,\s*0\.\s*,\s*rInner', construction_code)
+    assert re.search(r"rInner\s*=\s*rTube\s*-\s*pmtWallThickness", construction_code)
+    # photocathode is a daughter of the vacuum, flush with its front face
+    assert re.search(r'logicPMTPhotocathode\s*,\s*"physPMTPhotocathode"\s*,\s*logicPMTVacuum', construction_code)
+    assert re.search(r"-halfVac\s*\+\s*kPhotocathodeThick\s*/\s*2\.", construction_code)
+    # vacuum has a refractive index so photons propagate; the glass has none (absorbing)
+    vac = construction_code[construction_code.index("MyLightTrapConstruction::DefinePMTBodyMaterials()"):
+                            construction_code.index("MyLightTrapConstruction::DefineMaterials()")]
+    assert "pmtVacuum->SetMaterialPropertiesTable" in vac
+    assert "pmtGlass->SetMaterialPropertiesTable" not in vac
+    # world grows with the PMT length so the tube fits
+    assert re.search(r"lighttrapsize\s*\*\s*0\.6\s*\+\s*pmtLength", construction_code)
+
+
 def test_photocathode_material_matches_upstream_volume(construction_code):
-    """No Fresnel boundary at the cathode face: LAr if bare, MgF2 behind a window."""
-    assert re.search(r"cathodeMat\s*=\s*\(\s*pmtWindowThickness\s*>\s*0\.\s*\)\s*\?\s*mgf2\s*:\s*worldMat", construction_code)
+    """No Fresnel boundary at the cathode face: MgF2 behind the faceplate, LAr if bare."""
+    assert re.search(r"cathodeMat\s*=\s*\(\s*tWin\s*>\s*0\.\s*\)\s*\?\s*mgf2\s*:\s*worldMat", construction_code)
     assert re.search(r"new\s+G4LogicalVolume\s*\(\s*PMTPhotocathode\s*,\s*cathodeMat", construction_code)
 
 
@@ -273,7 +318,8 @@ def test_no_second_stage_volumes(construction_code):
 def test_first_layer_gap_measured_to_pmt_face(construction_code):
     assert re.search(r"kPMTFrontZ\s*=\s*0\.", construction_code)
     assert re.search(r"kUVAcrylBackZ\s*=\s*kPMTFrontZ\s*-\s*LArthickness", construction_code)
-    assert re.search(r"kPhotocathodeCenterZ\s*=\s*kPMTFrontZ\s*\+\s*pmtWindowThickness\s*\+\s*kPhotocathodeThick\s*/\s*2\.", construction_code)
+    assert re.search(r"zVacA\s*=\s*kPMTFrontZ\s*\+\s*tWin", construction_code)
+    assert re.search(r"zVacB\s*=\s*kPMTFrontZ\s*\+\s*pmtLength\s*-\s*pmtWallThickness", construction_code)
 
 
 def test_sd_wiring(construction_code):
@@ -289,6 +335,15 @@ def test_vis_attributes_guard_optional_window(construction_code):
     vis = construction_code[construction_code.index("vaPMTWin"):construction_code.index("return physWorld")]
     assert re.search(r"if\s*\(\s*logicPMTWindow\s*\)\s*logicPMTWindow->SetVisAttributes", vis)
     assert "logicPMTPhotocathode->SetVisAttributes(vaPMTCat)" in vis
+    assert "logicPMTEnvelope->SetVisAttributes" in vis and "logicPMTEndCap->SetVisAttributes" in vis
+
+
+def test_scan_script_exists_and_uses_pmt_trees():
+    src = read("scripts/scan_wavelength.py")
+    assert '"PMTHits"' in src and '"Primary"' in src and '"WLSPhoton"' in src
+    assert "/gps/pos/radius 7 mm" in src and "/gps/pos/shape Circle" in src
+    assert "1239.84193" in src
+    assert "cwd=rundir" in src, "each wavelength must run in its own directory (fixed output file name)"
 
 
 # ── MyPMTDetector ────────────────────────────────────────────────────────────

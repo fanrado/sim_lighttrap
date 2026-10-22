@@ -13,8 +13,9 @@ VUV bench measurement. Its goals are:
 - Model VUV photon (128 nm, LAr scintillation peak) absorption in the pTP film
   and re-emission at 340–430 nm.
 - Quantify how much of the shifted light escapes the first layer (back face vs
-  lateral edges, total-internal-reflection trapping) and reaches a PMT of
-  known photocathode size placed behind it.
+  lateral edges, total-internal-reflection trapping) and reaches a Hamamatsu
+  R6836 PMT placed 7 mm behind the acrylic, as in the transmission-spectrum
+  measurement of the pTP-deposited acrylic.
 - Provide an ideal-PMT reference (flat 100 % QE over 110–500 nm) against which
   the measured PMT response can be compared.
 
@@ -50,13 +51,13 @@ Primary photon beam (9.68 eV, λ = 128 nm, Ø 14 mm, parallel along +z)
         │  WLS absorption → isotropic re-emission (λ ~ 340–430 nm)
         │  ← FirstLayerBackplane / FirstLayerEdges pass-through counters
         ▼
-  LAr gap (3 mm)
-        ▼
-  [optional MgF2 window]
+  LAr gap (7 mm)
         ▼
   ┌─────────────────────────────────────────────┐
-  │  PMT photocathode disc (Ø 23 mm)            │
-  │  flat QE (1.0 over 110–500 nm) per photon   │  → PMTPhotons / PMTHits
+  │  Hamamatsu R6836 (Ø 28.2 mm × 92 mm)        │
+  │  MgF2 faceplate → photocathode disc Ø 23 mm │  → PMTPhotons / PMTHits
+  │  flat QE (1.0 over 110–500 nm) per photon   │
+  │  vacuum + opaque glass envelope             │
   └─────────────────────────────────────────────┘
 #+END_EXAMPLE
 

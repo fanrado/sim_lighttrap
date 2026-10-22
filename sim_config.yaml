@@ -8,8 +8,9 @@
 # YAML settings are applied first; a macro file (if also given) can override them.
 # Geometry changes trigger /run/reinitializeGeometry automatically.
 #
-# Geometry along +z (PMT front face at z = 0):
-#   beam (z = -2 cm) → pTP film / UV acrylic → [LAr gap] → [MgF2 window] → photocathode
+# Geometry along +z (PMT faceplate front at z = 0):
+#   beam (z = -2 cm) → pTP film / UV acrylic → [LAr gap, 7 mm] → MgF2 faceplate → photocathode
+#   → vacuum → glass end cap     (Hamamatsu R6836-like cylinder, Ø 28.2 mm × 92 mm)
 #
 # Output ntuples (output_apexltsim<run>.root):
 #   Energy (0), Primary (1), WLSPhoton (2), OpticalValidation (3),
@@ -18,13 +19,17 @@
 geometry:
   pTPlayerThickness_mm: 0.002     # pTP WLS film thickness [mm]  (default: 2 µm)
   uvAcrylicThickness_mm: 3.0      # UV-transparent acrylic carrier [mm]
-  LArThickness_mm: 3.0            # LAr gap between the first-layer back face and the PMT front face [mm]
+  LArThickness_mm: 7.0            # LAr gap between the back of the pTP-deposited acrylic and the PMT faceplate [mm]
   lightTrapSize_cm: 15.0          # square first-layer side length [cm]
   pTPsigmaAlpha_rad: 0.0          # pTP surface facet-slope RMS [rad]; 0.0 = flat, perfectly smooth (no wiggle)
                                   #   raise to model coating waviness/roughness, e.g. 0.1 rad ≈ 6°
-  # PMT model
+  # PMT model — Hamamatsu R6836 (datasheet TPMH1264E): 28 mm head-on, MgF2 window,
+  # Cs-Te photocathode Ø 23 mm min. effective area, body 92 ± 2 mm
   pmtDiameter_mm: 23.0            # photocathode (sensitive) diameter [mm]
-  pmtWindowThickness_mm: 0.0      # MgF2 entrance window [mm]; 0 = bare photocathode (ideal PMT)
+  pmtTubeDiameter_mm: 28.2        # tube / faceplate outer diameter [mm] (28.2 ± 0.8)
+  pmtLength_mm: 92.0              # faceplate front → end of the glass body [mm] (92 ± 2)
+  pmtWindowThickness_mm: 1.5      # MgF2 faceplate thickness [mm]; NOT on the datasheet — assumption; 0 = bare photocathode
+  pmtWallThickness_mm: 1.0        # opaque glass side-wall / end-cap thickness [mm]
   pmtQE: 1.0                      # flat quantum efficiency inside [pmtQEmin_nm, pmtQEmax_nm]
   pmtQEmin_nm: 110.0              # QE band lower edge [nm]
   pmtQEmax_nm: 500.0              # QE band upper edge [nm]; QE = 0 outside the band
@@ -37,7 +42,7 @@ source:
   radius_cm: 0.7                  # source radius [cm] for Circle: 14 mm beam diameter
   centerX_cm: 0.0                 # beam centre x [cm]  (centred on the PMT axis)
   centerY_cm: 0.0                 # beam centre y [cm]
-  centerZ_cm: -2.0                # beam start z [cm]  (14 mm in front of the pTP film, which sits at z ≈ -6 mm)
+  centerZ_cm: -2.0                # beam start z [cm]  (10 mm in front of the pTP film, which sits at z ≈ -10 mm)
   halfX_cm: 7.5                   # half-widths used only for Square/Rectangle/Ellipse shapes [cm]
   halfY_cm: 7.5
   directionX: 0.0                 # momentum direction (unit vector): parallel beam along +z
@@ -109,7 +114,7 @@ materials:
     scintillationtimeconstant2_ns: 1400.0  # slow τ (ns)
 
   mgf2:
-    # Magnesium fluoride PMT window (only built when geometry.pmtWindowThickness_mm > 0).
+    # Magnesium fluoride PMT faceplate (built when geometry.pmtWindowThickness_mm > 0).
     # Refractive index ref: M. J. Dodge, Appl. Opt. 23, 1980 (1984).
     rindex:   [1.379, 1.384, 1.386, 1.392, 1.397, 1.468, 1.490, 1.510, 1.530, 1.540, 1.560, 1.600, 1.650]
     # Bulk absorption (m): transparent down to ~140 nm, cut-off near 110 nm (approximate)

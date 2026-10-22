@@ -79,7 +79,10 @@ int main(int argc, char** argv)
         UImanager->ApplyCommand("/detector/pTPsigmaAlpha "       + d2s(cfg.pTPsigmaAlpha_rad));
         // PMT readout
         UImanager->ApplyCommand("/detector/pmtDiameter "         + d2s(cfg.pmtDiameter_mm));
+        UImanager->ApplyCommand("/detector/pmtTubeDiameter "     + d2s(cfg.pmtTubeDiameter_mm));
+        UImanager->ApplyCommand("/detector/pmtLength "           + d2s(cfg.pmtLength_mm));
         UImanager->ApplyCommand("/detector/pmtWindowThick "      + d2s(cfg.pmtWindowThickness_mm));
+        UImanager->ApplyCommand("/detector/pmtWallThick "        + d2s(cfg.pmtWallThickness_mm));
         UImanager->ApplyCommand("/detector/pmtQE "               + d2s(cfg.pmtQE));
         UImanager->ApplyCommand("/detector/pmtQEmin "            + d2s(cfg.pmtQEmin_nm));
         UImanager->ApplyCommand("/detector/pmtQEmax "            + d2s(cfg.pmtQEmax_nm));

@@ -17,9 +17,10 @@
 //
 //   [LAr world] ──► pTP film (2 µm)    ← WLS: VUV (128 nm) → 340–430 nm
 //                   UV acrylic (3 mm)  ← mechanical carrier, UV-transparent
-//                   [LAr gap, 3 mm]
-//                   [optional MgF2 window]
-//                   PMT photocathode disc (Ø 23 mm) ← terminal QE counter
+//                   [LAr gap, 7 mm]
+//                   PMT (Hamamatsu R6836-like cylinder, Ø 28.2 mm × 92 mm):
+//                     MgF2 faceplate → photocathode disc (Ø 23 mm, terminal QE
+//                     counter) → vacuum → opaque glass side wall + end cap
 //                   + pass-through counters on the first-layer back face and ±x edges
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -45,15 +46,21 @@ MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
   fMessenger->DeclareProperty("uvAcrylicThick",
       uvAcrylicThickness,   "UV-transparent acrylic carrier thickness [default 3 mm]");
   fMessenger->DeclareProperty("LArthickness",
-      LArthickness,         "LAr gap between the first-layer back face and the PMT front face [default 3 mm]");
+      LArthickness,         "LAr gap between the first-layer back face and the PMT faceplate [default 7 mm]");
   fMessenger->DeclareProperty("lighttrapsize",
       lighttrapsize,        "Square first-layer side length [default 15 cm]");
   fMessenger->DeclareProperty("pTPsigmaAlpha",
       pTPsigmaAlpha,        "pTP surface facet-slope RMS [rad]; 0 = perfectly smooth");
   fMessenger->DeclareProperty("pmtDiameter",
       pmtDiameter,          "PMT photocathode diameter [default 23 mm]");
+  fMessenger->DeclareProperty("pmtTubeDiameter",
+      pmtTubeDiameter,      "PMT tube / faceplate outer diameter [default 28.2 mm]");
+  fMessenger->DeclareProperty("pmtLength",
+      pmtLength,            "PMT length, faceplate front to end of the glass body [default 92 mm]");
   fMessenger->DeclareProperty("pmtWindowThick",
-      pmtWindowThickness,   "PMT MgF2 entrance window thickness; 0 = bare photocathode [default 0]");
+      pmtWindowThickness,   "PMT MgF2 faceplate thickness; 0 = bare photocathode [default 1.5 mm]");
+  fMessenger->DeclareProperty("pmtWallThick",
+      pmtWallThickness,     "PMT envelope side-wall / end-cap thickness [default 1 mm]");
   fMessenger->DeclareProperty("pmtQE",
       pmtQE,                "PMT flat quantum efficiency inside the QE band [default 1.0]");
   fMessenger->DeclareProperty("pmtQEmin",
@@ -64,11 +71,14 @@ MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
   // ── Default geometry parameters ─────────────────────────────────────────────
   pTPlayerthickness     = 0.002*mm; // 2 µm pTP film
   uvAcrylicThickness    = 3.*mm;    // 3 mm UV-transparent acrylic carrier
-  LArthickness          = 3.*mm;    // 3 mm LAr gap between first layer and PMT
+  LArthickness          = 7.*mm;    // 7 mm LAr gap between first layer and PMT faceplate
   lighttrapsize         = 15.*cm;   // 15 cm × 15 cm first layer (real detector size)
   pTPsigmaAlpha         = 0.0;      // perfectly smooth pTP surface (no wiggle); rad
-  pmtDiameter           = 23.*mm;   // photocathode diameter (e.g. Hamamatsu R6835-class)
-  pmtWindowThickness    = 0.*mm;    // bare photocathode (no window) to start with
+  pmtDiameter           = 23.*mm;   // photocathode min. effective area (Hamamatsu R6836)
+  pmtTubeDiameter       = 28.2*mm;  // R6836 tube / faceplate diameter (28.2 ± 0.8 mm)
+  pmtLength             = 92.*mm;   // R6836 body length (92 ± 2 mm), faceplate to end of glass
+  pmtWindowThickness    = 1.5*mm;   // MgF2 faceplate (thickness not on the datasheet: assumption)
+  pmtWallThickness      = 1.*mm;    // opaque envelope wall / end cap
   pmtQE                 = 1.0;      // ideal PMT: 100 % QE ...
   pmtQEmin_nm           = 110.;     // ... from 110 nm ...
   pmtQEmax_nm           = 500.;     // ... to 500 nm, 0 outside
@@ -156,7 +166,10 @@ void MyLightTrapConstruction::DefinePTPMaterial()
 
   // Wavelengths [nm]: { 530,  425,  400,   340,  305,  160,  145,  135,  128,  125,  120,  115,  106 }
   G4double rindex[13]   = {1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65};
-  G4double abslen[13]   = {10*m, 10*m, 10*m, 10*m, 0.1*mm, 0.0005*mm, 0.0005*mm, 0.0005*mm,
+  // WLS absorption: transparent at >= 340 nm, 0.5 µm from 305 nm down so a
+  // 2 µm film captures UV up to ~300 nm (kept identical to sim_config.yaml,
+  // which is the documented source of truth; macro-only runs use this table).
+  G4double abslen[13]   = {10*m, 10*m, 10*m, 10*m, 0.0005*mm, 0.0005*mm, 0.0005*mm, 0.0005*mm,
                            0.0005*mm, 0.0005*mm, 0.0005*mm, 0.0005*mm, 0.0005*mm};
   G4double emission[13] = {0., 0.0005, 0.002, 0.022, 0.0005, 0., 0., 0., 0., 0., 0., 0., 0.};
   G4double bulkabs[13]  = {1*m, 1*m, 1*m, 1*m, 100*m, 100*m, 100*m, 100*m,
@@ -294,12 +307,33 @@ void MyLightTrapConstruction::DefineMgF2Material()
   mgf2->SetMaterialPropertiesTable(mpt);
 }
 
+void MyLightTrapConstruction::DefinePMTBodyMaterials()
+{
+  G4NistManager *nist = G4NistManager::Instance();
+
+  // PMT interior: vacuum with RINDEX = 1 so optical photons that enter it
+  // (e.g. through the faceplate outside the photocathode) keep propagating
+  // until they hit the envelope.
+  pmtVacuum = nist->FindOrBuildMaterial("G4_Galactic");
+  G4double rindex[13] = {1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.};
+  G4MaterialPropertiesTable *mpt = new G4MaterialPropertiesTable();
+  mpt->AddProperty("RINDEX", energy, rindex, 13);
+  pmtVacuum->SetMaterialPropertiesTable(mpt);
+
+  // PMT envelope (side wall, end cap): borosilicate glass with NO optical
+  // properties table.  G4OpBoundaryProcess kills optical photons entering a
+  // material without RINDEX, so the envelope is perfectly absorbing — the
+  // dynode stack and the opaque tube wall swallow whatever reaches it.
+  pmtGlass = nist->FindOrBuildMaterial("G4_Pyrex_Glass");
+}
+
 void MyLightTrapConstruction::DefineMaterials()
 {
   DefinePTPMaterial();
   DefineUVTransparentAcrylicMaterial();
   DefineWorldMaterial();
   DefineMgF2Material();
+  DefinePMTBodyMaterials();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -315,12 +349,15 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   // ║  lighttrapsize         = 15 cm   → square first-layer side in x and y     ║
   // ║  pTPlayerthickness     = 2 µm    → pTP WLS film                           ║
   // ║  uvAcrylicThickness    = 3 mm    → UV-transparent acrylic carrier         ║
-  // ║  LArthickness          = 3 mm    → LAr gap: first layer → PMT front face  ║
+  // ║  LArthickness          = 7 mm    → LAr gap: first layer → PMT faceplate   ║
   // ║  pmtDiameter           = 23 mm   → photocathode (sensitive) diameter      ║
-  // ║  pmtWindowThickness    = 0       → optional MgF2 window in front of it    ║
+  // ║  pmtTubeDiameter       = 28.2 mm → tube / faceplate outer diameter        ║
+  // ║  pmtLength             = 92 mm   → faceplate front → end of glass body    ║
+  // ║  pmtWindowThickness    = 1.5 mm  → MgF2 faceplate (0 = bare cathode)      ║
+  // ║  pmtWallThickness      = 1 mm    → opaque envelope wall / end cap         ║
   // ║                                                                           ║
   // ║  Photon path (VUV beam → PMT):                                            ║
-  // ║  LAr ──► pTP film ──► UV acrylic ──► [LAr gap] ──► [window] ──► cathode   ║
+  // ║  LAr ──► pTP film ──► UV acrylic ──► [LAr gap] ──► faceplate ──► cathode  ║
   // ╚═══════════════════════════════════════════════════════════════════════════╝
 
   // ── Fixed component thicknesses ─────────────────────────────────────────────
@@ -333,13 +370,11 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   const G4double kFirstLayerBackplaneStandoff = 0.01*mm;
 
   // ── Derived z-positions ──────────────────────────────────────────────────────
-  // Reference: the front (−z) face of the PMT — window if present, else the
-  // photocathode — is at z = 0.  All positions are derived from the messenger
+  // Reference: the front (−z) face of the PMT faceplate (or of the bare
+  // photocathode if the faceplate is disabled) is at z = 0.  All positions are derived from the messenger
   // parameters — changing any thickness shifts all upstream components.
   const G4double kPMTFrontZ           = 0.;
-  const G4double kPMTWindowCenterZ    = kPMTFrontZ + pmtWindowThickness / 2.;
-  const G4double kPhotocathodeCenterZ = kPMTFrontZ + pmtWindowThickness + kPhotocathodeThick / 2.;
-  // LAr gap sits between the first-layer back face and the PMT front face:
+  // LAr gap sits between the first-layer back face and the PMT faceplate:
   const G4double kUVAcrylBackZ   = kPMTFrontZ - LArthickness;
   const G4double kUVAcrylCenterZ = kUVAcrylBackZ  - uvAcrylicThickness / 2.;
   const G4double kUVAcrylFrontZ  = kUVAcrylBackZ  - uvAcrylicThickness;
@@ -356,11 +391,12 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   const G4double kFirstLayerCenterZ = kUVAcrylBackZ - kFirstLayerThick / 2.;
 
   // ══ WORLD VOLUME ════════════════════════════════════════════════════════════
-  // Liquid argon box, 60 % larger than the first layer on each side.
+  // Liquid argon box, 60 % larger than the first layer in x and y; in z it is
+  // extended by the PMT length so the whole tube fits behind the first layer.
   // LAr is both the scintillating medium and the propagation medium for photons
   // between the source and the detector.
   solidWorld = new G4Box("solidWorld",
-      lighttrapsize * 0.6, lighttrapsize * 0.6, lighttrapsize * 0.6);
+      lighttrapsize * 0.6, lighttrapsize * 0.6, lighttrapsize * 0.6 + pmtLength);
   logicWorld = new G4LogicalVolume(solidWorld, worldMat, "logicWorld");
   physWorld  = new G4PVPlacement(0, G4ThreeVector(0., 0., 0.),
       logicWorld, "physWorld", 0, false, 0, true);
@@ -387,34 +423,63 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   physUVAcrylic  = new G4PVPlacement(0, G4ThreeVector(0., 0., kUVAcrylCenterZ),
       logicUVAcrylic, "physUVAcrylic", logicWorld, false, 0, true);
 
-  // ══ PMT READOUT ═════════════════════════════════════════════════════════════
-  // A PMT faces the first layer across the LAr gap:
+  // ══ PMT READOUT (Hamamatsu R6836-like cylinder) ════════════════════════════
+  // The PMT axis is the z axis; its faceplate front is at z = kPMTFrontZ (0):
   //
-  //   z = kPMTFrontZ (0)      front face of the PMT
-  //   [optional MgF2 window]  thickness pmtWindowThickness (0 = none)
-  //   photocathode disc       Ø pmtDiameter, 0.1 mm thick, terminal QE counter
+  //   z = 0 .. t_win             MgF2 faceplate, full tube diameter
+  //   z = t_win .. t_win+0.1 mm  photocathode disc (Ø pmtDiameter) on the inner
+  //                              faceplate surface — terminal QE counter
+  //   z = t_win .. L - wall      vacuum interior (RINDEX 1), r < R_tube - wall
+  //   r = R_tube - wall .. R_tube, z = t_win .. L   opaque glass side wall
+  //   z = L - wall .. L          opaque glass end cap
   //
-  // The photocathode is made of the same material as whatever sits in front of
-  // it (LAr if bare, MgF2 behind a window), so its front face introduces no
-  // optical boundary: every photon that reaches it enters and is counted by
-  // MyPMTDetector (QE applied there), then killed.  Photons that miss the disc
-  // simply continue to the world boundary.  No PMT body/housing is modelled.
+  // The photocathode is made of the same material as the volume in front of
+  // it (MgF2 behind the faceplate, LAr if the faceplate is disabled), so its
+  // front face adds no optical boundary: every photon reaching it enters and
+  // is counted by MyPMTDetector (QE applied there), then killed.  Faceplate
+  // light outside the 23 mm photocathode refracts into the vacuum and dies on
+  // the envelope.  Dynodes and pins are not modelled.
   PMTWindow = nullptr; logicPMTWindow = nullptr; physPMTWindow = nullptr;
   {
-    const G4double rPMT = pmtDiameter / 2.;
+    const G4double rTube   = pmtTubeDiameter / 2.;
+    const G4double rInner  = rTube - pmtWallThickness;
+    const G4double rCath   = pmtDiameter / 2.;
+    const G4double tWin    = pmtWindowThickness;
+    const G4double zVacA   = kPMTFrontZ + tWin;                 // vacuum front
+    const G4double zVacB   = kPMTFrontZ + pmtLength - pmtWallThickness; // vacuum back = end-cap front
+    const G4double halfVac = (zVacB - zVacA) / 2.;
 
-    if (pmtWindowThickness > 0.) {
-      PMTWindow      = new G4Tubs("PMTWindow", 0., rPMT, pmtWindowThickness/2., 0., 360.*deg);
+    if (tWin > 0.) {
+      PMTWindow      = new G4Tubs("PMTWindow", 0., rTube, tWin/2., 0., 360.*deg);
       logicPMTWindow = new G4LogicalVolume(PMTWindow, mgf2, "logicPMTWindow");
-      physPMTWindow  = new G4PVPlacement(0, G4ThreeVector(0., 0., kPMTWindowCenterZ),
+      physPMTWindow  = new G4PVPlacement(0, G4ThreeVector(0., 0., kPMTFrontZ + tWin/2.),
           logicPMTWindow, "physPMTWindow", logicWorld, false, 0, true);
     }
 
-    G4Material *cathodeMat = (pmtWindowThickness > 0.) ? mgf2 : worldMat;
-    PMTPhotocathode      = new G4Tubs("PMTPhotocathode", 0., rPMT, kPhotocathodeThick/2., 0., 360.*deg);
+    // Vacuum interior (mother of the photocathode)
+    PMTVacuum      = new G4Tubs("PMTVacuum", 0., rInner, halfVac, 0., 360.*deg);
+    logicPMTVacuum = new G4LogicalVolume(PMTVacuum, pmtVacuum, "logicPMTVacuum");
+    physPMTVacuum  = new G4PVPlacement(0, G4ThreeVector(0., 0., (zVacA + zVacB) / 2.),
+        logicPMTVacuum, "physPMTVacuum", logicWorld, false, 0, true);
+
+    // Photocathode disc flush against the inner faceplate surface (local z of
+    // the vacuum mother: front face at -halfVac)
+    G4Material *cathodeMat = (tWin > 0.) ? mgf2 : worldMat;
+    PMTPhotocathode      = new G4Tubs("PMTPhotocathode", 0., rCath, kPhotocathodeThick/2., 0., 360.*deg);
     logicPMTPhotocathode = new G4LogicalVolume(PMTPhotocathode, cathodeMat, "logicPMTPhotocathode");
-    physPMTPhotocathode  = new G4PVPlacement(0, G4ThreeVector(0., 0., kPhotocathodeCenterZ),
-        logicPMTPhotocathode, "physPMTPhotocathode", logicWorld, false, 0, true);
+    physPMTPhotocathode  = new G4PVPlacement(0, G4ThreeVector(0., 0., -halfVac + kPhotocathodeThick/2.),
+        logicPMTPhotocathode, "physPMTPhotocathode", logicPMTVacuum, false, 0, true);
+
+    // Opaque glass side wall (hollow tube) and end cap
+    PMTEnvelope      = new G4Tubs("PMTEnvelope", rInner, rTube, (pmtLength - tWin)/2., 0., 360.*deg);
+    logicPMTEnvelope = new G4LogicalVolume(PMTEnvelope, pmtGlass, "logicPMTEnvelope");
+    physPMTEnvelope  = new G4PVPlacement(0, G4ThreeVector(0., 0., kPMTFrontZ + tWin + (pmtLength - tWin)/2.),
+        logicPMTEnvelope, "physPMTEnvelope", logicWorld, false, 0, true);
+
+    PMTEndCap      = new G4Tubs("PMTEndCap", 0., rInner, pmtWallThickness/2., 0., 360.*deg);
+    logicPMTEndCap = new G4LogicalVolume(PMTEndCap, pmtGlass, "logicPMTEndCap");
+    physPMTEndCap  = new G4PVPlacement(0, G4ThreeVector(0., 0., kPMTFrontZ + pmtLength - pmtWallThickness/2.),
+        logicPMTEndCap, "physPMTEndCap", logicWorld, false, 0, true);
   }
 
   // ══ FIRST-LAYER BACKPLANE COUNTER ═══════════════════════════════════════════
@@ -490,11 +555,16 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
     auto *vaUV = new G4VisAttributes(G4Colour(0.5, 0.8, 1.0, 0.4));
     logicUVAcrylic->SetVisAttributes(vaUV);
 
-    // PMT window: pale grey, transparent; photocathode: dark red
+    // PMT faceplate: pale grey, transparent; photocathode: dark red;
+    // vacuum: invisible; envelope / end cap: grey
     auto *vaPMTWin = new G4VisAttributes(G4Colour(0.9, 0.9, 0.9, 0.3));
     if (logicPMTWindow) logicPMTWindow->SetVisAttributes(vaPMTWin);
     auto *vaPMTCat = new G4VisAttributes(G4Colour(0.7, 0.1, 0.1, 0.9));
     logicPMTPhotocathode->SetVisAttributes(vaPMTCat);
+    logicPMTVacuum->SetVisAttributes(new G4VisAttributes(false));
+    auto *vaPMTBody = new G4VisAttributes(G4Colour(0.55, 0.55, 0.6, 0.6));
+    logicPMTEnvelope->SetVisAttributes(vaPMTBody);
+    logicPMTEndCap->SetVisAttributes(vaPMTBody);
 
     // First-layer backplane counter: cyan, semi-transparent
     auto *vaGap = new G4VisAttributes(G4Colour(0.0, 0.8, 1.0, 0.3));

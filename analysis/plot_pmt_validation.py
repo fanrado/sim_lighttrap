@@ -37,14 +37,16 @@ ax = axes[0]
 ax.scatter(wls["posX"], wls["posY"], s=4, color=C1, alpha=0.6, linewidths=0, label="pTP WLS photon births")
 ax.add_patch(Circle((0,0), 7.0, fill=False, color=C2, lw=2, label="14 mm beam (r = 7 mm)"))
 ax.add_patch(Circle((0,0), 11.5, fill=False, color=TXT2, lw=1.2, ls="--", label="23 mm photocathode"))
-ax.set_aspect("equal"); ax.set_xlim(-14, 14); ax.set_ylim(-14, 14)
+ax.add_patch(Circle((0,0), 14.1, fill=False, color=TXT2, lw=0.8, ls=":", label="28.2 mm faceplate"))
+ax.set_aspect("equal"); ax.set_xlim(-15, 15); ax.set_ylim(-15, 15)
 ax.set_xlabel("x [mm]"); ax.set_ylabel("y [mm]"); ax.set_title("Beam footprint on the pTP film")
 ax.legend(loc="upper right", fontsize=8, frameon=False)
 
 # (b) photocathode hit map, single-hue sequential
 ax = axes[1]
-h = ax.hist2d(pmt["fX"], pmt["fY"], bins=46, range=[[-14,14],[-14,14]], cmap="Blues", cmin=1)
+h = ax.hist2d(pmt["fX"], pmt["fY"], bins=50, range=[[-15,15],[-15,15]], cmap="Blues", cmin=1)
 ax.add_patch(Circle((0,0), 11.5, fill=False, color=TXT2, lw=1.2, ls="--"))
+ax.add_patch(Circle((0,0), 14.1, fill=False, color=TXT2, lw=0.8, ls=":"))
 ax.add_patch(Circle((0,0), 7.0, fill=False, color=C2, lw=1.5))
 ax.set_aspect("equal"); ax.set_xlabel("x [mm]"); ax.set_ylabel("y [mm]")
 ax.set_title(f"Photocathode hits (N = {len(pmt['fX'])})")
@@ -52,13 +54,13 @@ cb = fig.colorbar(h[3], ax=ax, shrink=0.85); cb.set_label("photons / bin", color
 
 # (c) z of recorded photon points: validates the layer stack along the beam
 ax = axes[2]
-bins = np.linspace(-22, 2, 97)
+bins = np.linspace(-22, 4, 105)
 for arr, c, lab in ((pri["posZ"], C4, "primary (source plane)"),
                     (wls["posZ"], C1, "pTP WLS births"),
                     (fl["fZ"][fl["forward"]==1], C3, "first-layer exit counter"),
                     (pmt["fZ"], C2, "photocathode entries")):
     ax.hist(arr, bins=bins, histtype="step", lw=2, color=c, label=lab)
-for z, lab in ((-6.0, "pTP / acrylic front"), (-3.0, "acrylic back"), (0.0, "PMT face")):
+for z, lab in ((-10.0, "pTP / acrylic front"), (-7.0, "acrylic back"), (0.0, "faceplate"), (1.5, "cathode")):
     ax.axvline(z, color=GRID, lw=1)
     ax.text(z - 0.3, 0.02, lab, rotation=90, va="bottom", ha="right", fontsize=7,
             color=TXT2, transform=ax.get_xaxis_transform())

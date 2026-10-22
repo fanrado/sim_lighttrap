@@ -62,13 +62,18 @@ struct SimConfig {
     // ── Geometry (messenger: /detector/<param>) ─────────────────────────────
     double pTPlayerThickness_mm     = 0.002;  // pTP WLS film
     double uvAcrylicThickness_mm    = 3.0;    // UV-transparent acrylic carrier
-    double LArThickness_mm          = 3.0;    // LAr gap: first-layer back face → PMT front face
+    double LArThickness_mm          = 7.0;    // LAr gap: first-layer back face → PMT window front face
     double lightTrapSize_cm         = 15.0;   // square first-layer side
     double pTPsigmaAlpha_rad        = 0.0;    // pTP surface facet-slope RMS; 0 = smooth
 
-    // ── PMT readout: photocathode facing the first layer across the LAr gap ──
+    // ── PMT readout: Hamamatsu R6836-like cylinder facing the first layer ────
+    // Datasheet (TPMH1264E): tube/faceplate Ø 28.2 ± 0.8 mm, photocathode
+    // Ø 23 mm min. effective area, body length 92 ± 2 mm, MgF2 window, Cs-Te.
     double pmtDiameter_mm           = 23.0;   // photocathode (sensitive) diameter
-    double pmtWindowThickness_mm    = 0.0;    // MgF2 entrance window; 0 = bare photocathode
+    double pmtTubeDiameter_mm       = 28.2;   // tube / faceplate outer diameter
+    double pmtLength_mm             = 92.0;   // faceplate front → end of the glass body
+    double pmtWindowThickness_mm    = 1.5;    // MgF2 faceplate thickness (not on the datasheet: assumption); 0 = bare photocathode
+    double pmtWallThickness_mm      = 1.0;    // envelope side-wall / end-cap thickness (opaque)
     double pmtQE                    = 1.0;    // flat quantum efficiency inside [pmtQEmin, pmtQEmax]
     double pmtQEmin_nm              = 110.0;  // QE window lower edge [nm]
     double pmtQEmax_nm              = 500.0;  // QE window upper edge [nm]
