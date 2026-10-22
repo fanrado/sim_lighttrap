@@ -10,6 +10,8 @@
 #
 # THE KNOBS live in roughness_knobs.mac (film thickness, bumps per side, RMS
 # bump height) — edit that file; it is shared with draw_offscreen.mac (ROUGH=1).
+# This macro applies them ALWAYS (rough=on/off on the command line is ignored
+# here; that switch only matters for draw_offscreen.mac).
 # ─────────────────────────────────────────────────────────────────────────────
 /control/execute roughness_knobs.mac
 

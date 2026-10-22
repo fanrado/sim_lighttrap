@@ -21,7 +21,9 @@ WORLD_MEDIUM=gar
 
 # Rough pTP film?  off = flat film (physics runs; roughness = pTPsigmaAlpha in the YAML)
 #                  on  = bumpy demonstrator film from mac/roughness_knobs.mac
-#                        (only used by draw_offscreen.mac and vis_roughness.mac)
+#                  Only draw_offscreen.mac reads this switch. vis_roughness.mac
+#                  ALWAYS shows the bumpy film (that is its purpose), run.mac &
+#                  co. never do; the script warns about inconsistent combinations.
 ROUGH=off
 
 # Geant4 macro (in mac/, copied to build/ by cmake):
@@ -61,6 +63,11 @@ ARGS=()
 ARGS+=("$MACRO" "with_sample=$WITH_SAMPLE" "world_medium=$WORLD_MEDIUM" "rough=$ROUGH")
 [ -n "$PMT_QE" ] && ARGS+=("pmt_qe=$PMT_QE")
 
+case "$MACRO" in
+  vis_roughness.mac) [ "$ROUGH" = on ] || echo "# note: vis_roughness.mac always applies roughness_knobs.mac (bumpy film); ROUGH=$ROUGH is ignored" ;;
+  draw_offscreen.mac) ;;
+  *) [ "$ROUGH" = off ] || echo "# note: ROUGH=on has no effect with $MACRO (only draw_offscreen.mac reads it); the film stays as configured in the YAML" ;;
+esac
 echo "# $(date '+%F %T')  ./sim_lighttrap ${ARGS[*]}"
 ./sim_lighttrap "${ARGS[@]}"
 
