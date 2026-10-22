@@ -481,6 +481,15 @@ def test_yaml_geometry_block_covers_requested_items():
         assert key in g, f"geometry.{key} missing from sim_config.yaml"
 
 
+def test_qt_session_opens_with_yaml_and_vis_macro():
+    main = strip_comments(read(MAIN_CC))
+    m = re.search(r"bool\s+isVisMacro\s*=\s*([^;]+);", main)
+    assert m, "isVisMacro missing"
+    expr = m.group(1)
+    assert 'macroFile.find("vis")' in expr
+    assert not expr.strip().startswith("!hasConfig &&"), "the viewer must not be disabled by a YAML config"
+
+
 def test_scan_script_runs_with_and_without_sample():
     src = read("scripts/scan_wavelength.py")
     assert "with_sample=" in src and '"--sample"' in src

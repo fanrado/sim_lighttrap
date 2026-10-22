@@ -18,7 +18,7 @@
 
 # --- Source position (inside LAr, 8 mm in front of pTP film) ---
 /gps/pos/type Plane
-/gps/pos/centre 0. 0. -2. cm
+/gps/pos/centre 0. 0. -18. cm
 /gps/pos/shape Circle
 /gps/pos/radius 7 mm
 /gps/direction 0 0 1

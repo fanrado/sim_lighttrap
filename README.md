@@ -209,9 +209,14 @@ face, 0.01 mm behind the acrylic so TIR-trapped light is not counted, and
   Edit `sim_config.yaml` in the build directory, then run:
 
   ```bash
-  ./sim_lighttrap sim_config.yaml           # geometry + source + event count from the YAML
+  ./sim_lighttrap sim_config.yaml           # geometry + source + event count from the YAML (batch)
   ./sim_lighttrap sim_config.yaml run.mac   # YAML geometry, macro source/run (macro overrides)
+  ./sim_lighttrap sim_config.yaml vis.mac   # YAML geometry in the interactive Qt viewer
   ```
+
+  The YAML is only read when it is given on the command line; `./sim_lighttrap
+  run.mac` or `./sim_lighttrap` alone use the C++ defaults. The viewer opens
+  whenever the macro name contains `vis`.
 
   | Section    | Parameters |
   |------------|------------|

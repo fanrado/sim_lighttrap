@@ -78,7 +78,8 @@ static void usage()
     std::cerr <<
         "usage: sim_lighttrap [config.yaml] [macro.mac] [with_sample=on|off] [world_medium=gar|lar|vacuum]\n"
         "  config.yaml        geometry/source/materials (applied first)\n"
-        "  macro.mac          Geant4 macro (overrides YAML; a name containing 'vis' opens the Qt UI)\n"
+        "  macro.mac          Geant4 macro (overrides YAML); a name containing 'vis' opens the Qt UI,\n"
+        "                     also together with a YAML file (sim_lighttrap config.yaml vis.mac)\n"
         "  with_sample=on|off build the pTP-coated acrylic sample (on, default) or run the\n"
         "                     bare beam -> PMT reference with the identical geometry (off);\n"
         "                     overrides geometry.withSample in the YAML\n"
@@ -141,9 +142,11 @@ int main(int argc, char** argv)
     runManager->SetUserInitialization(new MyActionInitialization());
     runManager->Initialize();
 
-    // Visualisation mode: interactive when no config and no macro (or "vis" macro)
-    bool isVisMacro = !hasConfig &&
-                      (macroFile.empty() || macroFile.find("vis") != std::string::npos);
+    // Visualisation mode: interactive Qt session whenever the macro name contains
+    // "vis" (e.g. vis.mac), with or without a YAML config, or when nothing at all
+    // is given.  "sim_lighttrap config.yaml" alone stays a batch run.
+    bool isVisMacro = macroFile.find("vis") != std::string::npos ||
+                      (!hasConfig && macroFile.empty());
 
     G4UIExecutive *ui = nullptr;
     if (isVisMacro)

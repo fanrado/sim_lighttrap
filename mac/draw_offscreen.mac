@@ -86,8 +86,8 @@
 /gps/energy 9.68 eV
 /gps/pos/type Plane
 /gps/pos/shape Circle
-/gps/pos/centre 0. 0. -2. cm
+/gps/pos/centre 0. 0. -10. cm
 /gps/pos/radius 7 mm
 /gps/direction 0 0 1
-/run/beamOn 30
+/run/beamOn 500
 /vis/viewer/flush

@@ -33,7 +33,7 @@
 # Run menu :
 /gui/addMenu run Run
 /gui/addButton run "beamOn 10"  "/run/beamOn 10"
-/gui/addButton run "beamOn 200" "/run/beamOn 200"
+/gui/addButton run "beamOn 200" "/run/beamOn 1000"
 /gui/addButton run "Redraw (rebuild view)" "/vis/viewer/rebuild"
 # After every run a "sim_lighttrap run N summary" block is printed in the
 # Output pane (beam photons, WLS photons born in pTP, photons on the PMT):
@@ -48,6 +48,6 @@
 /gps/energy 9.68 eV
 /gps/pos/type Plane
 /gps/pos/shape Circle
-/gps/pos/centre 0. 0. -2. cm
+/gps/pos/centre 0. 0. -18. cm
 /gps/pos/radius 7 mm
 /gps/direction 0 0 1
