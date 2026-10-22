@@ -152,12 +152,10 @@ end-of-run summary.
   ```
 
   Every macro then applies `mac/roughness_knobs.mac` before the run: the pTP
-  surface roughness `sigmaAlpha` (micro-facet RMS slope, the physics setting
-  used by the production runs; placeholder 0.1 rad, tune it to the
-  measurement). The viewer and render macros additionally switch on the
-  exaggerated bumpy film described below. With `rough=off` the film is exactly
-  what the YAML says (`pTPsigmaAlpha_rad`, 0 = smooth). The end-of-run summary
-  prints the `sigmaAlpha` in effect.
+  film thickness, the random surface height map (bumps per side, RMS bump
+  height, seed) and the micro-facet `sigmaAlpha`, with the values set in that
+  file. With `rough=off` the film is exactly what the YAML says. The end-of-run
+  summary prints the film geometry and the `sigmaAlpha` in effect.
 
 - **The beam source must be inside the world box.** The world is a box of
   half-length `0.6 × lightTrapSize` in x and y and `0.6 × lightTrapSize + pmtLength`
@@ -305,25 +303,22 @@ That opens the viewer with an exaggerated, physically bumpy pTP film (random
 height map on the beam-facing face: 1 mm film, 30 × 30 bumps of 5 mm, 0.3 mm
 RMS) and sends a 400 nm beam, which pTP does not absorb, through it; each ray
 is deflected by the bump it hits. All roughness settings live in **one file,
-`roughness_knobs.mac`**, in two blocks: the physics block (`sigmaAlpha`,
-applied by every macro with `rough=on`) and the visual block (film thickness,
-bumps per side, RMS bump height), which is applied only when the macro alias
-`{ROUGHDEMO}` is 1. `vis_roughness.mac` and `draw_offscreen.mac` set that alias
-themselves; `sim_lighttrap` defines it as 0, so `run.mac` and the other batch
-macros never get the 1 mm film:
+`roughness_knobs.mac`** (film thickness, bumps per side, RMS bump height, seed,
+`sigmaAlpha`); the same file is applied by `run.mac` and the other macros with
+`rough=on`, so the film you see here is the film the runs simulate:
 
 ```bash
 ./sim_lighttrap draw_offscreen.mac rough=on    # same bumpy film, PNGs incl. pmt_geom_film_closeup.png
 ```
 
-(`ROUGH=1` in the environment does the same.) The three visual settings also
-exist in the YAML as `pTPgeomRoughCells`, `pTPgeomRoughAmplitude_mm`,
-`pTPgeomRoughSeed` (default off = flat film).
+(`ROUGH=1` in the environment does the same.) The same settings exist in the
+YAML as `pTPlayerThickness_mm`, `pTPgeomRoughCells`, `pTPgeomRoughAmplitude_mm`,
+`pTPgeomRoughSeed` and `pTPsigmaAlpha_rad` for runs with `rough=off`.
 
-Note the physics: a real 2 µm film has sub-wavelength roughness that Geant4
-models statistically with `pTPsigmaAlpha_rad` (micro-facet RMS slope); it is
-invisible in the geometry and acts only on the photon directions. The bumpy
-film above is a demonstrator to *see* the effect. Reference renders:
+Two roughness mechanisms act together: the height map changes the actual
+surface the photons meet (facet by facet), while `pTPsigmaAlpha_rad` adds a
+statistical micro-facet slope at every surface interaction (invisible in the
+geometry). Reference renders:
 `docs/figures/pmt_mode/roughness_geom_film.png`, `roughness_geom_side_tracks.png`
 (geometric) and `roughness_sa0.0.png` / `roughness_sa0.8.png` (`sigmaAlpha`
 0 vs 0.8 rad on a 400 nm beam).

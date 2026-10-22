@@ -10,16 +10,14 @@
 # this Geant4 11.3.2 build, so it is not used.
 #
 # Rough pTP film: add rough=on on the command line (or set ROUGH=1 in the
-# environment) to apply roughness_knobs.mac like every other macro; as in
-# vis_roughness.mac the alias {ROUGHDEMO} = 1 also enables its visual block
-# (bumpy 1 mm film, 400 nm beam):
+# environment) to apply roughness_knobs.mac like every other macro (the bumpy
+# film of vis_roughness.mac; the beam is then 400 nm so the deflections show):
 #     ./sim_lighttrap draw_offscreen.mac rough=on
-# Without it the standard geometry (flat 2 µm film, 128 nm beam) is drawn.
+# Without it the YAML geometry (flat 2 µm film, 128 nm beam) is drawn.
 # The {ROUGH} alias (0/1) is defined by sim_lighttrap itself.
 # For interactive inspection use vis.mac / vis_roughness.mac (Qt viewer).
 # ─────────────────────────────────────────────────────────────────────────────
 
-/control/alias ROUGHDEMO 1
 /control/if {ROUGH} == 1 roughness_knobs.mac
 /run/initialize
 

@@ -614,7 +614,7 @@ def test_cmake_copies_all_yaml_configs():
 
 
 def test_rough_switch_applies_to_batch_macros():
-    """rough=on must act on the production macros, not only on the render macro."""
+    """rough=on must apply the WHOLE roughness_knobs.mac to the production macros."""
     IF_LINE = "/control/if {ROUGH} == 1 roughness_knobs.mac"
     for mac_file in ("mac/run.mac", "mac/run_vuv_spectrum.mac", "mac/run_285.mac", "mac/draw_offscreen.mac"):
         cmds = [l.split("#")[0].strip() for l in read(mac_file).splitlines()
@@ -624,20 +624,14 @@ def test_rough_switch_applies_to_batch_macros():
         assert cmds.index(IF_LINE) < first_run, f"{mac_file}: roughness must be applied before the source/run"
     knobs = [l.split("#")[0].strip() for l in read("mac/roughness_knobs.mac").splitlines()
              if l.strip() and not l.lstrip().startswith("#")]
-    assert any(re.fullmatch(r"/detector/pTPsigmaAlpha\s+0?\.\d+", c) and not c.endswith(" 0.0") for c in knobs), \
-        "physics roughness (sigmaAlpha) must be set unconditionally"
-    for demo in ("/detector/pTPlayerthickness 1.0", "/detector/pTPgeomRoughCells 30", "/detector/pTPgeomRoughAmp 0.3"):
-        assert f"/control/doif {{ROUGHDEMO}} == 1 {demo}" in knobs, f"visual block must be guarded: {demo}"
+    # every setting is a plain, unconditional /detector command (no demo-only guard)
+    for cmd in ("/detector/pTPlayerthickness", "/detector/pTPgeomRoughCells", "/detector/pTPgeomRoughAmp",
+                "/detector/pTPgeomRoughSeed", "/detector/pTPsigmaAlpha"):
+        assert any(c.startswith(cmd + " ") for c in knobs), cmd
+    assert not any(c.startswith("/control/doif") or c.startswith("/control/if") for c in knobs), \
+        "roughness_knobs.mac must apply all its settings unconditionally"
     assert knobs.index("/run/reinitializeGeometry") < knobs.index("/run/initialize") == len(knobs) - 1
-    # only the viewer / render macros ask for the exaggerated film
-    for mac_file in ("mac/vis_roughness.mac", "mac/draw_offscreen.mac"):
-        cmds = [l.split("#")[0].strip() for l in read(mac_file).splitlines()
-                if l.strip() and not l.lstrip().startswith("#")]
-        knobs_line = next(c for c in cmds if c.endswith("roughness_knobs.mac"))
-        assert cmds.index("/control/alias ROUGHDEMO 1") < cmds.index(knobs_line), mac_file
-    for mac_file in ("mac/run.mac", "mac/run_vuv_spectrum.mac", "mac/run_285.mac", "mac/vis.mac"):
-        assert "ROUGHDEMO" not in read(mac_file), f"{mac_file} must not enable the demo film"
-    main = strip_comments(read(MAIN_CC))
-    assert 'SetAlias("ROUGHDEMO 0")' in main, "sim_lighttrap must define {ROUGHDEMO} = 0 for the physics runs"
-    sh = read("main.sh")
-    assert "has no effect" not in sh, "main.sh must no longer claim ROUGH is ignored by run.mac"
+    for f in ("src/sim_lighttrap.cc", "main.sh", "README.md", "docs/running.org", "mac/vis_roughness.mac",
+              "mac/draw_offscreen.mac", "mac/roughness_knobs.mac"):
+        assert "ROUGHDEMO" not in read(f), f"{f}: the demo/physics split was removed"
+    assert "has no effect" not in read("main.sh"), "main.sh must not claim ROUGH is ignored by run.mac"

@@ -19,11 +19,10 @@ WITH_SAMPLE=on
 #                                                 lar = liquid argon,  vacuum = n = 1
 WORLD_MEDIUM=gar
 
-# Rough pTP film?  on  = every macro applies mac/roughness_knobs.mac: pTP surface
-#                        roughness (sigmaAlpha, the physics setting used by the
-#                        production runs); vis_roughness.mac and draw_offscreen.mac
-#                        additionally show the exaggerated bumpy 1 mm film
-#                  off = film exactly as configured in the YAML (pTPsigmaAlpha_rad)
+# Rough pTP film?  on  = every macro applies mac/roughness_knobs.mac before the run:
+#                        film thickness, random surface height map (bumps per side,
+#                        RMS bump height, seed) and micro-facet sigmaAlpha
+#                  off = film exactly as configured in the YAML
 #                  vis_roughness.mac ALWAYS applies the knobs (that is its purpose).
 ROUGH=on
 

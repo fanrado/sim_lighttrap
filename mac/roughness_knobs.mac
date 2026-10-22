@@ -1,26 +1,29 @@
 # roughness_knobs.mac — THE roughness settings of the pTP film, in one place.
 #
-# Applied by every macro when the simulation is started with rough=on
-# (main.sh: ROUGH=on, which defines the macro alias {ROUGH} = 1), and ALWAYS
-# by vis_roughness.mac. With rough=off nothing here is applied and the film
-# stays exactly as configured in the YAML (pTPsigmaAlpha_rad, pTPgeomRough*).
+# Applied in full by every macro (run.mac, run_vuv_spectrum.mac, run_285.mac,
+# draw_offscreen.mac) when the simulation is started with rough=on (main.sh:
+# ROUGH=on, which defines the macro alias {ROUGH} = 1), and always by
+# vis_roughness.mac. With rough=off nothing here is applied and the film stays
+# exactly as configured in the YAML (pTPlayerThickness_mm, pTPsigmaAlpha_rad,
+# pTPgeomRough*). Edit the values below, nothing else.
 #
-# 1) PHYSICS roughness — this is what the production runs use (run.mac,
-#    run_vuv_spectrum.mac, run_285.mac): RMS slope of the micro-facets of both
-#    pTP faces [rad], Geant4 UNIFIED surface model. Invisible in the geometry,
-#    it acts on the photon directions at the film surfaces (0 = perfectly
-#    smooth, 0.1 rad ≈ 6°). Placeholder value — tune it to the measurement.
+# Film thickness [mm]
+/detector/pTPlayerthickness 1.0
+#
+# Surface variation: random Gaussian height map on the beam-facing face of the
+# film (tessellated solid; the acrylic-facing face stays flat).
+#   bumps per side: lateral bump size = film side / cells (150 mm / 30 = 5 mm);
+#   0 = flat film
+/detector/pTPgeomRoughCells 30
+#   RMS bump height [mm]; clipped at ±3 RMS and at 0.8 × film thickness
+/detector/pTPgeomRoughAmp 0.3
+#   seed of the height map (same seed = same surface in every run)
+/detector/pTPgeomRoughSeed 12345
+#
+# Micro-facet roughness of both pTP faces, Geant4 UNIFIED surface model: RMS
+# slope of the facets [rad], acting on the photon directions at the surfaces
+# in addition to the height map above (0 = none)
 /detector/pTPsigmaAlpha 0.1
 #
-# 2) VISUAL exaggeration — only for vis_roughness.mac and draw_offscreen.mac,
-#    which set the alias {ROUGHDEMO} = 1 before executing this file
-#    (sim_lighttrap defines {ROUGHDEMO} = 0, so the production runs skip these
-#    three lines): a 1 mm thick film with a random height map, so that the
-#    bumps can be SEEN in the viewer. Real film: 0.002 mm, invisible.
-/control/doif {ROUGHDEMO} == 1 /detector/pTPlayerthickness 1.0
-/control/doif {ROUGHDEMO} == 1 /detector/pTPgeomRoughCells 30
-/control/doif {ROUGHDEMO} == 1 /detector/pTPgeomRoughAmp 0.3
-# (bumps per side: lateral bump size = 150 mm / 30 = 5 mm; RMS bump height in mm,
-#  clipped at ±3 RMS and at 0.8 × film thickness)
 /run/reinitializeGeometry
 /run/initialize

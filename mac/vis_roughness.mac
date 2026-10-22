@@ -8,13 +8,11 @@
 # 400 nm is not absorbed by pTP, so you see each ray deflected by the bump it
 # hits. Zoom in on the yellow film (side view) to see the bumps themselves.
 #
-# THE KNOBS live in roughness_knobs.mac — edit that file. Its physics block
-# (sigmaAlpha) is what run.mac & co. apply with rough=on; its visual block
-# (1 mm film, bumps per side, RMS bump height) is applied only when the alias
-# {ROUGHDEMO} is 1, which this macro sets. This macro applies the knobs ALWAYS
-# (rough=on/off on the command line is ignored here).
+# THE KNOBS live in roughness_knobs.mac (film thickness, bumps per side, RMS
+# bump height, seed, sigmaAlpha) — edit that file. The same file is applied by
+# run.mac & co. with rough=on, so what you see here is what the runs simulate.
+# This macro applies it ALWAYS (rough=on/off on the command line is ignored).
 # ─────────────────────────────────────────────────────────────────────────────
-/control/alias ROUGHDEMO 1
 /control/execute roughness_knobs.mac
 
 # Same camera setup as vis.mac (default up vector, so the mouse rotates freely):

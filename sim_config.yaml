@@ -29,7 +29,8 @@ geometry:
   pTPsigmaAlpha_rad: 0.0          # pTP surface facet-slope RMS [rad]; 0.0 = flat, perfectly smooth (no wiggle)
                                   #   raise to model coating waviness/roughness, e.g. 0.1 rad ≈ 6°
                                   #   (rough=on / main.sh ROUGH=on overrides it with mac/roughness_knobs.mac)
-  # Visible bumps on the film (demonstrator, see vis_roughness.mac); 0 = flat film
+  # Random surface height map on the film (see vis_roughness.mac); 0 = flat film.
+  # (rough=on / main.sh ROUGH=on overrides these with mac/roughness_knobs.mac)
   pTPgeomRoughCells: 0            # bumps per side (lateral size = side / cells)
   pTPgeomRoughAmplitude_mm: 0.0   # RMS bump height [mm]
   pTPgeomRoughSeed: 12345

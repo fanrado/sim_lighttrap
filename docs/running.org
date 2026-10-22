@@ -146,12 +146,11 @@ See [[file:analysis.org][Output Ntuples & Analysis]] for the full branch referen
 
 ~./sim_lighttrap sim_config.yaml run.mac rough=on~ (or ~ROUGH=on~ in
 ~main.sh~) defines the macro alias ~{ROUGH}~ = 1; every macro then executes
-~roughness_knobs.mac~ before the run. Its physics block sets the pTP surface
-~sigmaAlpha~ (micro-facet RMS slope) used by the production runs; its visual
-block (1 mm film with a random height map) is guarded by the alias
-~{ROUGHDEMO}~, which only ~vis_roughness.mac~ and ~draw_offscreen.mac~ set to
-1 (~sim_lighttrap~ defines it as 0). With ~rough=off~ the film is what the
-YAML says (~pTPsigmaAlpha_rad~).
+~roughness_knobs.mac~ in full before the run: pTP film thickness, random
+surface height map (bumps per side, RMS bump height, seed) and micro-facet
+~sigmaAlpha~. ~vis_roughness.mac~ applies the same file always, so the viewer
+shows the film the runs simulate. With ~rough=off~ the film is what the YAML
+says.
 
 * Tips
 
