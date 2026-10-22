@@ -60,6 +60,11 @@ struct MaterialsConfig {
 
 struct SimConfig {
     // ── Geometry (messenger: /detector/<param>) ─────────────────────────────
+    // withSample = false removes the pTP film + UV acrylic (and the first-layer
+    // edge counters) while keeping the beam, the PMT and the backplane
+    // reference-counter plane in place: the "no sample" reference run for a
+    // transmission measurement.  CLI: with_sample=on|off (overrides YAML).
+    bool   withSample               = true;
     double pTPlayerThickness_mm     = 0.002;  // pTP WLS film
     double uvAcrylicThickness_mm    = 3.0;    // UV-transparent acrylic carrier
     double LArThickness_mm          = 7.0;    // LAr gap: first-layer back face → PMT window front face

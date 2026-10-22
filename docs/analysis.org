@@ -114,6 +114,7 @@ columns as ntuple 6.
 | Geometric collection on the PMT | 6 / 4   | N(PMTPhotons) / N(FirstLayerBackplane, forward=1)     |
 | PMT detection efficiency        | 7 / 6   | N(PMTHits) / N(PMTPhotons)                            |
 | Photo-electrons per primary     | 7 / 1   | N(PMTHits) / N(Primary)                               |
+| Sample transmission             | 7       | N(PMTHits, with_sample=on) / N(PMTHits, with_sample=off), same beam |
 | Direct VUV on the PMT           | 6       | N(PMTPhotons, primary=1)                              |
 | Fresnel reflection vs angle     | 3       | ~reflected~ rate binned in ~incidentAngle~            |
 | WLS emission angular dist.      | 2       | Distribution of ~cosTheta~ and ~phi~                  |

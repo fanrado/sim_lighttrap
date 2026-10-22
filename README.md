@@ -111,6 +111,24 @@ face, 0.01 mm behind the acrylic so TIR-trapped light is not counted, and
   ./sim_lighttrap run_285.mac             # measured lamp spectrum (input/spectrum.txt via create_macro.py)
   ```
 
+- **With / without the sample (`with_sample=on|off`):**
+
+  ```bash
+  ./sim_lighttrap sim_config.yaml with_sample=on      # pTP-coated acrylic in the beam (default)
+  ./sim_lighttrap sim_config.yaml with_sample=off     # bare beam → PMT reference, identical geometry
+  ./sim_lighttrap run.mac with_sample=off             # also works macro-only
+  ./sim_lighttrap --help
+  ```
+
+  `with_sample=off` removes the pTP film and the UV acrylic (and the first-layer
+  edge counters) and leaves everything else untouched: same beam, same 7 mm gap
+  position, same PMT. The `FirstLayerBackplane` counter stays as a reference
+  plane at the position of the acrylic back face. The transmission of the
+  sample is then `N(PMTHits, on) / N(PMTHits, off)` for the same number of beam
+  photons. The switch is also available as `geometry.withSample: true|false` in
+  the YAML (the command line wins) and as `/detector/withSample true|false` in
+  a macro (followed by `/run/reinitializeGeometry`).
+
 - **YAML Configuration Mode:**
 
   Edit `sim_config.yaml` in the build directory, then run:
@@ -138,14 +156,16 @@ face, 0.01 mm behind the acrylic so TIR-trapped light is not counted, and
   ```
 
 **Transmission spectrum scan.** The bench measurement scans the beam
-wavelength; `scripts/scan_wavelength.py` runs the simulation once per
-wavelength (each run in its own scratch directory, so the fixed output name is
-never overwritten) and tabulates photocathode hits per beam photon, split into
-unshifted (transmitted) and pTP-shifted light:
+wavelength; `scripts/scan_wavelength.py` runs the simulation per wavelength
+with and without the sample (each run in its own scratch directory, so the
+fixed output name is never overwritten), tabulates photocathode hits per beam
+photon split into unshifted (transmitted) and pTP-shifted light, and prints the
+transmission `T = hits(with sample) / hits(without)`:
 
 ```bash
 python3.13 scripts/scan_wavelength.py --build build --events 5000 --wl 115 120 128 140 160 200 250 300
 python3.13 scripts/scan_wavelength.py --build build --events 5000 --range 110 320 10   # 110..320 nm in 10 nm steps
+python3.13 scripts/scan_wavelength.py --build build --events 5000 --wl 128 --sample on  # sample runs only
 ```
 
 Output: `output_apexltsim<runID>.root` in the working directory, with trees

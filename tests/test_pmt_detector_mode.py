@@ -240,7 +240,9 @@ def test_main_forwards_yaml_to_messenger_and_gps_radius():
         assert f'"{cmd} "' in main, f"sim_lighttrap.cc does not forward {cmd}"
     assert '"/gps/pos/radius "' in main
     # detector commands precede the geometry re-initialisation
-    assert main.index("/detector/pmtDiameter") < main.index("/run/reinitializeGeometry")
+    # detector commands precede the geometry re-initialisation of the YAML block
+    # (an earlier reinitializeGeometry exists for the macro-only with_sample path)
+    assert main.index("/detector/pmtDiameter") < main.rindex("/run/reinitializeGeometry")
     for gone in ("/detector/nSiPMs", "/detector/backplaneFoil", "/detector/detectorType", "/detector/pTPsubstratethickness"):
         assert gone not in main
 
@@ -336,6 +338,46 @@ def test_vis_attributes_guard_optional_window(construction_code):
     assert re.search(r"if\s*\(\s*logicPMTWindow\s*\)\s*logicPMTWindow->SetVisAttributes", vis)
     assert "logicPMTPhotocathode->SetVisAttributes(vaPMTCat)" in vis
     assert "logicPMTEnvelope->SetVisAttributes" in vis and "logicPMTEndCap->SetVisAttributes" in vis
+
+
+def test_with_sample_switch():
+    """with_sample=on|off CLI arg, geometry.withSample YAML key, /detector/withSample messenger."""
+    main = strip_comments(read(MAIN_CC))
+    assert "parseWithSampleArg" in main and '"with_sample="' in main
+    assert "cfg.withSample = withSampleArg" in main, "command line must override the YAML"
+    assert '"/detector/withSample "' in main
+    assert re.search(r'DeclareProperty\s*\(\s*"withSample"\s*,\s*fWithSample', read(CONSTRUCTION_CC))
+    assert re.search(r"G4bool\s+fWithSample;", read(CONSTRUCTION_HH))
+    assert re.search(r"bool\s+withSample\s*=\s*true;", strip_comments(read(CONFIG_HH)))
+    assert 'geo["withSample"]' in read(CONFIG_CC)
+    with open(CONFIG_YAML) as fh:
+        assert yaml.safe_load(fh)["geometry"]["withSample"] is True
+
+
+def test_without_sample_keeps_beam_pmt_and_reference_plane(construction_cc):
+    # raw source (comments kept): the "} // fWithSample" block-end markers are comments
+    body = construction_cc[construction_cc.index("MyLightTrapConstruction::Construct()"):]
+    # sample volumes and edge counters are inside if (fWithSample) blocks
+    i_sample = body.index('new G4Box("pTPlayer"')
+    assert "if (fWithSample) {" in body[:i_sample]
+    i_edge = body.index('new G4Box("FirstLayerEdgeDet"')
+    assert body.rfind("if (fWithSample) {", 0, i_edge) > body.rfind("} // fWithSample", 0, i_edge) - 1
+    # PMT, backplane reference counter and world are unconditional
+    for name in ('new G4Box("FirstLayerExitDet"', 'new G4Tubs("PMTPhotocathode"', 'new G4Tubs("PMTWindow"'):
+        i = body.index(name)
+        assert body.rfind("if (fWithSample) {", 0, i) < body.rfind("} // fWithSample", 0, i), f"{name} must not depend on the sample"
+    # SD / vis / surfaces guarded
+    sd = body[body.index("ConstructSDandField"):]
+    assert re.search(r"if\s*\(\s*logicFirstLayerEdgeDet\s*\)", sd)
+    assert "logicFirstLayerExitDet->SetSensitiveDetector" in sd
+    assert re.search(r"if\s*\(\s*logicpTPlayer\s*\)\s*logicpTPlayer->SetVisAttributes", body)
+    assert re.search(r"if\s*\(\s*fWithSample\s*\)\s*\{\s*G4OpticalSurface\s*\*pTPRoughSurf", body)
+
+
+def test_scan_script_runs_with_and_without_sample():
+    src = read("scripts/scan_wavelength.py")
+    assert "with_sample=" in src and '"--sample"' in src
+    assert "T_total" in src and "T_direct" in src and "T_wls" in src
 
 
 def test_scan_script_exists_and_uses_pmt_trees():

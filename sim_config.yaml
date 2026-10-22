@@ -17,6 +17,8 @@
 #   FirstLayerBackplane (4), FirstLayerEdges (5), PMTPhotons (6, pre-QE), PMTHits (7, post-QE)
 
 geometry:
+  withSample: true                # true: pTP-coated acrylic in the beam; false: bare beam → PMT reference run
+                                  #   (command line: with_sample=on|off overrides this)
   pTPlayerThickness_mm: 0.002     # pTP WLS film thickness [mm]  (default: 2 µm)
   uvAcrylicThickness_mm: 3.0      # UV-transparent acrylic carrier [mm]
   LArThickness_mm: 7.0            # LAr gap between the back of the pTP-deposited acrylic and the PMT faceplate [mm]

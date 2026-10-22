@@ -30,6 +30,7 @@ private:
   virtual void ConstructSDandField();
 
   // ── Tunable geometry parameters (set via /detector/ messenger or defaults) ──
+  G4bool   fWithSample;           // build the pTP/acrylic sample? (false = reference run)
   G4double pTPlayerthickness;     // pTP WLS film thickness           (default 2 µm)
   G4double uvAcrylicThickness;    // UV-transparent acrylic thickness  (default 3 mm)
   G4double LArthickness;          // LAr gap: first layer → PMT face   (default 7 mm)

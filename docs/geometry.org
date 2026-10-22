@@ -145,6 +145,7 @@ faceplate Ø 28.2 ± 0.8 mm, photocathode Ø 23 mm min. effective area, body
 * Geometry Messenger Commands
 
 #+BEGIN_EXAMPLE
+/detector/withSample         <bool>   # build the pTP-coated acrylic sample (false = bare beam → PMT reference)
 /detector/pTPlayerthickness  <double> # pTP film thickness [mm]
 /detector/uvAcrylicThick     <double> # UV acrylic carrier thickness [mm]
 /detector/LArthickness       <double> # LAr gap: back of the acrylic → PMT faceplate [mm] (7)

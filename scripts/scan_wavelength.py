@@ -13,8 +13,14 @@ runs must never share one), then reads the output with uproot and prints:
   N_PMT_direct = photocathode hits by unshifted beam photons (transmitted VUV)
   N_PMT_wls    = photocathode hits by pTP-shifted photons
 
+With --sample both (default) every wavelength is run twice, with the sample
+(with_sample=on) and without it (with_sample=off, identical beam/PMT geometry),
+and the transmission T = hits(on) / hits(off) is added, split into the
+unshifted and pTP-shifted contributions.
+
 Usage:
   python3.13 scripts/scan_wavelength.py --build build --events 5000 --wl 115 128 160 200 250
+  python3.13 scripts/scan_wavelength.py --build build --events 5000 --wl 128 --sample on   # sample only
   python3.13 scripts/scan_wavelength.py --build build --events 5000 --range 110 320 10
   python3.13 scripts/scan_wavelength.py ... --config other.yaml        # other geometry/materials
   (by default <build>/sim_config.yaml is applied, so materials match a normal YAML run)
@@ -73,6 +79,8 @@ def main():
     ap.add_argument("--out", default=None, help="write the table as CSV to this path")
     ap.add_argument("--keep", action="store_true", help="keep the per-wavelength ROOT files (scan_<wl>nm/)")
     ap.add_argument("--workdir", default=None, help="where the per-wavelength run directories go (default: temp)")
+    ap.add_argument("--sample", choices=["both", "on", "off"], default="both",
+                    help="run with the sample, without it (reference), or both and report T = on/off (default)")
     args = ap.parse_args()
 
     wls = list(args.wl)
@@ -99,12 +107,9 @@ def main():
     os.makedirs(workdir, exist_ok=True)
     print(f"# scan of {len(wls)} wavelengths, {args.events} photons each, runs in {workdir}")
 
-    rows = []
-    header = ["wl_nm", "N_primary", "N_WLS_pTP", "N_PMT_hits", "N_PMT_direct", "N_PMT_wls",
-              "hits_per_primary", "direct_per_primary", "wls_per_primary"]
-    print("  ".join(f"{h:>16s}" for h in header))
-    for wl in wls:
-        rundir = os.path.join(workdir, f"scan_{wl:g}nm")
+    def run_one(wl, with_sample):
+        """Run one wavelength with/without the sample; return counts or None."""
+        rundir = os.path.join(workdir, f"scan_{wl:g}nm_{'sample' if with_sample else 'nosample'}")
         os.makedirs(rundir, exist_ok=True)
         # data files the simulation reads from the working directory
         for name in ("ptp_emission.dat",):
@@ -114,22 +119,51 @@ def main():
         mac = os.path.join(rundir, "scan.mac")
         with open(mac, "w") as fh:
             fh.write(macro_for(wl, args.events))
-        cmd = [exe] + ([cfg] if cfg else []) + [mac]
+        cmd = [exe] + ([cfg] if cfg else []) + [mac, f"with_sample={'on' if with_sample else 'off'}"]
         with open(os.path.join(rundir, "run.log"), "w") as log:
             rc = subprocess.call(cmd, cwd=rundir, stdout=log, stderr=subprocess.STDOUT)
         if rc != 0:
-            print(f"# wl={wl} nm: simulation failed (exit {rc}), see {rundir}/run.log", file=sys.stderr)
-            continue
+            print(f"# wl={wl} nm with_sample={'on' if with_sample else 'off'}: simulation failed "
+                  f"(exit {rc}), see {rundir}/run.log", file=sys.stderr)
+            return None
         out = os.path.join(rundir, "output_apexltsim0.root")
-        n_primary, n_wls_ptp, n_pmt, n_direct, n_wls = summarize(out)
-        row = [wl, n_primary, n_wls_ptp, n_pmt, n_direct, n_wls,
-               n_pmt / n_primary if n_primary else float("nan"),
-               n_direct / n_primary if n_primary else float("nan"),
-               n_wls / n_primary if n_primary else float("nan")]
-        rows.append(row)
-        print("  ".join(f"{v:>16.4g}" if isinstance(v, float) else f"{v:>16d}" for v in row))
+        counts = summarize(out)
         if not args.keep:
             os.remove(out)
+        return counts
+
+    def ratio(a, b):
+        return a / b if b else float("nan")
+
+    modes = {"both": (True, False), "on": (True,), "off": (False,)}[args.sample]
+    rows = []
+    header = ["wl_nm", "sample", "N_primary", "N_WLS_pTP", "N_PMT_hits", "N_PMT_direct", "N_PMT_wls",
+              "hits_per_primary", "direct_per_primary", "wls_per_primary"]
+    if args.sample == "both":
+        header += ["T_total", "T_direct", "T_wls"]
+    print("  ".join(f"{h:>16s}" for h in header))
+    for wl in wls:
+        res = {}
+        for with_sample in modes:
+            counts = run_one(wl, with_sample)
+            if counts is None:
+                continue
+            n_primary, n_wls_ptp, n_pmt, n_direct, n_wls = counts
+            res[with_sample] = counts
+            row = [wl, "on" if with_sample else "off", n_primary, n_wls_ptp, n_pmt, n_direct, n_wls,
+                   ratio(n_pmt, n_primary), ratio(n_direct, n_primary), ratio(n_wls, n_primary)]
+            if args.sample == "both":
+                if with_sample and False in res:
+                    pass
+                row += [float("nan")] * 3
+            rows.append(row)
+        if args.sample == "both" and True in res and False in res:
+            # transmission: PMT hits with the sample relative to the bare-beam reference
+            ref_hits = res[False][2]
+            on = res[True]
+            rows[-2][-3:] = [ratio(on[2], ref_hits), ratio(on[3], ref_hits), ratio(on[4], ref_hits)]
+        for row in rows[-len(res):]:
+            print("  ".join(f"{v:>16.4g}" if isinstance(v, float) else f"{v:>16}" for v in row))
 
     if args.out:
         with open(args.out, "w", newline="") as fh:

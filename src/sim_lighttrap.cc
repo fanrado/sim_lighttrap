@@ -1,6 +1,8 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <cctype>
+#include <cstdlib>
 
 #include "G4RunManager.hh"
 #include "G4UImanager.hh"
@@ -20,6 +22,40 @@ static bool isYamlFile(const std::string& s)
            (s.size() >= 4 && s.substr(s.size()-4) == ".yml");
 }
 
+// Parses the optional "with_sample=on|off" command-line argument (also
+// accepts --with_sample=, --with-sample=, with-sample=, and true/false/1/0,
+// case-insensitive).  Returns true if `arg` is such an argument; the parsed
+// value is stored in `value`.
+static bool parseWithSampleArg(const std::string& arg, bool& value)
+{
+    std::string key = arg, lower;
+    while (!key.empty() && key[0] == '-') key.erase(0, 1);
+    for (char c : key) lower += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    const std::string k1 = "with_sample=", k2 = "with-sample=";
+    std::string v;
+    if (lower.rfind(k1, 0) == 0)      v = lower.substr(k1.size());
+    else if (lower.rfind(k2, 0) == 0) v = lower.substr(k2.size());
+    else return false;
+    if (v == "on" || v == "true" || v == "1" || v == "yes")       value = true;
+    else if (v == "off" || v == "false" || v == "0" || v == "no") value = false;
+    else {
+        std::cerr << "error: " << arg << " -- expected with_sample=on|off\n";
+        std::exit(2);
+    }
+    return true;
+}
+
+static void usage()
+{
+    std::cerr <<
+        "usage: sim_lighttrap [config.yaml] [macro.mac] [with_sample=on|off]\n"
+        "  config.yaml        geometry/source/materials (applied first)\n"
+        "  macro.mac          Geant4 macro (overrides YAML; a name containing 'vis' opens the Qt UI)\n"
+        "  with_sample=on|off build the pTP-coated acrylic sample (on, default) or run the\n"
+        "                     bare beam -> PMT reference with the identical geometry (off);\n"
+        "                     overrides geometry.withSample in the YAML\n";
+}
+
 static std::string d2s(double v)
 {
     std::ostringstream os;
@@ -29,10 +65,13 @@ static std::string d2s(double v)
 
 int main(int argc, char** argv)
 {
-    // Separate YAML config file from optional Geant4 macro file
+    // Separate YAML config file, optional Geant4 macro file and with_sample flag
     std::string configFile, macroFile;
+    bool withSampleArg = true, hasWithSampleArg = false;
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
+        if (arg == "-h" || arg == "--help") { usage(); return 0; }
+        if (parseWithSampleArg(arg, withSampleArg)) { hasWithSampleArg = true; continue; }
         if (isYamlFile(arg))
             configFile = arg;
         else
@@ -44,6 +83,10 @@ int main(int argc, char** argv)
     const bool hasConfig = !configFile.empty();
     if (hasConfig)
         cfg = SimConfig::fromFile(configFile);
+    if (hasWithSampleArg)
+        cfg.withSample = withSampleArg;          // CLI overrides YAML
+    std::cout << "[sim_lighttrap] with_sample = " << (cfg.withSample ? "on" : "off")
+              << (hasWithSampleArg ? " (command line)" : hasConfig ? " (YAML)" : " (default)") << "\n";
 
     // ── Geant4 initialisation ────────────────────────────────────────────────
     G4RunManager *runManager = new G4RunManager();
@@ -68,7 +111,13 @@ int main(int argc, char** argv)
     // ── Apply YAML settings via the existing messenger commands ──────────────
     // Geometry parameters (/detector/ messenger — DeclareProperty expects G4
     // internal units: mm for length).
+    if (!hasConfig && hasWithSampleArg) {
+        // No YAML: only the sample switch changes the default geometry.
+        UImanager->ApplyCommand(std::string("/detector/withSample ") + (cfg.withSample ? "true" : "false"));
+        UImanager->ApplyCommand("/run/reinitializeGeometry");
+    }
     if (hasConfig) {
+        UImanager->ApplyCommand(std::string("/detector/withSample ") + (cfg.withSample ? "true" : "false"));
         // Geometry — lighttrapsize messenger stores value in mm (G4 unit)
         UImanager->ApplyCommand("/detector/pTPlayerthickness "   + d2s(cfg.pTPlayerThickness_mm));
         UImanager->ApplyCommand("/detector/uvAcrylicThick "      + d2s(cfg.uvAcrylicThickness_mm));

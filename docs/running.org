@@ -48,6 +48,18 @@ photocathode, axes and scale, trajectories accumulated per event, and the
 Runs 10 000 events with the default beam (circular plane, radius 7 mm, at
 z = −2 cm, λ = 128 nm, along +z). Output: ~output_apexltsim0.root~.
 
+** With / without the sample
+
+#+BEGIN_SRC bash
+./sim_lighttrap sim_config.yaml with_sample=on    # sample in the beam (default)
+./sim_lighttrap sim_config.yaml with_sample=off   # bare beam → PMT reference, identical geometry
+#+END_SRC
+
+~with_sample=off~ removes the pTP film, the UV acrylic and the first-layer edge
+counters; beam, gap, PMT and the ~FirstLayerBackplane~ reference-counter plane
+stay in place. Also ~geometry.withSample~ in the YAML and
+~/detector/withSample true|false~ in a macro.
+
 ** YAML configuration
 
 #+BEGIN_SRC bash
@@ -74,6 +86,7 @@ Inside an interactive session or at the top of a custom macro:
 
 | Command                   | Default | Effect                                        |
 |---------------------------+---------+-----------------------------------------------|
+| /detector/withSample      | true    | build the pTP-coated acrylic sample (false = reference) |
 | /detector/pTPlayerthickness | 0.002 mm | pTP film thickness                          |
 | /detector/uvAcrylicThick  | 3 mm    | UV acrylic carrier thickness                  |
 | /detector/LArthickness    | 7 mm    | LAr gap, back of the acrylic → PMT faceplate  |

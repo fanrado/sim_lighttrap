@@ -133,6 +133,7 @@ SimConfig SimConfig::fromFile(const std::string& path)
     SimConfig cfg;
 
     if (auto geo = doc["geometry"]) {
+        if (geo["withSample"])                cfg.withSample               = geo["withSample"].as<bool>();
         if (geo["pTPlayerThickness_mm"])      cfg.pTPlayerThickness_mm     = geo["pTPlayerThickness_mm"].as<double>();
         if (geo["uvAcrylicThickness_mm"])     cfg.uvAcrylicThickness_mm    = geo["uvAcrylicThickness_mm"].as<double>();
         if (geo["LArThickness_mm"])           cfg.LArThickness_mm          = geo["LArThickness_mm"].as<double>();

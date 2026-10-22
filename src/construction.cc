@@ -41,6 +41,8 @@ MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
 {
   // ── Runtime messenger: /detector/<command> ──────────────────────────────────
   fMessenger = new G4GenericMessenger(this, "/detector/", "Light Trap Construction");
+  fMessenger->DeclareProperty("withSample",
+      fWithSample,          "Build the pTP-coated acrylic sample (true) or run the bare beam->PMT reference (false)");
   fMessenger->DeclareProperty("pTPlayerthickness",
       pTPlayerthickness,    "pTP WLS film thickness [default 2 µm]");
   fMessenger->DeclareProperty("uvAcrylicThick",
@@ -69,6 +71,7 @@ MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
       pmtQEmax_nm,          "PMT QE band upper edge [nm, default 500]");
 
   // ── Default geometry parameters ─────────────────────────────────────────────
+  fWithSample           = true;     // sample in the beam by default
   pTPlayerthickness     = 0.002*mm; // 2 µm pTP film
   uvAcrylicThickness    = 3.*mm;    // 3 mm UV-transparent acrylic carrier
   LArthickness          = 7.*mm;    // 7 mm LAr gap between first layer and PMT faceplate
@@ -401,6 +404,18 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   physWorld  = new G4PVPlacement(0, G4ThreeVector(0., 0., 0.),
       logicWorld, "physWorld", 0, false, 0, true);
 
+  // ══ SAMPLE: pTP-COATED UV ACRYLIC (skipped when withSample = false) ═════════
+  // with_sample=off is the reference run of the transmission measurement: the
+  // same beam, gap, PMT and backplane reference-counter plane, but no sample.
+  pTPlayer = nullptr;      logicpTPlayer = nullptr;  physpTPlayer = nullptr;
+  uvAcrylicSlab = nullptr; logicUVAcrylic = nullptr; physUVAcrylic = nullptr;
+  FirstLayerEdgeDet = nullptr; logicFirstLayerEdgeDet = nullptr;
+  physFirstLayerEdgeDet_pX = nullptr; physFirstLayerEdgeDet_nX = nullptr;
+  if (!fWithSample)
+    G4cout << "[Construction] withSample = false: no pTP film / acrylic in the beam "
+              "(reference run); beam, PMT and reference-counter plane unchanged." << G4endl;
+
+  if (fWithSample) {
   // ══ FIRST LAYER: pTP WLS FILM ═══════════════════════════════════════════════
   // Thin WLS film deposited on the LAr-facing (−z) front surface of the UV
   // acrylic carrier.  Absorbs incoming 128 nm VUV photons and re-emits at
@@ -422,6 +437,7 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   logicUVAcrylic = new G4LogicalVolume(uvAcrylicSlab, uvTransAcrylic, "logicUVAcrylic");
   physUVAcrylic  = new G4PVPlacement(0, G4ThreeVector(0., 0., kUVAcrylCenterZ),
       logicUVAcrylic, "physUVAcrylic", logicWorld, false, 0, true);
+  } // fWithSample
 
   // ══ PMT READOUT (Hamamatsu R6836-like cylinder) ════════════════════════════
   // The PMT axis is the z axis; its faceplate front is at z = kPMTFrontZ (0):
@@ -490,7 +506,9 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   // *counts* photons that have already escaped the first-layer back face and
   // crossed the standoff — photons TIR-reflected at that face never reach it.
   // Its SD is a pass-through counter (does NOT kill the track), so photons
-  // continue on toward the PMT. Records region (b) FirstLayerBackplane.
+  // continue on toward the PMT. Records region (b) FirstLayerBackplane (ntuple 4).
+  // Built in both with- and without-sample runs: without the sample it is the
+  // reference-counter plane at the position of the acrylic back face.
   FirstLayerExitDet      = new G4Box("FirstLayerExitDet",
       lighttrapsize/2., lighttrapsize/2., kGapDetThick/2.);
   logicFirstLayerExitDet = new G4LogicalVolume(
@@ -506,6 +524,8 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   // no boundary — and only *count* photons reaching the first layer's lateral
   // edges.  One logical volume placed twice (+x = copy 0, −x = copy 1); the SD is
   // a pass-through counter (killTrack=false) → region (c) FirstLayerEdges.
+  // Only built together with the sample.
+  if (fWithSample) {
   FirstLayerEdgeDet      = new G4Box("FirstLayerEdgeDet",
       kEdgeDetThick/2., lighttrapsize/2., kFirstLayerThick/2.);
   logicFirstLayerEdgeDet = new G4LogicalVolume(
@@ -516,6 +536,7 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   physFirstLayerEdgeDet_nX = new G4PVPlacement(0,
       G4ThreeVector(-(lighttrapsize/2. + kEdgeDetThick/2.), 0., kFirstLayerCenterZ),
       logicFirstLayerEdgeDet, "physFirstLayerEdgeDet_nX", logicWorld, false, 1, true);
+  } // fWithSample
 
   // ══ pTP INTERFACE SURFACES ══════════════════════════════════════════════════
   // Both pTP faces (outer LAr-facing, inner acrylic-facing) share one ground/
@@ -526,7 +547,7 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   //                         in the 2 µm layer; raise sigmaAlpha to model
   //                         evaporated-film roughness / coating waviness so those
   //                         guided modes scatter out (0.1 rad ≈ 6°).
-  {
+  if (fWithSample) {
     G4OpticalSurface *pTPRoughSurf = new G4OpticalSurface("pTPRoughSurface");
     pTPRoughSurf->SetType(dielectric_dielectric);
     pTPRoughSurf->SetFinish(ground);
@@ -547,13 +568,11 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
     auto *vaWorld = new G4VisAttributes(false);
     logicWorld->SetVisAttributes(vaWorld);
 
-    // pTP WLS film: yellow
+    // pTP WLS film: yellow; UV-transparent acrylic: light blue (sample only)
     auto *vaPTP = new G4VisAttributes(G4Colour(1.0, 1.0, 0.0, 0.8));
-    logicpTPlayer->SetVisAttributes(vaPTP);
-
-    // UV-transparent acrylic: light blue, semi-transparent
+    if (logicpTPlayer) logicpTPlayer->SetVisAttributes(vaPTP);
     auto *vaUV = new G4VisAttributes(G4Colour(0.5, 0.8, 1.0, 0.4));
-    logicUVAcrylic->SetVisAttributes(vaUV);
+    if (logicUVAcrylic) logicUVAcrylic->SetVisAttributes(vaUV);
 
     // PMT faceplate: pale grey, transparent; photocathode: dark red;
     // vacuum: invisible; envelope / end cap: grey
@@ -572,7 +591,7 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
 
     // First-layer edge counters: orange, semi-transparent
     auto *vaEdge = new G4VisAttributes(G4Colour(1.0, 0.5, 0.0, 0.3));
-    logicFirstLayerEdgeDet->SetVisAttributes(vaEdge);
+    if (logicFirstLayerEdgeDet) logicFirstLayerEdgeDet->SetVisAttributes(vaEdge);
   }
 
   return physWorld;
@@ -593,6 +612,8 @@ void MyLightTrapConstruction::ConstructSDandField()
 
   // First-layer edge counters: pass-through counter (killTrack=false) → ntuple 5.
   // One SD serves both ±x edge placements (set on the shared logical volume).
-  MyLeakDetector *edgeDet = new MyLeakDetector("FirstLayerEdgeDetector", 5, false);
-  logicFirstLayerEdgeDet->SetSensitiveDetector(edgeDet);
+  if (logicFirstLayerEdgeDet) {
+    MyLeakDetector *edgeDet = new MyLeakDetector("FirstLayerEdgeDetector", 5, false);
+    logicFirstLayerEdgeDet->SetSensitiveDetector(edgeDet);
+  }
 }
