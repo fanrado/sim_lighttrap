@@ -537,6 +537,18 @@ def test_geometric_roughness_option():
     assert g["pTPgeomRoughCells"] == 0 and g["pTPgeomRoughAmplitude_mm"] == 0.0
 
 
+def test_main_sh_run_script():
+    import subprocess
+    sh = read("main.sh")
+    assert sh.startswith("#!/usr/bin/env bash")
+    for var in ("WITH_SAMPLE=", "WORLD_MEDIUM=", "ROUGH=", "MACRO=", "YAML=", "PMT_QE=", "OUTPUT=", "BUILD_DIR="):
+        assert re.search(rf"^{var}", sh, re.M), f"main.sh must define {var}"
+    for cli in ("with_sample=$WITH_SAMPLE", "world_medium=$WORLD_MEDIUM", "rough=$ROUGH", "pmt_qe=$PMT_QE"):
+        assert cli in sh
+    assert "output_apexltsim0.root" in sh and "mv -f" in sh, "fixed output file must be renamed"
+    assert subprocess.run(["bash", "-n", "main.sh"]).returncode == 0, "main.sh must parse"
+
+
 def test_scan_script_runs_with_and_without_sample():
     src = read("scripts/scan_wavelength.py")
     assert "with_sample=" in src and '"--sample"' in src

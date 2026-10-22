@@ -98,6 +98,13 @@ face, 0.01 mm behind the acrylic so TIR-trapped light is not counted, and
 
 ## Running the Simulation
 
+**Simplest way: `./main.sh`** (repository root). All switches are plain
+variables at the top of the script, each with a one-line comment: sample
+in/out, world medium, rough film on/off, which macro, which YAML, optional PMT
+QE table, and the name the output ROOT file is renamed to. Edit, run, read the
+end-of-run summary.
+
+
 - **Interactive Mode (with Visualization):**
 
   ```bash
