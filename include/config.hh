@@ -44,6 +44,13 @@ struct LArConfig {
     std::optional<double> scintillationtimeconstant2_ns;
 };
 
+struct GArConfig {
+    // Argon gas (1 atm) filling the world when geometry.worldMedium = gar.
+    std::vector<double> rindex;
+    std::vector<double> abslen_m;
+    std::vector<double> rayleigh_m;
+};
+
 struct MgF2Config {
     // Optional VUV-transparent PMT entrance window (only built when
     // geometry.pmtWindowThickness_mm > 0).
@@ -55,6 +62,7 @@ struct MaterialsConfig {
     PTPConfig             ptp;
     UVAcrylicConfig       uvAcrylic;
     LArConfig             lar;
+    GArConfig             gar;
     MgF2Config            mgf2;
 };
 
@@ -65,6 +73,12 @@ struct SimConfig {
     // reference-counter plane in place: the "no sample" reference run for a
     // transmission measurement.  CLI: with_sample=on|off (overrides YAML).
     bool   withSample               = true;
+    // World medium filling the beam path, the gap and the counters:
+    //   "gar"    argon gas at 1 atm (bench measurement; default)
+    //   "lar"    liquid argon (scintillating, Rayleigh length 0.9 m)
+    //   "vacuum" G4_Galactic with n = 1
+    // CLI: world_medium=gar|lar|vacuum (overrides YAML).
+    std::string worldMedium         = "gar";
     double pTPlayerThickness_mm     = 0.002;  // pTP WLS film
     double uvAcrylicThickness_mm    = 3.0;    // UV-transparent acrylic carrier
     double LArThickness_mm          = 7.0;    // LAr gap: first-layer back face → PMT window front face

@@ -10,14 +10,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // MyLightTrapConstruction
 //
-// Builds the LightTrap first layer immersed in liquid argon (LAr), read out by a
-// PMT (bench-measurement configuration).
+// Builds the LightTrap first layer in a selectable medium (argon gas by default,
+// liquid argon or vacuum), read out by a PMT (bench-measurement configuration).
 //
 // Structure (photons travel in +z direction; PMT front face at z = 0):
 //
-//   [LAr world] ──► pTP film (2 µm)    ← WLS: VUV (128 nm) → 340–430 nm
+//   [world medium] ► pTP film (2 µm)    ← WLS: VUV (128 nm) → 340–430 nm
 //                   UV acrylic (3 mm)  ← mechanical carrier, UV-transparent
-//                   [LAr gap, 7 mm]
+//                   [7 mm gap, world medium]
 //                   PMT (Hamamatsu R6836-like cylinder, Ø 28.2 mm × 92 mm):
 //                     MgF2 faceplate → photocathode disc (Ø 23 mm, terminal QE
 //                     counter) → vacuum → opaque glass side wall + end cap
@@ -41,6 +41,8 @@ MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
 {
   // ── Runtime messenger: /detector/<command> ──────────────────────────────────
   fMessenger = new G4GenericMessenger(this, "/detector/", "Light Trap Construction");
+  fMessenger->DeclareProperty("worldMedium",
+      fWorldMedium,         "World medium: gar (argon gas, 1 atm) | lar (liquid argon) | vacuum");
   fMessenger->DeclareProperty("withSample",
       fWithSample,          "Build the pTP-coated acrylic sample (true) or run the bare beam->PMT reference (false)");
   fMessenger->DeclareProperty("pTPlayerthickness",
@@ -72,6 +74,7 @@ MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
 
   // ── Default geometry parameters ─────────────────────────────────────────────
   fWithSample           = true;     // sample in the beam by default
+  fWorldMedium          = "gar";    // argon gas: bench transmission measurement
   pTPlayerthickness     = 0.002*mm; // 2 µm pTP film
   uvAcrylicThickness    = 3.*mm;    // 3 mm UV-transparent acrylic carrier
   LArthickness          = 7.*mm;    // 7 mm LAr gap between first layer and PMT faceplate
@@ -231,10 +234,10 @@ void MyLightTrapConstruction::DefineUVTransparentAcrylicMaterial()
   uvTransAcrylic->SetMaterialPropertiesTable(mpt);
 }
 
-void MyLightTrapConstruction::DefineWorldMaterial()
+void MyLightTrapConstruction::DefineLArMaterial()
 {
   G4NistManager *nist = G4NistManager::Instance();
-  worldMat = nist->FindOrBuildMaterial("G4_lAr");
+  larMat = nist->FindOrBuildMaterial("G4_lAr");
 
   // Wavelengths [nm]: { 530,  425,  400,  340,  305,  160,  145,  135,  128,  125,  120,  115,  106 }
   // Refractive index of liquid argon:
@@ -281,8 +284,40 @@ void MyLightTrapConstruction::DefineWorldMaterial()
   mpt->AddProperty("ABSLENGTH", energy, p_abslen,   13);
   mpt->AddProperty("RAYLEIGH",  energy, p_rayleigh, 13);
 
-  worldMat->SetMaterialPropertiesTable(mpt);
-  worldMat->GetIonisation()->SetBirksConstant(0.694*mm/MeV);
+  larMat->SetMaterialPropertiesTable(mpt);
+  larMat->GetIonisation()->SetBirksConstant(0.694*mm/MeV);
+}
+
+void MyLightTrapConstruction::DefineGArMaterial()
+{
+  G4NistManager *nist = G4NistManager::Instance();
+  // Argon gas at NIST conditions (1.66 mg/cm3, ~1 atm) — the medium of the
+  // bench transmission measurement.
+  garMat = nist->FindOrBuildMaterial("G4_Ar");
+
+  // Wavelengths [nm]: { 530, 425, 400, 340, 305, 160, 145, 135, 128, 125, 120, 115, 106 }
+  // Refractive index: Bideau-Méhu et al., JQSRT 25 (1981) 395, three-term
+  // Sellmeier for Ar at 0 °C / 1 atm (valid 140–568 nm; extrapolated below
+  // 140 nm and only indicative at 106 nm, next to the 104.8/106.7 nm resonances).
+  G4double rindex[13]   = {1.000283, 1.000286, 1.000287, 1.000291, 1.000295, 1.000357,
+                           1.000384, 1.000413, 1.000444, 1.000462, 1.000504, 1.000581, 1.001209};
+  // Pure argon gas is transparent above its 106 nm absorption edge; Rayleigh
+  // scattering at 1 atm is ~3 orders of magnitude weaker than in the liquid.
+  G4double abslen[13]   = {1000*m, 1000*m, 1000*m, 1000*m, 1000*m, 1000*m, 1000*m,
+                           1000*m, 1000*m, 1000*m, 1000*m, 1000*m, 1000*m};
+  G4double rayleigh[13] = {1000*m, 1000*m, 1000*m, 1000*m, 1000*m, 1000*m, 1000*m,
+                           1000*m, 1000*m, 1000*m, 1000*m, 1000*m, 1000*m};
+
+  G4double buf_ri[13], buf_abs[13], buf_ray[13];
+  G4double* p_rindex   = resolveArray(fCfg.materials.gar.rindex,     1., buf_ri,  rindex);
+  G4double* p_abslen   = resolveArray(fCfg.materials.gar.abslen_m,   m,  buf_abs, abslen);
+  G4double* p_rayleigh = resolveArray(fCfg.materials.gar.rayleigh_m, m,  buf_ray, rayleigh);
+
+  G4MaterialPropertiesTable *mpt = new G4MaterialPropertiesTable();
+  mpt->AddProperty("RINDEX",    energy, p_rindex,   13);
+  mpt->AddProperty("ABSLENGTH", energy, p_abslen,   13);
+  mpt->AddProperty("RAYLEIGH",  energy, p_rayleigh, 13);
+  garMat->SetMaterialPropertiesTable(mpt);
 }
 
 void MyLightTrapConstruction::DefineMgF2Material()
@@ -334,9 +369,11 @@ void MyLightTrapConstruction::DefineMaterials()
 {
   DefinePTPMaterial();
   DefineUVTransparentAcrylicMaterial();
-  DefineWorldMaterial();
+  DefineLArMaterial();
+  DefineGArMaterial();
   DefineMgF2Material();
   DefinePMTBodyMaterials();
+  worldMat = garMat;   // default; Construct() re-selects from fWorldMedium
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -363,8 +400,23 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   // ║  LAr ──► pTP film ──► UV acrylic ──► [LAr gap] ──► faceplate ──► cathode  ║
   // ╚═══════════════════════════════════════════════════════════════════════════╝
 
+  // ── World medium selection ──────────────────────────────────────────────────
+  // Everything built from worldMat (world box, gap, the optically invisible
+  // counters, a bare photocathode) follows this choice.
+  if      (fWorldMedium == "gar")    worldMat = garMat;
+  else if (fWorldMedium == "lar")    worldMat = larMat;
+  else if (fWorldMedium == "vacuum") worldMat = pmtVacuum;
+  else {
+    G4cerr << "[Construction] Unknown worldMedium '" << fWorldMedium
+           << "'; falling back to 'gar'." << G4endl;
+    fWorldMedium = "gar";
+    worldMat = garMat;
+  }
+  G4cout << "[Construction] world medium: " << fWorldMedium
+         << " (" << worldMat->GetName() << ")" << G4endl;
+
   // ── Fixed component thicknesses ─────────────────────────────────────────────
-  const G4double kGapDetThick   = 0.1*mm;   // first-layer backplane counter LAr slab
+  const G4double kGapDetThick   = 0.1*mm;   // first-layer backplane counter slab (world medium)
   const G4double kEdgeDetThick  = 0.1*mm;   // first-layer ±x edge counter LAr slab
   const G4double kPhotocathodeThick = 0.1*mm;   // thin sensitive disc (terminal counter)
   // Standoff between the first-layer back (+z) face and the backplane counter's
@@ -377,7 +429,7 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   // photocathode if the faceplate is disabled) is at z = 0.  All positions are derived from the messenger
   // parameters — changing any thickness shifts all upstream components.
   const G4double kPMTFrontZ           = 0.;
-  // LAr gap sits between the first-layer back face and the PMT faceplate:
+  // Gap (world medium) between the first-layer back face and the PMT faceplate:
   const G4double kUVAcrylBackZ   = kPMTFrontZ - LArthickness;
   const G4double kUVAcrylCenterZ = kUVAcrylBackZ  - uvAcrylicThickness / 2.;
   const G4double kUVAcrylFrontZ  = kUVAcrylBackZ  - uvAcrylicThickness;
@@ -394,10 +446,9 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   const G4double kFirstLayerCenterZ = kUVAcrylBackZ - kFirstLayerThick / 2.;
 
   // ══ WORLD VOLUME ════════════════════════════════════════════════════════════
-  // Liquid argon box, 60 % larger than the first layer in x and y; in z it is
-  // extended by the PMT length so the whole tube fits behind the first layer.
-  // LAr is both the scintillating medium and the propagation medium for photons
-  // between the source and the detector.
+  // Box of the selected medium (argon gas by default), 60 % larger than the
+  // first layer in x and y; in z it is extended by the PMT length so the whole
+  // tube fits behind the first layer.
   solidWorld = new G4Box("solidWorld",
       lighttrapsize * 0.6, lighttrapsize * 0.6, lighttrapsize * 0.6 + pmtLength);
   logicWorld = new G4LogicalVolume(solidWorld, worldMat, "logicWorld");

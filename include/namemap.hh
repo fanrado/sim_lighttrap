@@ -34,7 +34,9 @@ private:
       {"pTP", 1},
       {"G4_lAr", 4},
       {"uvTransAcrylic", 5},    // UV-transparent PMMA carrier for pTP film
-      {"G4_MAGNESIUM_FLUORIDE", 6}, // MgF2 PMT entrance window (pmt mode)
+      {"G4_MAGNESIUM_FLUORIDE", 6}, // MgF2 PMT faceplate
+      {"G4_Ar", 7},             // argon gas world medium
+      {"G4_Galactic", 8},       // vacuum (world medium option / PMT interior)
 
       {"Scintillation", 100},
       {"OpWLS", 101}

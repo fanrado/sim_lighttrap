@@ -8,8 +8,8 @@
 # YAML settings are applied first; a macro file (if also given) can override them.
 # Geometry changes trigger /run/reinitializeGeometry automatically.
 #
-# Geometry along +z (PMT faceplate front at z = 0):
-#   beam (z = -2 cm) → pTP film / UV acrylic → [LAr gap, 7 mm] → MgF2 faceplate → photocathode
+# Geometry along +z (PMT faceplate front at z = 0), everything in argon gas by default:
+#   beam (z = -2 cm) → pTP film / UV acrylic → [7 mm gap] → MgF2 faceplate → photocathode
 #   → vacuum → glass end cap     (Hamamatsu R6836-like cylinder, Ø 28.2 mm × 92 mm)
 #
 # Output ntuples (output_apexltsim<run>.root):
@@ -19,9 +19,12 @@
 geometry:
   withSample: true                # true: pTP-coated acrylic in the beam; false: bare beam → PMT reference run
                                   #   (command line: with_sample=on|off overrides this)
+  worldMedium: gar                # medium of the beam path, gap and counters: gar (argon gas, 1 atm, bench)
+                                  #   | lar (liquid argon: Rayleigh scattering, n = 1.45 at 128 nm) | vacuum
+                                  #   (command line: world_medium=gar|lar|vacuum overrides this)
   pTPlayerThickness_mm: 0.002     # pTP WLS film thickness [mm]  (default: 2 µm)
   uvAcrylicThickness_mm: 3.0      # UV-transparent acrylic carrier [mm]
-  LArThickness_mm: 7.0            # LAr gap between the back of the pTP-deposited acrylic and the PMT faceplate [mm]
+  LArThickness_mm: 7.0            # gap (filled with the world medium) between the back of the pTP-deposited acrylic and the PMT faceplate [mm]
   lightTrapSize_cm: 15.0          # square first-layer side length [cm]
   pTPsigmaAlpha_rad: 0.0          # pTP surface facet-slope RMS [rad]; 0.0 = flat, perfectly smooth (no wiggle)
                                   #   raise to model coating waviness/roughness, e.g. 0.1 rad ≈ 6°
@@ -96,7 +99,7 @@ materials:
     abslen_m: [10.0, 5.0, 1.0, 0.1, 0.01, 1.0e-4, 1.0e-6, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7]
 
   lar:
-    # Liquid argon optical properties
+    # Liquid argon optical properties (used when worldMedium: lar)
     # Refractive index refs: http://dx.doi.org/10.1016/j.nima.2017.06.031
     #                        https://github.com/LArSoft/larg4/.../simpleLArTPC.gdml#L45
     rindex: [1.23, 1.23, 1.23, 1.23, 1.235, 1.315, 1.378, 1.420, 1.45, 1.995, 2.904, 3.814, 5.45]
@@ -114,6 +117,17 @@ materials:
     resolutionscale: 1.0
     scintillationtimeconstant1_ns: 7.0     # fast τ (ns)
     scintillationtimeconstant2_ns: 1400.0  # slow τ (ns)
+
+  gar:
+    # Argon gas at ~1 atm (G4_Ar, 1.66 mg/cm3): the bench measurement medium (worldMedium: gar).
+    # Refractive index: Bideau-Méhu et al., JQSRT 25 (1981) 395, three-term Sellmeier for Ar
+    # (valid 140-568 nm; extrapolated below 140 nm; the 106 nm value sits next to the
+    # 104.8 / 106.7 nm resonances and is only indicative).
+    rindex:     [1.000283, 1.000286, 1.000287, 1.000291, 1.000295, 1.000357, 1.000384, 1.000413, 1.000444, 1.000462, 1.000504, 1.000581, 1.001209]
+    # Pure argon is transparent above its 106 nm edge; impurity (O2/H2O) absorption not modelled
+    abslen_m:   [1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0]
+    # Rayleigh scattering at 1 atm: ~1000x weaker than in the liquid → negligible here
+    rayleigh_m: [1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0]
 
   mgf2:
     # Magnesium fluoride PMT faceplate (built when geometry.pmtWindowThickness_mm > 0).

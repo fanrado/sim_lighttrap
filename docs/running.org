@@ -48,6 +48,13 @@ photocathode, axes and scale, trajectories accumulated per event, and the
 Runs 10 000 events with the default beam (circular plane, radius 7 mm, at
 z = −2 cm, λ = 128 nm, along +z). Output: ~output_apexltsim0.root~.
 
+** World medium
+
+#+BEGIN_SRC bash
+./sim_lighttrap sim_config.yaml world_medium=gar     # argon gas (default)
+./sim_lighttrap sim_config.yaml world_medium=lar     # liquid argon
+#+END_SRC
+
 ** With / without the sample
 
 #+BEGIN_SRC bash
@@ -86,6 +93,7 @@ Inside an interactive session or at the top of a custom macro:
 
 | Command                   | Default | Effect                                        |
 |---------------------------+---------+-----------------------------------------------|
+| /detector/worldMedium     | gar     | argon gas (default) · lar · vacuum            |
 | /detector/withSample      | true    | build the pTP-coated acrylic sample (false = reference) |
 | /detector/pTPlayerthickness | 0.002 mm | pTP film thickness                          |
 | /detector/uvAcrylicThick  | 3 mm    | UV acrylic carrier thickness                  |

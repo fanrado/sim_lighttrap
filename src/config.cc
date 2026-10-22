@@ -111,6 +111,15 @@ static MaterialsConfig parseMaterials(const YAML::Node& mat, const std::string& 
         validateOpticalArray(m.lar.scintcomponent, "lar.scintcomponent");
     }
 
+    if (auto n = mat["gar"]) {
+        m.gar.rindex     = readVec(n, "rindex");
+        m.gar.abslen_m   = readVec(n, "abslen_m");
+        m.gar.rayleigh_m = readVec(n, "rayleigh_m");
+        validateOpticalArray(m.gar.rindex,     "gar.rindex");
+        validateOpticalArray(m.gar.abslen_m,   "gar.abslen_m");
+        validateOpticalArray(m.gar.rayleigh_m, "gar.rayleigh_m");
+    }
+
     if (auto n = mat["mgf2"]) {
         m.mgf2.rindex   = readVec(n, "rindex");
         m.mgf2.abslen_m = readVec(n, "abslen_m");
@@ -134,6 +143,10 @@ SimConfig SimConfig::fromFile(const std::string& path)
 
     if (auto geo = doc["geometry"]) {
         if (geo["withSample"])                cfg.withSample               = geo["withSample"].as<bool>();
+        if (geo["worldMedium"])               cfg.worldMedium              = geo["worldMedium"].as<std::string>();
+        if (cfg.worldMedium != "gar" && cfg.worldMedium != "lar" && cfg.worldMedium != "vacuum")
+            throw std::runtime_error("SimConfig: geometry.worldMedium must be 'gar', 'lar' or 'vacuum', got '" +
+                                     cfg.worldMedium + "'");
         if (geo["pTPlayerThickness_mm"])      cfg.pTPlayerThickness_mm     = geo["pTPlayerThickness_mm"].as<double>();
         if (geo["uvAcrylicThickness_mm"])     cfg.uvAcrylicThickness_mm    = geo["uvAcrylicThickness_mm"].as<double>();
         if (geo["LArThickness_mm"])           cfg.LArThickness_mm          = geo["LArThickness_mm"].as<double>();

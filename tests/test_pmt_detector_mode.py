@@ -366,6 +366,38 @@ def test_geometry_rebuilt_immediately_after_switches():
         assert nxt != -1 and nxt - pos < 400, "each /run/reinitializeGeometry must be followed by /run/initialize"
 
 
+def test_world_medium_switch():
+    """worldMedium gar|lar|vacuum: YAML key, CLI world_medium=, messenger, material selection."""
+    with open(CONFIG_YAML) as fh:
+        doc = yaml.safe_load(fh)
+    assert doc["geometry"]["worldMedium"] == "gar", "bench measurement is in argon gas"
+    assert "gar" in doc["materials"] and "lar" in doc["materials"]
+    hh = strip_comments(read(CONFIG_HH))
+    assert re.search(r'std::string\s+worldMedium\s*=\s*"gar"', hh)
+    assert "struct GArConfig" in hh and re.search(r"GArConfig\s+gar;", hh)
+    cc = strip_comments(read(CONFIG_CC))
+    assert 'geo["worldMedium"]' in cc and 'mat["gar"]' in cc
+    assert re.search(r'worldMedium\s*!=\s*"gar"\s*&&\s*cfg\.worldMedium\s*!=\s*"lar"\s*&&\s*cfg\.worldMedium\s*!=\s*"vacuum"', cc)
+    main = strip_comments(read(MAIN_CC))
+    assert "parseWorldMediumArg" in main and '"world_medium="' in main and '"/detector/worldMedium "' in main
+    con = strip_comments(read(CONSTRUCTION_CC))
+    assert re.search(r'DeclareProperty\s*\(\s*"worldMedium"\s*,\s*fWorldMedium', con)
+    assert re.search(r'fWorldMedium\s*=\s*"gar";', con)
+    assert re.search(r'FindOrBuildMaterial\s*\(\s*"G4_Ar"', con)
+    assert re.search(r'if\s*\(\s*fWorldMedium\s*==\s*"gar"\s*\)\s*worldMat\s*=\s*garMat', con)
+    assert re.search(r'fWorldMedium\s*==\s*"lar"\s*\)\s*worldMat\s*=\s*larMat', con)
+    assert re.search(r'fWorldMedium\s*==\s*"vacuum"\s*\)\s*worldMat\s*=\s*pmtVacuum', con)
+    # the gas has RINDEX/ABSLENGTH/RAYLEIGH tables, and counters/world are built from worldMat
+    gar = con[con.index("MyLightTrapConstruction::DefineGArMaterial()"):con.index("MyLightTrapConstruction::DefineMgF2Material()")]
+    for prop in ("RINDEX", "ABSLENGTH", "RAYLEIGH"):
+        assert f'"{prop}"' in gar
+    assert "garMat->SetMaterialPropertiesTable" in gar
+    assert re.search(r'new\s+G4LogicalVolume\s*\(\s*solidWorld\s*,\s*worldMat', con)
+    assert re.search(r'FirstLayerExitDet\s*,\s*worldMat', con)
+    nm = read(NAMEMAP_HH)
+    assert re.search(r'\{\s*"G4_Ar"\s*,\s*7\s*\}', nm)
+
+
 def test_without_sample_keeps_beam_pmt_and_reference_plane(construction_cc):
     # raw source (comments kept): the "} // fWithSample" block-end markers are comments
     body = construction_cc[construction_cc.index("MyLightTrapConstruction::Construct()"):]

@@ -45,15 +45,34 @@ static bool parseWithSampleArg(const std::string& arg, bool& value)
     return true;
 }
 
+// Parses the optional "world_medium=gar|lar|vacuum" argument (also
+// --world_medium=, --world-medium=, world-medium=; case-insensitive).
+static bool parseWorldMediumArg(const std::string& arg, std::string& value)
+{
+    std::string key = arg, lower;
+    while (!key.empty() && key[0] == '-') key.erase(0, 1);
+    for (char c : key) lower += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    const std::string k1 = "world_medium=", k2 = "world-medium=";
+    std::string v;
+    if (lower.rfind(k1, 0) == 0)      v = lower.substr(k1.size());
+    else if (lower.rfind(k2, 0) == 0) v = lower.substr(k2.size());
+    else return false;
+    if (v == "gar" || v == "lar" || v == "vacuum") { value = v; return true; }
+    std::cerr << "error: " << arg << " -- expected world_medium=gar|lar|vacuum\n";
+    std::exit(2);
+}
+
 static void usage()
 {
     std::cerr <<
-        "usage: sim_lighttrap [config.yaml] [macro.mac] [with_sample=on|off]\n"
+        "usage: sim_lighttrap [config.yaml] [macro.mac] [with_sample=on|off] [world_medium=gar|lar|vacuum]\n"
         "  config.yaml        geometry/source/materials (applied first)\n"
         "  macro.mac          Geant4 macro (overrides YAML; a name containing 'vis' opens the Qt UI)\n"
         "  with_sample=on|off build the pTP-coated acrylic sample (on, default) or run the\n"
         "                     bare beam -> PMT reference with the identical geometry (off);\n"
-        "                     overrides geometry.withSample in the YAML\n";
+        "                     overrides geometry.withSample in the YAML\n"
+        "  world_medium=...   medium filling the beam path and the gap: gar (argon gas, 1 atm,\n"
+        "                     default) | lar (liquid argon) | vacuum; overrides geometry.worldMedium\n";
 }
 
 static std::string d2s(double v)
@@ -68,10 +87,12 @@ int main(int argc, char** argv)
     // Separate YAML config file, optional Geant4 macro file and with_sample flag
     std::string configFile, macroFile;
     bool withSampleArg = true, hasWithSampleArg = false;
+    std::string worldMediumArg;
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
         if (arg == "-h" || arg == "--help") { usage(); return 0; }
         if (parseWithSampleArg(arg, withSampleArg)) { hasWithSampleArg = true; continue; }
+        if (parseWorldMediumArg(arg, worldMediumArg)) continue;
         if (isYamlFile(arg))
             configFile = arg;
         else
@@ -85,8 +106,13 @@ int main(int argc, char** argv)
         cfg = SimConfig::fromFile(configFile);
     if (hasWithSampleArg)
         cfg.withSample = withSampleArg;          // CLI overrides YAML
+    const bool hasWorldMediumArg = !worldMediumArg.empty();
+    if (hasWorldMediumArg)
+        cfg.worldMedium = worldMediumArg;        // CLI overrides YAML
     std::cout << "[sim_lighttrap] with_sample = " << (cfg.withSample ? "on" : "off")
               << (hasWithSampleArg ? " (command line)" : hasConfig ? " (YAML)" : " (default)") << "\n";
+    std::cout << "[sim_lighttrap] world_medium = " << cfg.worldMedium
+              << (hasWorldMediumArg ? " (command line)" : hasConfig ? " (YAML)" : " (default)") << "\n";
 
     // ── Geant4 initialisation ────────────────────────────────────────────────
     G4RunManager *runManager = new G4RunManager();
@@ -111,9 +137,10 @@ int main(int argc, char** argv)
     // ── Apply YAML settings via the existing messenger commands ──────────────
     // Geometry parameters (/detector/ messenger — DeclareProperty expects G4
     // internal units: mm for length).
-    if (!hasConfig && hasWithSampleArg) {
-        // No YAML: only the sample switch changes the default geometry.
+    if (!hasConfig && (hasWithSampleArg || hasWorldMediumArg)) {
+        // No YAML: only the command-line switches change the default geometry.
         UImanager->ApplyCommand(std::string("/detector/withSample ") + (cfg.withSample ? "true" : "false"));
+        UImanager->ApplyCommand("/detector/worldMedium " + cfg.worldMedium);
         UImanager->ApplyCommand("/run/reinitializeGeometry");
         // /run/reinitializeGeometry only flags the rebuild; force it now so the
         // sample-free geometry is what the viewer / volume dump / first run sees.
@@ -121,6 +148,7 @@ int main(int argc, char** argv)
     }
     if (hasConfig) {
         UImanager->ApplyCommand(std::string("/detector/withSample ") + (cfg.withSample ? "true" : "false"));
+        UImanager->ApplyCommand("/detector/worldMedium " + cfg.worldMedium);
         // Geometry — lighttrapsize messenger stores value in mm (G4 unit)
         UImanager->ApplyCommand("/detector/pTPlayerthickness "   + d2s(cfg.pTPlayerThickness_mm));
         UImanager->ApplyCommand("/detector/uvAcrylicThick "      + d2s(cfg.uvAcrylicThickness_mm));

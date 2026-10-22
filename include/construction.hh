@@ -31,6 +31,7 @@ private:
 
   // ── Tunable geometry parameters (set via /detector/ messenger or defaults) ──
   G4bool   fWithSample;           // build the pTP/acrylic sample? (false = reference run)
+  G4String fWorldMedium;          // "gar" (argon gas, default) | "lar" | "vacuum"
   G4double pTPlayerthickness;     // pTP WLS film thickness           (default 2 µm)
   G4double uvAcrylicThickness;    // UV-transparent acrylic thickness  (default 3 mm)
   G4double LArthickness;          // LAr gap: first layer → PMT face   (default 7 mm)
@@ -83,7 +84,9 @@ private:
   // ── Materials ────────────────────────────────────────────────────────────────
   G4Material *pTP;             // p-terphenyl WLS film (VUV → 340–430 nm)
   G4Material *uvTransAcrylic;  // UV-transparent PMMA carrier for pTP film
-  G4Material *worldMat;        // liquid argon (LAr)
+  G4Material *worldMat;        // selected world medium (points to one of the three below)
+  G4Material *larMat;          // liquid argon (G4_lAr + optical/scintillation properties)
+  G4Material *garMat;          // argon gas, 1 atm (G4_Ar + optical properties)
   G4Material *mgf2;            // magnesium fluoride — VUV-transparent PMT window
   G4Material *pmtVacuum;       // PMT interior (G4_Galactic, RINDEX = 1)
   G4Material *pmtGlass;        // PMT envelope (borosilicate, no optical properties → opaque)
@@ -91,7 +94,8 @@ private:
   void DefineMaterials();
   void DefinePTPMaterial();
   void DefineUVTransparentAcrylicMaterial();
-  void DefineWorldMaterial();
+  void DefineLArMaterial();
+  void DefineGArMaterial();
   void DefineMgF2Material();
   void DefinePMTBodyMaterials();
 

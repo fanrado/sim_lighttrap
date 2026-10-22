@@ -7,8 +7,8 @@
 
 ~sim_lighttrap~ (branch ~vuv_meas_pmt~) is a Geant4 Monte Carlo of the LightTrap
 *first layer* — a p-terphenyl (pTP) wavelength-shifting film on a UV-transparent
-acrylic carrier, immersed in liquid argon (LAr) — read out by a PMT, as in the
-VUV bench measurement. Its goals are:
+acrylic carrier — read out by a PMT in argon gas, as in the VUV bench
+transmission measurement (liquid argon and vacuum are selectable). Its goals are:
 
 - Model VUV photon (128 nm, LAr scintillation peak) absorption in the pTP film
   and re-emission at 340–430 nm.
@@ -44,14 +44,14 @@ sim_lighttrap/
 Primary photon beam (9.68 eV, λ = 128 nm, Ø 14 mm, parallel along +z)
         │
         ▼
-  LAr World volume
-        │  Rayleigh scattering, absorption
+  World volume: argon gas (default) | liquid argon | vacuum
+        │  (Rayleigh scattering / absorption only significant in LAr)
         ▼
   pTP film (2 µm)  on  UV-transparent acrylic (3 mm)
         │  WLS absorption → isotropic re-emission (λ ~ 340–430 nm)
         │  ← FirstLayerBackplane / FirstLayerEdges pass-through counters
         ▼
-  LAr gap (7 mm)
+  7 mm gap (world medium)
         ▼
   ┌─────────────────────────────────────────────┐
   │  Hamamatsu R6836 (Ø 28.2 mm × 92 mm)        │

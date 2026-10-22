@@ -1,5 +1,5 @@
 """
-Tests for the materials: block in sim_config.yaml (ptp, uvAcrylic, lar, mgf2).
+Tests for the materials: block in sim_config.yaml (ptp, uvAcrylic, gar, lar, mgf2).
 
 Covers:
   - Array lengths (validateOpticalArray requires exactly 13 entries)
@@ -62,6 +62,9 @@ ARRAY_PATHS = [
     ("lar", "abslen_m"),
     ("lar", "rayleigh_m"),
     ("lar", "scintcomponent"),
+    ("gar", "rindex"),
+    ("gar", "abslen_m"),
+    ("gar", "rayleigh_m"),
     ("mgf2", "rindex"),
     ("mgf2", "abslen_m"),
 ]
@@ -83,6 +86,7 @@ RINDEX_PATHS = [
     ("ptp", "rindex"),
     ("uvAcrylic", "rindex"),
     ("lar", "rindex"),
+    ("gar", "rindex"),
     ("mgf2", "rindex"),
 ]
 
@@ -105,6 +109,8 @@ ABSLEN_PATHS = [
     ("uvAcrylic", "abslen_m"),
     ("lar", "abslen_m"),
     ("lar", "rayleigh_m"),
+    ("gar", "abslen_m"),
+    ("gar", "rayleigh_m"),
     ("mgf2", "abslen_m"),
 ]
 
@@ -133,6 +139,26 @@ def test_component_bounded(materials, path):
         pytest.skip(f"{'.'.join(path)} absent")
     for i, v in enumerate(arr):
         assert 0.0 <= v <= 1.0, f"{'.'.join(path)}[{i}] = {v} must be in [0, 1]"
+
+
+# ── 4b. argon gas: n barely above 1, rising toward the VUV; transparent, no scattering ──
+
+def test_gar_refractive_index_near_unity_and_dispersive(materials):
+    arr = _arr(materials, "gar", "rindex")
+    if not arr:
+        pytest.skip("gar.rindex absent")
+    for i, v in enumerate(arr):
+        assert 1.0001 < v < 1.01, f"gar.rindex[{i}] = {v} not gas-like"
+    assert arr[8] > arr[0], "argon gas index must rise from the visible to 128 nm (normal dispersion)"
+    assert abs(arr[8] - 1.00044) < 5e-5, "n(128 nm) should be ~1.00044 (Bideau-Mehu)"
+
+
+def test_gar_transparent_and_non_scattering(materials):
+    for key in ("abslen_m", "rayleigh_m"):
+        arr = _arr(materials, "gar", key)
+        if not arr:
+            pytest.skip(f"gar.{key} absent")
+        assert min(arr) >= 100.0, f"gar.{key} must be >= 100 m (negligible at 1 atm)"
 
 
 # ── 5. MgF2 window: transparent in the visible, cut-off below ~115 nm ────────

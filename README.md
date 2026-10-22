@@ -2,9 +2,9 @@
 
 Geant4 simulation of the LightTrap **first layer** (a p-terphenyl (pTP) WLS film
 deposited on a UV-transparent acrylic carrier) read out by a **PMT**, as in the
-VUV bench transmission measurement. A 14 mm diameter parallel VUV beam (128 nm
-by default) hits the pTP film; the light leaving the back of the acrylic
-crosses a 7 mm gap to a Hamamatsu **R6836** modelled as a physical cylinder
+VUV bench transmission measurement in **argon gas**. A 14 mm diameter parallel
+VUV beam (128 nm by default) hits the pTP film; the light leaving the back of
+the acrylic crosses a 7 mm gap to a Hamamatsu **R6836** modelled as a physical cylinder
 (Ø 28.2 mm × 92 mm, MgF2 faceplate, Ø 23 mm photocathode on its inner face,
 vacuum interior, opaque glass envelope) with a flat quantum efficiency (100 %
 over 110–500 nm to start with). Primary photons, WLS emission, first-layer
@@ -67,9 +67,11 @@ refracts into the vacuum and is absorbed on the envelope.
 
 | YAML key (`geometry:`)   | Messenger                  | Default | Meaning |
 |--------------------------|----------------------------|---------|---------|
+| `worldMedium`            | `/detector/worldMedium`    | `gar`   | medium of the beam path, gap and counters: `gar` (argon gas, 1 atm) \| `lar` (liquid argon) \| `vacuum` |
+| `withSample`             | `/detector/withSample`     | `true`  | build the pTP-coated acrylic sample (`false` = reference run) |
 | `pTPlayerThickness_mm`   | `/detector/pTPlayerthickness` | 0.002 | pTP WLS film thickness |
 | `uvAcrylicThickness_mm`  | `/detector/uvAcrylicThick` | 3.0     | UV-transparent acrylic carrier |
-| `LArThickness_mm`        | `/detector/LArthickness`   | 7.0     | LAr gap, back of the acrylic → PMT faceplate |
+| `LArThickness_mm`        | `/detector/LArthickness`   | 7.0     | gap (world medium), back of the acrylic → PMT faceplate |
 | `lightTrapSize_cm`       | `/detector/lighttrapsize`  | 15.0    | square first-layer side |
 | `pTPsigmaAlpha_rad`      | `/detector/pTPsigmaAlpha`  | 0.0     | pTP surface facet-slope RMS (0 = smooth) |
 | `pmtDiameter_mm`         | `/detector/pmtDiameter`    | 23      | photocathode (sensitive) diameter |
@@ -111,6 +113,23 @@ face, 0.01 mm behind the acrylic so TIR-trapped light is not counted, and
   ./sim_lighttrap run_285.mac             # measured lamp spectrum (input/spectrum.txt via create_macro.py)
   ```
 
+- **World medium (`world_medium=gar|lar|vacuum`):**
+
+  ```bash
+  ./sim_lighttrap sim_config.yaml world_medium=gar     # argon gas, 1 atm (bench; default)
+  ./sim_lighttrap sim_config.yaml world_medium=lar     # liquid argon (Rayleigh scattering, n = 1.45 at 128 nm)
+  ./sim_lighttrap run.mac world_medium=vacuum          # n = 1 everywhere outside the solids
+  ```
+
+  The beam path, the gap, the reference counters and a bare photocathode are
+  all made of the selected medium; the PMT interior is always vacuum. Argon gas
+  uses the Bideau-Méhu dispersion (n ≈ 1.00044 at 128 nm) with negligible
+  absorption and scattering, so a `with_sample=off` beam goes straight to the
+  faceplate; in liquid argon about 2 % of the beam Rayleigh-scatters over the
+  2 cm path (0.9 m scattering length), which is what the stray tracks in a
+  `lar` run are. Also `geometry.worldMedium` in the YAML and
+  `/detector/worldMedium` in a macro.
+
 - **With / without the sample (`with_sample=on|off`):**
 
   ```bash
@@ -144,7 +163,7 @@ face, 0.01 mm behind the acrylic so TIR-trapped light is not counted, and
   | `geometry` | layer thicknesses, first-layer size, pTP roughness, `pmt*` parameters (table above) |
   | `source`   | particle, energy, GPS position type/shape, `radius_cm` (Circle) or half-widths, direction |
   | `run`      | number of events |
-  | `materials`| per-material optical properties: `ptp`, `uvAcrylic`, `lar`, `mgf2` |
+  | `materials`| per-material optical properties: `ptp`, `uvAcrylic`, `gar`, `lar`, `mgf2` |
 
   Example — larger gap, 2 mm faceplate, 100k events:
 
