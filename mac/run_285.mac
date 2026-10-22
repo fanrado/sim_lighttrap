@@ -1,12 +1,11 @@
 /gps/particle opticalphoton
 /control/execute spectrum_macro.mac
 
-# position: in front of pTP front face (z ~ -12 mm), inside world (z half = 9 cm)
+# position: 14 mm beam in front of the pTP front face (z = -6 mm), inside world (z half = 9 cm)
 /gps/pos/type Plane
 /gps/pos/centre 0. 0. -2. cm
-/gps/pos/shape Square
-/gps/pos/halfx 7.5 cm
-/gps/pos/halfy 7.5 cm
+/gps/pos/shape Circle
+/gps/pos/radius 7 mm
 
 # shoot toward detector (+z direction)
 /gps/direction 0 0 1

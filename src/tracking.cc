@@ -49,20 +49,20 @@ void MyTrackingAction::PreUserTrackingAction(const G4Track* track)
         double phi   = std::atan2(direction.y(), direction.x()); // Azimuth angle [rad]
         
         
-        // Record the initial properties of the WLS photon.
+        // Record the initial properties of the WLS photon (ntuple 2).
         // Note: If you want to record it only once, this works well in PreUserTrackingAction.
-        man->FillNtupleIColumn(4, 0, eventId);
-        man->FillNtupleDColumn(4, 1, track->GetPosition().x());
-        man->FillNtupleDColumn(4, 2, track->GetPosition().y());
-        man->FillNtupleDColumn(4, 3, track->GetPosition().z());
-        man->FillNtupleDColumn(4, 4, cosTheta);
-        man->FillNtupleDColumn(4, 5, phi);
-        man->FillNtupleIColumn(4, 6, NameMap::Encode(processName));
-        man->FillNtupleDColumn(4, 7, track->GetGlobalTime());
-        man->FillNtupleIColumn(4, 8, track->GetDefinition()->GetPDGEncoding());
-        man->FillNtupleDColumn(4, 9, wavelength);
-        man->FillNtupleIColumn(4, 10, NameMap::Encode(materialName));
-        man->AddNtupleRow(4);
+        man->FillNtupleIColumn(2, 0, eventId);
+        man->FillNtupleDColumn(2, 1, track->GetPosition().x());
+        man->FillNtupleDColumn(2, 2, track->GetPosition().y());
+        man->FillNtupleDColumn(2, 3, track->GetPosition().z());
+        man->FillNtupleDColumn(2, 4, cosTheta);
+        man->FillNtupleDColumn(2, 5, phi);
+        man->FillNtupleIColumn(2, 6, NameMap::Encode(processName));
+        man->FillNtupleDColumn(2, 7, track->GetGlobalTime());
+        man->FillNtupleIColumn(2, 8, track->GetDefinition()->GetPDGEncoding());
+        man->FillNtupleDColumn(2, 9, wavelength);
+        man->FillNtupleIColumn(2, 10, NameMap::Encode(materialName));
+        man->AddNtupleRow(2);
       }
     }
   }
@@ -88,16 +88,16 @@ void MyTrackingAction::PreUserTrackingAction(const G4Track* track)
         // Calculate incident angle with respect to surface normal
         G4double incidentAngle = std::acos(std::abs(direction.z()));
         
-        // Fill validation data (ntuple 5 created in MyRunAction)
+        // Fill validation data (ntuple 3 created in MyRunAction)
         G4int eventId = G4RunManager::GetRunManager()->GetCurrentEvent()->GetEventID();
-        man->FillNtupleIColumn(5, 0, eventId);
-        man->FillNtupleDColumn(5, 1, wavelength);
-        man->FillNtupleDColumn(5, 2, incidentAngle * 180.0 / CLHEP::pi);
-        man->FillNtupleSColumn(5, 3, currentMaterial);
+        man->FillNtupleIColumn(3, 0, eventId);
+        man->FillNtupleDColumn(3, 1, wavelength);
+        man->FillNtupleDColumn(3, 2, incidentAngle * 180.0 / CLHEP::pi);
+        man->FillNtupleSColumn(3, 3, currentMaterial);
         // column 4 (reflected) filled in PostUserTrackingAction once track ends
-        man->FillNtupleDColumn(5, 5, track->GetPosition().x());
-        man->FillNtupleDColumn(5, 6, track->GetPosition().y());
-        man->FillNtupleDColumn(5, 7, track->GetPosition().z());
+        man->FillNtupleDColumn(3, 5, track->GetPosition().x());
+        man->FillNtupleDColumn(3, 6, track->GetPosition().y());
+        man->FillNtupleDColumn(3, 7, track->GetPosition().z());
         // AddNtupleRow deferred to PostUserTrackingAction
       }
     }
@@ -118,7 +118,7 @@ void MyTrackingAction::PostUserTrackingAction(const G4Track* track)
     G4double sourceZ = track->GetVertexPosition().z();
     G4int reflected  = (finalZ < sourceZ) ? 1 : 0;
 
-    man->FillNtupleIColumn(5, 4, reflected);
-    man->AddNtupleRow(5);
+    man->FillNtupleIColumn(3, 4, reflected);
+    man->AddNtupleRow(3);
   }
 }

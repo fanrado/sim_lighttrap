@@ -11,7 +11,6 @@
 #include "G4SystemOfUnits.hh"
 #include "G4GenericMessenger.hh"
 #include "G4OpticalSurface.hh"
-#include "G4LogicalSkinSurface.hh"
 #include "G4LogicalBorderSurface.hh"
 
 #include "detector.hh"
@@ -31,15 +30,11 @@ private:
   virtual void ConstructSDandField();
 
   // ── Tunable geometry parameters (set via /detector/ messenger or defaults) ──
-  G4int    nSiPMs;                // total SiPMs (split equally between ±y edges)
   G4double pTPlayerthickness;     // pTP WLS film thickness           (default 2 µm)
   G4double uvAcrylicThickness;    // UV-transparent acrylic thickness  (default 3 mm)
-  G4double pTPsubstratethickness; // blue WLS slab thickness           (default 6 mm)
-  G4double LArthickness;          // LAr gap: first layer → blue WLS   (default 3 mm)
-  G4double lighttrapsize;         // square module side length         (default 15 cm)
+  G4double LArthickness;          // LAr gap: first layer → PMT face   (default 3 mm)
+  G4double lighttrapsize;         // square first-layer side length    (default 15 cm)
   G4double pTPsigmaAlpha;         // pTP surface facet-slope RMS [rad]  (default 0 = smooth)
-  G4String fBackplaneFoil;        // backplane (+z) reflector: "vikuiti" | "ptfe" | "none"
-  G4String fDetectorType;         // readout stage: "sipm" (blue WLS + SiPMs) | "pmt"
   G4double pmtDiameter;           // PMT photocathode diameter            (default 23 mm)
   G4double pmtWindowThickness;    // MgF2 entrance window; 0 = none       (default 0)
   G4double pmtQE;                 // flat QE inside the band              (default 1.0)
@@ -56,38 +51,12 @@ private:
   G4LogicalVolume   *logicpTPlayer, *logicUVAcrylic;
   G4VPhysicalVolume *physpTPlayer,  *physUVAcrylic;
 
-  // ── Blue WLS substrate ───────────────────────────────────────────────────────
-  G4Box             *pTPsubstrate;
-  G4LogicalVolume   *logicpTPsubstrate;
-  G4VPhysicalVolume *physpTPsubstrate;
-
-  // ── SiPM photosensors (edge-coupled at ±y faces of blue WLS slab) ────────────
-  G4Box             *SiPMs;
-  G4LogicalVolume   *logicSiPMs;
-  G4VPhysicalVolume *physSiPMs;   // pointer reused in placement loop
-
-  // ── Vikuiti reflective foils ─────────────────────────────────────────────────
-  // Backplane foil: covers the +z (back) face of the blue WLS slab
-  G4Box             *ReflectiveFoilBackPlane;
-  G4LogicalVolume   *logicReflectiveFoilBackPlane;
-  G4VPhysicalVolume *physReflectiveFoilBackPlane;
-  // Lateral foils: cover the ±x faces of the blue WLS slab (the edges without SiPMs)
-  G4Box             *VikuitiEdge;
-  G4LogicalVolume   *logicVikuitiEdge;
-  G4VPhysicalVolume *physVikuitiEdge_pX, *physVikuitiEdge_nX;
-
-  // ── PMT readout (detectorType = "pmt"): window (optional) + photocathode ─────
-  // Replaces the blue WLS slab, SiPMs, edge foils, backplane foil and backplane
-  // leak counter.  The photocathode is a thin disc of pmtDiameter facing the
-  // first layer across the LAr gap; its SD is a terminal QE counter.
+  // ── PMT readout: window (optional) + photocathode ────────────────────────────
+  // The photocathode is a thin disc of pmtDiameter facing the first layer across
+  // the LAr gap; its SD is a terminal QE counter.
   G4Tubs            *PMTWindow,      *PMTPhotocathode;
   G4LogicalVolume   *logicPMTWindow, *logicPMTPhotocathode;
   G4VPhysicalVolume *physPMTWindow,  *physPMTPhotocathode;
-
-  // ── Validation detector: backplane photon-leak counter ───────────────────────
-  G4Box             *BackplaneLeakDet;
-  G4LogicalVolume   *logicBackplaneLeakDet;
-  G4VPhysicalVolume *physBackplaneLeakDet;
 
   // ── First-layer backplane counter: pass-through counter in the LAr gap ───────
   G4Box             *FirstLayerExitDet;
@@ -107,25 +76,17 @@ private:
   SimConfig fCfg;
 
   // ── Materials ────────────────────────────────────────────────────────────────
-  G4Material *pTP;             // p-terphenyl WLS film (1st WLS stage)
+  G4Material *pTP;             // p-terphenyl WLS film (VUV → 340–430 nm)
   G4Material *uvTransAcrylic;  // UV-transparent PMMA carrier for pTP film
-  G4Material *acrylicMcMaster; // standard PMMA (used for Vikuiti foil body material)
-  G4Material *bluewlsacrylic;  // blue-shifting WLS acrylic slab (2nd WLS stage)
   G4Material *worldMat;        // liquid argon (LAr)
   G4Material *mgf2;            // magnesium fluoride — VUV-transparent PMT window
 
   void DefineMaterials();
   void DefinePTPMaterial();
   void DefineUVTransparentAcrylicMaterial();
-  void DefineAcrylicMaterial();
-  void DefineBlueWLSMaterial();
   void DefineWorldMaterial();
   void DefineMgF2Material();
-  void DefineOpticalSurface();
-  void DefinePTFEOpticalSurface();
 
-  G4OpticalSurface *Vikuiti;
-  G4OpticalSurface *PTFE;      // diffuse (Lambertian) backplane reflector option
   const G4double EVUM; // hc constant in eV·µm: 1.239841939 eV·µm (wavelength ↔ energy)
   G4double energy[13]; // 13 sampled photon energies covering VUV to visible (115–145 nm densified)
 

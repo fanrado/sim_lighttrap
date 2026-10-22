@@ -1,3 +1,11 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# vis.mac — interactive Qt visualisation (executed automatically by ./sim_lighttrap
+# with no arguments, or ./sim_lighttrap vis.mac).
+#
+# Shows the first layer (pTP film: yellow, UV acrylic: light blue) and the PMT
+# photocathode (dark red disc, Ø 23 mm, at z = 0). The 14 mm circular VUV beam
+# is preloaded: use the Run menu or "/run/beamOn 30" to see trajectories.
+# ─────────────────────────────────────────────────────────────────────────────
 /vis/open Qt3D
 /vis/drawVolume
 /vis/viewer/set/viewpointVector -1 0 0
@@ -22,6 +30,14 @@
 
 # Run menu :
 /gui/addMenu run Run
-/gui/addButton run "Particle e-" "/gps/particle e-"
-/gui/addButton run "Energy 0.1 MeV" "/gps/energy 0.1 MeV"
-/gui/addButton run "beamOn 1" "/run/beamOn 1"
+/gui/addButton run "beamOn 1"  "/run/beamOn 1"
+/gui/addButton run "beamOn 30" "/run/beamOn 30"
+
+# 14 mm diameter parallel VUV beam (same as run.mac)
+/gps/particle opticalphoton
+/gps/energy 9.68 eV
+/gps/pos/type Plane
+/gps/pos/shape Circle
+/gps/pos/centre 0. 0. -2. cm
+/gps/pos/radius 7 mm
+/gps/direction 0 0 1

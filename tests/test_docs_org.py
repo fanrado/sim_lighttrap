@@ -1,5 +1,5 @@
 """
-Tests for the five org-mode documentation files added in commit 6587474.
+Tests for the five org-mode documentation files (first layer + PMT design).
 
 Covers:
   - File existence for all five docs
@@ -223,12 +223,13 @@ def test_geometry_rayleigh_scattering_90cm():
     )
 
 
-def test_geometry_vikuiti_reflectivity_98pct():
+def test_geometry_pmt_photocathode_23mm():
     text = read_doc("geometry.org")
-    # Should mention 98% reflectivity
-    assert re.search(r"98\s*%", text), (
-        "geometry.org: expected Vikuiti reflectivity '98 %' or '98%'"
+    # The PMT photocathode diameter (23 mm) must be documented
+    assert re.search(r"23\s*mm", text), (
+        "geometry.org: expected the PMT photocathode diameter '23 mm'"
     )
+    assert "PMTPhotons" in text and "PMTHits" in text
 
 
 def test_physics_primary_particle_is_opticalphoton():
@@ -258,11 +259,10 @@ def test_analysis_ntuple_ids_are_sequential():
 
 
 def test_analysis_hits_ntuple_is_subset_of_photons():
-    """analysis.org must state Hits is a subset of Photons (ntuple 0)."""
+    """analysis.org must state PMTHits is a subset of PMTPhotons (ntuple 6)."""
     text = read_doc("analysis.org")
-    # The document says "Subset of ntuple 0"
-    assert re.search(r"[Ss]ubset of ntuple 0", text), (
-        "analysis.org: should state that Hits ntuple is a subset of ntuple 0 (Photons)"
+    assert re.search(r"[Ss]ubset of ntuple 6", text), (
+        "analysis.org: should state that PMTHits is a subset of ntuple 6 (PMTPhotons)"
     )
 
 
@@ -284,7 +284,7 @@ def test_running_and_analysis_agree_on_output_pattern():
 
 # ── 9. Macro file names referenced in running.org ─────────────────────────────
 
-@pytest.mark.parametrize("macro", ["vis.mac", "run.mac", "det.mac", "scandet.mac"])
+@pytest.mark.parametrize("macro", ["vis.mac", "run.mac", "run_vuv_spectrum.mac", "draw_offscreen.mac"])
 def test_running_references_macro(macro):
     text = read_doc("running.org")
     assert macro in text, f"running.org: expected reference to macro file '{macro}'"

@@ -1,46 +1,48 @@
-# sim_config.yaml — LightTrap Simulation Configuration
+# sim_config.yaml — LightTrap first layer read out by a PMT (bench measurement)
 #
-# Usage:
+# Usage (from the build directory):
 #   ./sim_lighttrap sim_config.yaml           # YAML-only batch run
 #   ./sim_lighttrap sim_config.yaml run.mac   # YAML geometry + macro source/run
-#   ./sim_lighttrap run.mac                   # macro-only (original behaviour)
+#   ./sim_lighttrap run.mac                   # macro-only (defaults below)
 #
 # YAML settings are applied first; a macro file (if also given) can override them.
 # Geometry changes trigger /run/reinitializeGeometry automatically.
+#
+# Geometry along +z (PMT front face at z = 0):
+#   beam (z = -2 cm) → pTP film / UV acrylic → [LAr gap] → [MgF2 window] → photocathode
+#
+# Output ntuples (output_apexltsim<run>.root):
+#   Energy (0), Primary (1), WLSPhoton (2), OpticalValidation (3),
+#   FirstLayerBackplane (4), FirstLayerEdges (5), PMTPhotons (6, pre-QE), PMTHits (7, post-QE)
 
 geometry:
-  nSiPMs: 30                      # total SiPMs, split equally between ±y edges (15 per side)
   pTPlayerThickness_mm: 0.002     # pTP WLS film thickness [mm]  (default: 2 µm)
   uvAcrylicThickness_mm: 3.0      # UV-transparent acrylic carrier [mm]
-  pTPSubstrateThickness_mm: 6.0   # blue WLS slab thickness [mm]  (2nd WLS stage)
-  LArThickness_mm: 3.0            # LAr gap between first layer and blue WLS [mm]
-  lightTrapSize_cm: 15.0          # square module side length [cm]
+  LArThickness_mm: 3.0            # LAr gap between the first-layer back face and the PMT front face [mm]
+  lightTrapSize_cm: 15.0          # square first-layer side length [cm]
   pTPsigmaAlpha_rad: 0.0          # pTP surface facet-slope RMS [rad]; 0.0 = flat, perfectly smooth (no wiggle)
                                   #   raise to model coating waviness/roughness, e.g. 0.1 rad ≈ 6°
-  backplaneFoil: vikuiti          # backplane (+z) reflector: vikuiti (specular ESR) | ptfe (diffuse) | none
-  detectorType: sipm              # readout stage: sipm (blue WLS + SiPMs, this design) | pmt (PMT photocathode
-                                  #   replaces the whole 2nd layer; see sim_config_pmt.yaml for that setup)
-  # PMT parameters (used only when detectorType: pmt):
-  pmtDiameter_mm: 23.0            # photocathode diameter [mm]
-  pmtWindowThickness_mm: 0.0      # MgF2 entrance window [mm]; 0 = bare photocathode
-  pmtQE: 1.0                      # flat QE inside [pmtQEmin_nm, pmtQEmax_nm]; 0 outside
-  pmtQEmin_nm: 110.0
-  pmtQEmax_nm: 500.0
+  # PMT model
+  pmtDiameter_mm: 23.0            # photocathode (sensitive) diameter [mm]
+  pmtWindowThickness_mm: 0.0      # MgF2 entrance window [mm]; 0 = bare photocathode (ideal PMT)
+  pmtQE: 1.0                      # flat quantum efficiency inside [pmtQEmin_nm, pmtQEmax_nm]
+  pmtQEmin_nm: 110.0              # QE band lower edge [nm]
+  pmtQEmax_nm: 500.0              # QE band upper edge [nm]; QE = 0 outside the band
 
 source:
   particle: opticalphoton         # Geant4 particle name
-  energy_eV: 9.68                 # photon energy [eV]  (128 nm VUV)
+  energy_eV: 9.68                 # photon energy [eV]  (128 nm VUV); use a macro (run_vuv_spectrum.mac) for a spectrum
   positionType: Plane             # GPS type: Point | Plane | Surface | Volume
-  positionShape: Square           # GPS shape: Square | Circle | Ellipse | Rectangle
-  centerX_cm: 0.0                 # source centre x [cm]
-  centerY_cm: 0.0                 # source centre y [cm]
-  centerZ_cm: -2.0                # source centre z [cm]  (8 mm in front of pTP film)
-  halfX_cm: 7.5                   # source half-width in x [cm]  (covers full 15 cm face)
-  halfY_cm: 7.5                   # source half-width in y [cm]
-  radius_cm: 0.7                  # source radius [cm], used when positionShape: Circle (14 mm beam)
-  directionX: 0.0                 # momentum direction (unit vector)
+  positionShape: Circle           # GPS shape: Circle (beam spot) | Square | Ellipse | Rectangle
+  radius_cm: 0.7                  # source radius [cm] for Circle: 14 mm beam diameter
+  centerX_cm: 0.0                 # beam centre x [cm]  (centred on the PMT axis)
+  centerY_cm: 0.0                 # beam centre y [cm]
+  centerZ_cm: -2.0                # beam start z [cm]  (14 mm in front of the pTP film, which sits at z ≈ -6 mm)
+  halfX_cm: 7.5                   # half-widths used only for Square/Rectangle/Ellipse shapes [cm]
+  halfY_cm: 7.5
+  directionX: 0.0                 # momentum direction (unit vector): parallel beam along +z
   directionY: 0.0
-  directionZ: 1.0                 # into the module (+z)
+  directionZ: 1.0
 
 run:
   nEvents: 10000                  # primary particles per run
@@ -56,7 +58,7 @@ run:
 materials:
 
   ptp:
-    # p-Terphenyl WLS film — 1st stage (VUV → 340–430 nm)
+    # p-Terphenyl WLS film — VUV → 340–430 nm
     # Ref: Nucl. Instr. Meth. Phys. Res. A 327 (1993) 354
     rindex:     [1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65, 1.65]
     # Bulk absorption (m): transparent to own emission; long in VUV so WLS process dominates
@@ -64,7 +66,7 @@ materials:
     # WLS absorption (m): 10 m transparent at 340 nm and up (so the 340-400 nm
     # emission escapes); 5e-7 m strong absorption from 305 nm down, so incident
     # UV up to ~300 nm (e.g. a 285 nm line) is captured by the 2 µm film, not
-    # transmitted unshifted. (Was 1e-4 at 305 nm: a 2 µm film absorbs only ~2%.)
+    # transmitted unshifted.
     wlsabslen_m: [10.0, 10.0, 10.0, 10.0, 5.0e-7, 5.0e-7, 5.0e-7, 5.0e-7, 5.0e-7, 5.0e-7, 5.0e-7, 5.0e-7, 5.0e-7]
     # WLS emission spectrum — three ways to set it, in precedence order:
     #  1) wlscomponent_file: a 2-column "<wavelength_nm> <intensity>" table with
@@ -86,30 +88,6 @@ materials:
     # Absorption (m): very transparent at visible/near-UV; VUV strongly absorbed
     abslen_m: [10.0, 5.0, 1.0, 0.1, 0.01, 1.0e-4, 1.0e-6, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7]
 
-  acrylicMcMaster:
-    # Standard optical-grade PMMA (McMaster-Carr #8560K224), Vikuiti foil body material
-    # Ref: https://indico.fnal.gov/event/63097/contributions/283538/attachments/174977/237339/slides.pdf
-    rindex: [1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50]
-
-  blueWLS:
-    # Blue-shifting WLS acrylic (EJ-280/282/284/286 type) — 2nd stage (→ ~430 nm)
-    # Ref: https://eljentechnology.com/products/wavelength-shifting-plastics/ej-280-ej-282-ej-284-ej-286
-    rindex: [1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58]
-    # WLS absorption (m): 2 m at 430 nm (DUNE VD); sub-mm at 400–300 nm; VUV strongly absorbed
-    # Refs: https://agenda.infn.it/event/37876 ; https://indico.cern.ch/event/1485254
-    wlsabslen_m: [2.0, 2.0, 8.0e-4, 8.0e-4, 3.0e-3, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7, 1.0e-7]
-    # WLS emission spectrum — same three options/precedence as ptp above:
-    #  1) wlscomponent_file: 2-column "<wavelength_nm> <intensity>" table, any #
-    #     of points. See input/bluewls_emission.dat. Ref (spectrum shape):
-    #     https://iopscience.iop.org/article/10.1088/1748-0221/19/02/C02021
-    # wlscomponent_file: input/bluewls_emission.dat
-    #  2) wlscomponent: explicit inline 13-point spectrum (coarse — only 2 usable
-    #     points here, 425 & 530 nm; kept for back-compat). Overridden by the file.
-    # wlscomponent: [5.0e-4, 0.02, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    #  3) neither set (default): smooth asymmetric Gaussian (peak 430 nm) on a
-    #     dedicated fine grid.
-    wlstimeconstant_ns: 1.26
-
   lar:
     # Liquid argon optical properties
     # Refractive index refs: http://dx.doi.org/10.1016/j.nima.2017.06.031
@@ -130,13 +108,9 @@ materials:
     scintillationtimeconstant1_ns: 7.0     # fast τ (ns)
     scintillationtimeconstant2_ns: 1400.0  # slow τ (ns)
 
-  vikuiti:
-    # 3M Enhanced Specular Reflector (ESR): ≥98 % specular reflectivity
-    # Ref: https://multimedia.3m.com/mws/media/1245089O/3m-enhanced-specular-reflector-films-3m-esr-tech-data-sheet.pdf
-    reflectivity: [0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98]
-
-  ptfe:
-    # Sintered PTFE (Teflon): diffuse (Lambertian) reflector, ~95 % reflectivity.
-    # Used when geometry.backplaneFoil: ptfe. Values are the 13-point grid
-    # { 530,425,400,340,305,160,145,135,128,125,120,115,106 } nm.
-    reflectivity: [0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95]
+  mgf2:
+    # Magnesium fluoride PMT window (only built when geometry.pmtWindowThickness_mm > 0).
+    # Refractive index ref: M. J. Dodge, Appl. Opt. 23, 1980 (1984).
+    rindex:   [1.379, 1.384, 1.386, 1.392, 1.397, 1.468, 1.490, 1.510, 1.530, 1.540, 1.560, 1.600, 1.650]
+    # Bulk absorption (m): transparent down to ~140 nm, cut-off near 110 nm (approximate)
+    abslen_m: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.2, 0.1, 0.05, 0.01, 0.001, 1.0e-6]

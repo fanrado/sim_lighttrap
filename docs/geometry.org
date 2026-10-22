@@ -1,47 +1,41 @@
-#+TITLE: Detector Geometry & Materials
+#+TITLE: Detector Geometry & Materials (first layer + PMT)
 #+AUTHOR: sim_lighttrap team
-#+DATE: 2026-05-29
+#+DATE: 2026-10-21
 #+OPTIONS: toc:t num:t
 
 * Coordinate Convention
 
-The +z axis points into the detector (along the photon propagation direction).
+The +z axis points into the detector (along the beam direction).
 All z-positions are derived from a single reference:
 
 #+BEGIN_EXAMPLE
-  kBlueWLSBackZ = 0   (back face of the blue WLS slab)
+  kPMTFrontZ = 0   (front face of the PMT: window if present, else photocathode)
 #+END_EXAMPLE
 
 Every other z-coordinate is computed from the messenger parameters in ~Construct()~
-so that changing any thickness shifts all downstream components automatically.
+so that changing any thickness shifts all upstream components automatically.
 
 * Module Layout
 
 #+BEGIN_EXAMPLE
-z = −12 mm  ┌────────────────────────┐  pTP film (2 µm)     ← 1st WLS stage
+z = −20 mm   · · · · · · · · · ·   beam source plane (Ø 14 mm, travelling +z)
+
+z = −6 mm   ┌────────────────────────┐  pTP film (2 µm)     ← WLS stage
             ├────────────────────────┤
             │  UV-transparent        │
             │  acrylic  (3 mm)       │  ← carrier for pTP
-z =  −9 mm  └────────────────────────┘
+z = −3 mm   └────────────────────────┘  ← FirstLayerBackplane counter 0.01 mm behind
                   [3 mm LAr gap]
-z =  −6 mm  ┌────────────────────────┐
-            │                        │  SiPMs at ±y edges
-            │  Blue WLS acrylic slab │  (15 per side, 6mm×6mm face)
-            │  15 cm × 15 cm × 6 mm  │
-z =   0 mm  └────────────────────────┘  ← back face reference
-            ┌────────────────────────┐
-            │  Vikuiti foil (65 µm)  │  ← backplane reflector
-            └────────────────────────┘
-            ┌────────────────────────┐
-            │  Leak det. (0.1 mm)    │  ← validation only
-            └────────────────────────┘
+z =  0 mm        ┌──────────┐          ← PMT front face (optional MgF2 window)
+                 │ cathode  │  Ø 23 mm, 0.1 mm thick, terminal QE counter
+                 └──────────┘
 
-            ╔══╗                  ╔══╗
-            ║Vi║  blue WLS slab   ║Vi║   ← Vikuiti foils at ±x edges
-            ╚══╝                  ╚══╝   (lateral reflectors)
+            ╎                        ╎   ← FirstLayerEdges counters on the ±x
+            ╎   first layer (15 cm)  ╎     faces of the first-layer stack
 #+END_EXAMPLE
 
-Photon source (run.mac): planar square, z = −2 cm, inside LAr, travelling in +z.
+Photon source (run.mac / sim_config.yaml): circular plane, radius 7 mm, at
+z = −2 cm inside LAr, centred on the PMT axis, travelling in +z.
 
 * World Volume
 
@@ -67,7 +61,7 @@ The simulation world is a rectangular box filled with liquid argon (LAr):
 
 * Detector Components
 
-** pTP WLS Film (1st WLS stage)
+** pTP WLS Film
 
 Deposited on the front (LAr-facing) face of the UV-transparent acrylic carrier.
 Absorbs 128 nm VUV photons from LAr and re-emits at 340–430 nm.
@@ -79,9 +73,10 @@ Absorbs 128 nm VUV photons from LAr and re-emits at 340–430 nm.
 | z centre           | kUVAcrylFrontZ − pTPlayerthickness/2     |
 | Material           | pTP (C₁₈H₁₄, density 1.23 g/cm³)        |
 | Refractive index   | 1.65                                     |
-| WLS absorption     | 10 m (530 nm) → 0.5 µm (128–106 nm)     |
-| WLS emission peak  | ~340–400 nm                              |
+| WLS absorption     | 10 m (530 nm) → 0.5 µm (305–106 nm)     |
+| WLS emission       | file / inline / smooth Gaussian peak 340 nm |
 | WLS time constant  | 1.136 ns                                 |
+| Surface            | ground/unified, σα = pTPsigmaAlpha (0 = smooth) on both faces |
 
 ** UV-Transparent Acrylic Carrier
 
@@ -100,94 +95,27 @@ absorbs residual VUV.
 
 ** LAr Gap
 
-The 3 mm space between the first layer and the blue WLS slab is filled
+The space between the first-layer back face and the PMT front face is filled
 implicitly by the world LAr volume (no separate volume needed).
 
 | Parameter | Value / Source                       |
 |-----------+--------------------------------------|
 | Thickness | 3 mm (= LArthickness, tunable)       |
 | Material  | G4_lAr                               |
-| Purpose   | Optical decoupling of the two layers |
 
-** Blue WLS Acrylic Substrate (2nd WLS stage)
+** First-Layer Counters (validation)
 
-Absorbs 340–430 nm photons (from pTP) and re-emits at ~430 nm (blue), matched
-to SiPM peak PDE. Photons propagate via WLS re-emission and total internal
-reflection toward the ±y SiPM edges.
+Thin (0.1 mm) LAr slabs — optically invisible (same material as the world) —
+whose sensitive detectors are *pass-through* counters (the photon continues).
 
-| Parameter           | Value / Source                              |
-|---------------------+---------------------------------------------|
-| Thickness           | 6 mm (default, tunable via messenger)       |
-| Area                | lighttrapsize × lighttrapsize (15×15 cm)    |
-| z centre            | kBlueWLSCenterZ = −3 mm                     |
-| Material            | bluewlsacrylic (C₉H₁₀, 1.023 g/cm³)        |
-| Refractive index    | 1.58                                        |
-| WLS absorption @430 | 200 cm                                      |
-| WLS emission peak   | ~430 nm (blue)                              |
-| WLS time constant   | 1.26 ns                                     |
+| Counter             | Placement                                            | Ntuple |
+|---------------------+------------------------------------------------------+--------|
+| FirstLayerBackplane | behind the acrylic back face, 0.01 mm standoff (TIR-aware) | 4 |
+| FirstLayerEdges     | flush on the ±x faces of the pTP + acrylic stack     | 5      |
 
-** SiPM Photosensor Array
+** PMT Readout
 
-30 SiPMs split equally between the +y and −y edges of the blue WLS slab.
-Each SiPM's 6 mm × 6 mm sensitive face is flush against the slab edge.
-
-| Parameter        | Value                                          |
-|------------------+------------------------------------------------|
-| Total SiPMs      | 30 (tunable via messenger)                     |
-| Per edge         | 15 (nSiPMs / 2)                                |
-| Sensitive face   | 6 mm × 6 mm (x × z)                           |
-| Depth (y)        | 1 mm                                           |
-| z centre         | kBlueWLSCenterZ (spans full slab thickness)    |
-| x pitch          | lighttrapsize / (nSiPMs/2) = 10 mm (default)  |
-| Copy numbers     | 0–14 on +y edge, 15–29 on −y edge              |
-| Material         | G4_lAr (transparent placeholder)               |
-| Quantum eff.     | Loaded from ~pde_broadcom.dat~, linear interp. |
-
-** Vikuiti Foil — Backplane
-
-3M Enhanced Specular Reflector on the back (+z) face of the blue WLS slab.
-Reflects ~98 % of photons back toward the SiPM edges.
-
-| Parameter      | Value                |
-|----------------+----------------------|
-| Thickness      | 65 µm                |
-| z centre       | kVikuitiCenterZ      |
-| Face area      | lighttrapsize²       |
-| Reflectivity   | 98 % (all λ)         |
-| Optical model  | dielectric_metal, ground, unified |
-
-** Vikuiti Foils — Lateral Edges (±x)
-
-Two foils covering the ±x faces of the blue WLS slab (the edges without SiPMs).
-Prevent lateral photon escape in x and redirect photons toward the SiPM edges.
-
-| Parameter      | Value                                            |
-|----------------+--------------------------------------------------|
-| Thickness      | 65 µm                                            |
-| Face area      | lighttrapsize (y) × pTPsubstratethickness (z)    |
-| z centre       | kBlueWLSCenterZ                                  |
-| x position     | ±(lighttrapsize/2 + kVikuitiThick/2)             |
-| Reflectivity   | 98 % (same Vikuiti surface as backplane)         |
-
-** Backplane Leak Detector
-
-Thin (0.1 mm) LAr slab immediately behind the backplane Vikuiti foil.
-100 %-efficient counter; records the ~2 % of photons transmitted through
-the foil. Used for optical surface validation.
-
-| Parameter | Value                    |
-|-----------+--------------------------|
-| Thickness | 0.1 mm                   |
-| Area      | lighttrapsize²           |
-| z centre  | kLeakDetCenterZ          |
-| Ntuple    | 6 (BackplaneLeak)        |
-
-** PMT Readout (detectorType = pmt)
-
-Selecting ~geometry.detectorType: pmt~ (YAML) or ~/detector/detectorType pmt~
-(macro) replaces the entire second stage — blue WLS slab, SiPMs, Vikuiti foils
-and backplane leak detector — with a PMT model facing the first layer across
-the LAr gap (~LArThickness_mm~).  The PMT front face defines z = 0 in this mode.
+A PMT faces the first layer across the LAr gap. The PMT front face defines z = 0.
 
 | Property              | Value                                               |
 |-----------------------+-----------------------------------------------------|
@@ -195,23 +123,35 @@ the LAr gap (~LArThickness_mm~).  The PMT front face defines z = 0 in this mode.
 | Window (optional)     | MgF2 G4Tubs, ~pmtWindowThickness_mm~ (default 0 = bare)      |
 | Photocathode material | same as the volume in front (LAr, or MgF2 behind a window), so no Fresnel boundary |
 | Sensitive detector    | ~MyPMTDetector~: terminal counter, flat QE ~pmtQE~ inside [~pmtQEmin_nm~, ~pmtQEmax_nm~] (default 1.0 over 110–500 nm), 0 outside |
-| Output                | ntuple 9 ~PMTPhotons~ (pre-QE), ntuple 10 ~PMTHits~ (post-QE) |
+| Output                | ntuple 6 ~PMTPhotons~ (pre-QE), ntuple 7 ~PMTHits~ (post-QE) |
+| Not modelled          | PMT body/housing, photocathode reflectivity, window AR coating |
 
-Companion files: ~sim_config_pmt.yaml~ (14 mm circular beam, ~source.radius_cm: 0.7~)
-and ~mac/run_pmt_beam.mac~.
+** MgF2 Window Material
+
+| Property         | Value                                                   |
+|------------------+---------------------------------------------------------|
+| Material         | G4_MAGNESIUM_FLUORIDE (NIST)                            |
+| Refractive index | 1.379 (530 nm) → 1.65 (106 nm), Dodge, Appl. Opt. 23, 1980 (1984) |
+| Absorption       | 1 m down to 160 nm, rolling off to 1 µm at 106 nm (approximate) |
 
 * Geometry Messenger Commands
 
 #+BEGIN_EXAMPLE
-/detector/nSiPMs             <int>    # Total SiPMs (15 per edge)
-/detector/pTPlayerthickness  <double> # pTP film thickness
-/detector/uvAcrylicThick     <double> # UV acrylic carrier thickness
-/detector/pTPsubstratethickness <double> # Blue WLS slab thickness
-/detector/LArthickness       <double> # LAr gap thickness
-/detector/lighttrapsize      <double> # Module side length
+/detector/pTPlayerthickness  <double> # pTP film thickness [mm]
+/detector/uvAcrylicThick     <double> # UV acrylic carrier thickness [mm]
+/detector/LArthickness       <double> # LAr gap: first-layer back face → PMT front face [mm]
+/detector/lighttrapsize      <double> # first-layer side length [mm]
+/detector/pTPsigmaAlpha      <double> # pTP surface facet-slope RMS [rad]
+/detector/pmtDiameter        <double> # photocathode diameter [mm]
+/detector/pmtWindowThick     <double> # MgF2 window thickness [mm], 0 = none
+/detector/pmtQE              <double> # flat QE inside the band
+/detector/pmtQEmin           <double> # QE band lower edge [nm]
+/detector/pmtQEmax           <double> # QE band upper edge [nm]
 #+END_EXAMPLE
 
-After any messenger command: ~/run/reinitializeGeometry~ then ~/run/beamOn~.
+After any messenger command: ~/run/reinitializeGeometry~ then ~/run/beamOn~
+(or ~/run/initialize~ if you only want to redraw the geometry in the viewer —
+~/run/reinitializeGeometry~ alone only flags the rebuild).
 
 * NameMap Integer Codes
 
@@ -220,8 +160,6 @@ Used to store material and process names as integers in ROOT ntuples:
 | Name            | Code |
 |-----------------+------|
 | pTP             |    1 |
-| acrylicMcMaster |    2 |
-| bluewlsacrylic  |    3 |
 | G4_lAr          |    4 |
 | uvTransAcrylic  |    5 |
 | G4_MAGNESIUM_FLUORIDE |    6 |

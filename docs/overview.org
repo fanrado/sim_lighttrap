@@ -1,25 +1,25 @@
-#+TITLE: LightTrapSimulation — Project Overview
+#+TITLE: LightTrapSimulation — Project Overview (first layer + PMT)
 #+AUTHOR: sim_lighttrap team
-#+DATE: 2026-05-29
+#+DATE: 2026-10-21
 #+OPTIONS: toc:t num:t
 
 * Purpose
 
-~sim_lighttrap~ is a Geant4-based Monte Carlo simulation of an optical light trap
-designed for studying scintillation and wavelength-shifting (WLS) photon transport
-in liquid argon (LAr) detectors. The primary physics goals are:
+~sim_lighttrap~ (branch ~vuv_meas_pmt~) is a Geant4 Monte Carlo of the LightTrap
+*first layer* — a p-terphenyl (pTP) wavelength-shifting film on a UV-transparent
+acrylic carrier, immersed in liquid argon (LAr) — read out by a PMT, as in the
+VUV bench measurement. Its goals are:
 
-- Model VUV photon (128 nm, LAr scintillation peak) absorption and re-emission
-  through multi-layer WLS materials.
-- Optimise light collection efficiency by varying the number and placement of SiPM
-  photosensors.
-- Validate optical surface properties (Vikuiti reflector at ~98%) against analytical
-  Fresnel predictions.
-- Quantify photon losses at the detector backplane and edges.
+- Model VUV photon (128 nm, LAr scintillation peak) absorption in the pTP film
+  and re-emission at 340–430 nm.
+- Quantify how much of the shifted light escapes the first layer (back face vs
+  lateral edges, total-internal-reflection trapping) and reaches a PMT of
+  known photocathode size placed behind it.
+- Provide an ideal-PMT reference (flat 100 % QE over 110–500 nm) against which
+  the measured PMT response can be compared.
 
-The simulation context is large-scale liquid argon time-projection chambers (LArTPCs)
-such as those used in the DUNE experiment, where efficient VUV photon detection is
-critical for triggering and calorimetry.
+The two-layer design (blue-WLS slab + edge SiPMs + reflector foils) is developed
+independently on the ~develop~ branch and is not part of this branch.
 
 * Repository Layout
 
@@ -28,8 +28,11 @@ sim_lighttrap/
 ├── include/          # C++ header files (.hh)
 ├── src/              # C++ implementation files (.cc)
 ├── mac/              # Geant4 macro files (.mac)
-├── input/            # External data (spectrum.txt)
-├── docs/             # This documentation folder
+├── input/            # External data (ptp_emission.dat, spectrum.txt, create_macro.py)
+├── analysis/         # ROOT / Python analysis scripts
+├── docs/             # This documentation folder (+ figures/)
+├── tests/            # pytest source-level checks
+├── sim_config.yaml   # YAML run configuration (geometry, source, materials)
 ├── CMakeLists.txt    # Build configuration
 └── README.md         # Quick-start guide
 #+END_EXAMPLE
@@ -37,27 +40,24 @@ sim_lighttrap/
 * Simulation Flow
 
 #+BEGIN_EXAMPLE
-Primary photon (9.68 eV, λ = 128 nm, VUV)
+Primary photon beam (9.68 eV, λ = 128 nm, Ø 14 mm, parallel along +z)
         │
         ▼
   LAr World volume
         │  Rayleigh scattering, absorption
         ▼
-  pTP deposited layer (2 µm)
-        │  WLS absorption → re-emission (λ ~ 340–430 nm)
+  pTP film (2 µm)  on  UV-transparent acrylic (3 mm)
+        │  WLS absorption → isotropic re-emission (λ ~ 340–430 nm)
+        │  ← FirstLayerBackplane / FirstLayerEdges pass-through counters
         ▼
-  Blue WLS Acrylic substrate (6 mm)
-        │  Second WLS stage → emission at ~430 nm
+  LAr gap (3 mm)
+        ▼
+  [optional MgF2 window]
         ▼
   ┌─────────────────────────────────────────────┐
-  │  SiPM array (20–50 sensors, 3 mm × 1 mm)   │
-  │  Quantum efficiency applied per photon      │
+  │  PMT photocathode disc (Ø 23 mm)            │
+  │  flat QE (1.0 over 110–500 nm) per photon   │  → PMTPhotons / PMTHits
   └─────────────────────────────────────────────┘
-        │  ~2% leak through
-        ▼
-  Vikuiti reflective foil (65 µm, ≥98% reflectivity)
-        │
-  Backplane / Edge leak detectors (validation)
 #+END_EXAMPLE
 
 * Related Documentation

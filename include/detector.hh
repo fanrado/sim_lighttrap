@@ -7,18 +7,6 @@
 #include "G4SystemOfUnits.hh"
 #include "G4AnalysisManager.hh"
 
-class MySensitiveDetector : public G4VSensitiveDetector
-{
-public:
-  MySensitiveDetector(G4String);
-  ~MySensitiveDetector();
-
-private:
-  virtual G4bool ProcessHits(G4Step *, G4TouchableHistory *);
-
-  G4PhysicsFreeVector *QE;
-};
-
 // Simple 100%-efficient photon counter for validation volumes.
 // Records every photon that enters (eventID, x, y, z, t, wl, cosTheta).
 // killTrack=true  → terminal counter (e.g. backplane leak): kills the track.
@@ -37,7 +25,7 @@ private:
   G4bool fKillTrack;
 };
 
-// PMT photocathode (detectorType = "pmt").  Terminal: every photon reaching the
+// PMT photocathode.  Terminal: every photon reaching the
 // photocathode is killed (the cathode is opaque).  Every arrival is recorded to
 // ntuple 9 (PMTPhotons, pre-QE); a photon is additionally recorded to ntuple 10
 // (PMTHits, post-QE) with probability `qe` if its wavelength lies inside

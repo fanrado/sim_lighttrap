@@ -70,19 +70,14 @@ int main(int argc, char** argv)
     // internal units: mm for length).
     if (hasConfig) {
         // Geometry — lighttrapsize messenger stores value in mm (G4 unit)
-        UImanager->ApplyCommand("/detector/nSiPMs "              + std::to_string(cfg.nSiPMs));
         UImanager->ApplyCommand("/detector/pTPlayerthickness "   + d2s(cfg.pTPlayerThickness_mm));
         UImanager->ApplyCommand("/detector/uvAcrylicThick "      + d2s(cfg.uvAcrylicThickness_mm));
-        UImanager->ApplyCommand("/detector/pTPsubstratethickness " + d2s(cfg.pTPSubstrateThickness_mm));
         UImanager->ApplyCommand("/detector/LArthickness "        + d2s(cfg.LArThickness_mm));
         // lightTrapSize is in cm in YAML; convert to mm for the messenger
         UImanager->ApplyCommand("/detector/lighttrapsize "       + d2s(cfg.lightTrapSize_cm * 10.0));
         // pTP surface facet-slope RMS [rad]; 0 = perfectly smooth (no wiggle)
         UImanager->ApplyCommand("/detector/pTPsigmaAlpha "       + d2s(cfg.pTPsigmaAlpha_rad));
-        // Backplane reflector foil: vikuiti | ptfe | none
-        UImanager->ApplyCommand("/detector/backplaneFoil "       + cfg.backplaneFoil);
-        // Readout stage: sipm (blue WLS + SiPMs) | pmt (PMT photocathode)
-        UImanager->ApplyCommand("/detector/detectorType "        + cfg.detectorType);
+        // PMT readout
         UImanager->ApplyCommand("/detector/pmtDiameter "         + d2s(cfg.pmtDiameter_mm));
         UImanager->ApplyCommand("/detector/pmtWindowThick "      + d2s(cfg.pmtWindowThickness_mm));
         UImanager->ApplyCommand("/detector/pmtQE "               + d2s(cfg.pmtQE));

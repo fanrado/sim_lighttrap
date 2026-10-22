@@ -1,5 +1,5 @@
 """
-Tests for the materials: block in sim_config.yaml (commit 3d5295d).
+Tests for the materials: block in sim_config.yaml (ptp, uvAcrylic, lar, mgf2).
 
 Covers:
   - Array lengths (validateOpticalArray requires exactly 13 entries)
@@ -58,15 +58,12 @@ ARRAY_PATHS = [
     ("ptp", "wlscomponent"),
     ("uvAcrylic", "rindex"),
     ("uvAcrylic", "abslen_m"),
-    ("acrylicMcMaster", "rindex"),
-    ("blueWLS", "rindex"),
-    ("blueWLS", "wlsabslen_m"),
-    ("blueWLS", "wlscomponent"),
     ("lar", "rindex"),
     ("lar", "abslen_m"),
     ("lar", "rayleigh_m"),
     ("lar", "scintcomponent"),
-    ("vikuiti", "reflectivity"),
+    ("mgf2", "rindex"),
+    ("mgf2", "abslen_m"),
 ]
 
 
@@ -85,9 +82,8 @@ def test_array_has_13_entries(materials, path):
 RINDEX_PATHS = [
     ("ptp", "rindex"),
     ("uvAcrylic", "rindex"),
-    ("acrylicMcMaster", "rindex"),
-    ("blueWLS", "rindex"),
     ("lar", "rindex"),
+    ("mgf2", "rindex"),
 ]
 
 
@@ -107,9 +103,9 @@ ABSLEN_PATHS = [
     ("ptp", "abslen_m"),
     ("ptp", "wlsabslen_m"),
     ("uvAcrylic", "abslen_m"),
-    ("blueWLS", "wlsabslen_m"),
     ("lar", "abslen_m"),
     ("lar", "rayleigh_m"),
+    ("mgf2", "abslen_m"),
 ]
 
 
@@ -126,7 +122,6 @@ def test_abslen_positive(materials, path):
 
 COMPONENT_PATHS = [
     ("ptp", "wlscomponent"),
-    ("blueWLS", "wlscomponent"),
     ("lar", "scintcomponent"),
 ]
 
@@ -140,15 +135,15 @@ def test_component_bounded(materials, path):
         assert 0.0 <= v <= 1.0, f"{'.'.join(path)}[{i}] = {v} must be in [0, 1]"
 
 
-# ── 5. Vikuiti reflectivity ≥ 0.98 everywhere ────────────────────────────────
+# ── 5. MgF2 window: transparent in the visible, cut-off below ~115 nm ────────
 
-def test_vikuiti_reflectivity_ge_98pct(materials):
-    arr = _arr(materials, "vikuiti", "reflectivity")
+def test_mgf2_vuv_cutoff(materials):
+    arr = _arr(materials, "mgf2", "abslen_m")
     if not arr:
-        pytest.skip("vikuiti.reflectivity absent")
-    for i, v in enumerate(arr):
-        assert 0.0 <= v <= 1.0, f"vikuiti.reflectivity[{i}] = {v} out of [0,1]"
-        assert v >= 0.98, f"vikuiti.reflectivity[{i}] = {v} < 0.98 (ESR spec)"
+        pytest.skip("mgf2.abslen_m absent")
+    assert min(arr[:6]) >= 0.5, "MgF2 must be transparent from 530 down to 160 nm"
+    assert arr[12] < 1e-4, "MgF2 must be opaque at 106 nm (cut-off ~110 nm)"
+    assert arr[12] < arr[11] < arr[8], "MgF2 absorption must roll off monotonically toward the cut-off"
 
 
 # ── 6. pTP WLS emission peaks at 340–400 nm (indices 2–3) ────────────────────
@@ -169,19 +164,6 @@ def test_ptp_wls_emission_peaks_at_340_400nm(materials):
         assert arr[i] == 0.0, (
             f"ptp.wlscomponent[{i}] ({WL_GRID_NM[i]} nm) = {arr[i]}, expected 0 in VUV"
         )
-
-
-# ── 7. blueWLS emission peaks at ~430 nm (index 1 = 425 nm) ──────────────────
-
-def test_bluewls_emission_peaks_at_425_530nm(materials):
-    arr = _arr(materials, "blueWLS", "wlscomponent")
-    if not arr:
-        pytest.skip("blueWLS.wlscomponent absent")
-    peak_idx = max(range(N_POINTS), key=lambda i: arr[i])
-    assert peak_idx in (0, 1), (
-        f"blueWLS peak at index {peak_idx} ({WL_GRID_NM[peak_idx]} nm), "
-        "expected index 0 (530 nm) or 1 (425 nm)"
-    )
 
 
 # ── 8. LAr scintcomponent peaks at 128 nm (index 8) ──────────────────────────
@@ -251,7 +233,7 @@ def test_lar_resolutionscale(materials):
 
 # ── 11. WLS time constants positive ──────────────────────────────────────────
 
-@pytest.mark.parametrize("path", [("ptp", "wlstimeconstant_ns"), ("blueWLS", "wlstimeconstant_ns")])
+@pytest.mark.parametrize("path", [("ptp", "wlstimeconstant_ns")])
 def test_wls_timeconstant_positive(materials, path):
     v = _scalar(materials, *path)
     if v is None:

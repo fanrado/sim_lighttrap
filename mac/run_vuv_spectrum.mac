@@ -10,7 +10,7 @@
 # the Geant4 default unit (MeV). Values below are the eV energies × 1e-6.
 #   e.g. 9.7242 eV → 9.7242e-6 MeV
 #
-# Source geometry: same as run.mac — square 15 cm × 15 cm at z = -2 cm,
+# Source geometry: same as run.mac — 14 mm diameter circular beam at z = -2 cm,
 # photons directed in +z toward the detector module.
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -19,9 +19,8 @@
 # --- Source position (inside LAr, 8 mm in front of pTP film) ---
 /gps/pos/type Plane
 /gps/pos/centre 0. 0. -2. cm
-/gps/pos/shape Square
-/gps/pos/halfx 7.5 cm
-/gps/pos/halfy 7.5 cm
+/gps/pos/shape Circle
+/gps/pos/radius 7 mm
 /gps/direction 0 0 1
 
 # --- VUV energy distribution: Gaussian in wavelength, tabulated in MeV ---

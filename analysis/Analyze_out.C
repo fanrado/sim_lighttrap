@@ -18,11 +18,11 @@
 // Reads the analysis trees from a simulation output ROOT file (same structure
 // as build/out_none.root) and produces a single multi-page PDF.
 //
-//   * Primary, FirstLayerBackplane, FirstLayerEdges, SecondLayerBackplane:
+//   * Primary, FirstLayerBackplane, FirstLayerEdges:
 //       one page per tree, each observable overlaid as forward vs. backward
 //       photons (trees that carry a "forward" flag). Primary has no forward
 //       flag, so its observables are drawn as single distributions.
-//   * SiPMPhotons and SiPMHits: their observables are drawn on the final pages.
+//   * PMTPhotons and PMTHits: their observables are drawn on the final pages.
 //
 // Usage:
 //   root -l -b -q 'Analyze_out.C("build/out_none.root")'
@@ -148,8 +148,6 @@ void Analyze_out(const char* filename = "build/out_none.root") {
        {"fX", "fY", "fZ", "fT", "fwl", "fcosTheta"}},
     {"FirstLayerEdges",
        {"fX", "fY", "fZ", "fT", "fwl", "fcosTheta"}},
-    {"SecondLayerBackplane",
-       {"fX", "fY", "fZ", "fT", "fwl", "fcosTheta"}},
   };
 
   for (const auto& spec : counterTrees) {
@@ -162,13 +160,13 @@ void Analyze_out(const char* filename = "build/out_none.root") {
     PlotTreePage(t, spec.vars, c, outpdf);
   }
 
-  // ---- SiPM trees on the final pages -------------------------------------
-  std::vector<TreeSpec> sipmTrees = {
-    {"SiPMPhotons", {"fX", "fY", "fZ", "fT", "fwl"}},
-    {"SiPMHits",    {"fX", "fY", "fZ"}},
+  // ---- PMT trees on the final pages --------------------------------------
+  std::vector<TreeSpec> pmtTrees = {
+    {"PMTPhotons", {"fX", "fY", "fZ", "fT", "fwl", "fcosTheta"}},
+    {"PMTHits",    {"fX", "fY", "fZ", "fT", "fwl", "fcosTheta"}},
   };
 
-  for (const auto& spec : sipmTrees) {
+  for (const auto& spec : pmtTrees) {
     TTree* t = dynamic_cast<TTree*>(f->Get(spec.name));
     if (!t) {
       printf("WARNING: tree '%s' not found, skipping.\n", spec.name);

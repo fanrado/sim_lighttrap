@@ -1,13 +1,24 @@
-# LightTrapSimulation
+# LightTrapSimulation — first layer + PMT (branch `vuv_meas_pmt`)
 
-LightTrapSimulation is a Geant4-based simulation project designed to model an optical light trap. The simulation includes wavelength-shifting processes in a pTP (p-terphenyl) material and tracks the emission of optical photons that interact with detector elements (e.g., SiPMs). Data such as primary particle information, remitted optical photon angles, and material properties are recorded in ROOT ntuples for analysis.
+Geant4 simulation of the LightTrap **first layer** (a p-terphenyl (pTP) WLS film
+deposited on a UV-transparent acrylic carrier) read out by a **PMT**, as in the
+VUV bench measurement. A 14 mm diameter parallel VUV beam (128 nm by default)
+hits the pTP film; the shifted light crosses a LAr gap to a 23 mm photocathode
+modelled with a flat quantum efficiency (100 % over 110–500 nm to start with).
+Primary photons, WLS emission, first-layer escape counters and PMT hits are
+written to ROOT ntuples.
+
+The two-layer design (blue-WLS slab + edge SiPMs + reflector foils) is **not**
+part of this branch; it lives in `develop` and is developed independently.
 
 ## Installation and Compilation
 
-1. **Set up Geant4 Environment:**Source the Geant4 environment script (this might vary by installation):
+1. **Set up Geant4 Environment:** source the Geant4 environment script, or point
+   CMake at the install (this laptop: Geant4 11.3.2 from spack):
 
    ```bash
    source /path/to/geant4-install/bin/geant4.sh
+   # or, with spack:  export GEANT4_CMAKE_DIR=$(spack location -i geant4)/lib/cmake/Geant4
    ```
 2. **Create a Build Directory:**
 
@@ -19,9 +30,13 @@ LightTrapSimulation is a Geant4-based simulation project designed to model an op
 
    ```bash
    cmake ..
+   # macOS with miniconda on PATH: force the system compiler
+   # cmake -DCMAKE_C_COMPILER=/usr/bin/cc -DCMAKE_CXX_COMPILER=/usr/bin/c++ -DGeant4_DIR=$GEANT4_CMAKE_DIR ..
    ```
 
-   This command configures the project and locates all source files under `src/`, headers under `include/`, and copies macro files from `mac/` to the build directory.
+   This configures the project, locates all sources under `src/` and headers
+   under `include/`, and copies the macros (`mac/`), input data (`input/`) and
+   `sim_config.yaml` into the build directory.
 4. **Build the Project:**
 
    ```bash
@@ -30,9 +45,39 @@ LightTrapSimulation is a Geant4-based simulation project designed to model an op
 
    The executable `sim_lighttrap` will be created.
 
-## Running the Simulation
+## Geometry
 
-You can run the simulation in three modes:
+Along `+z` (the PMT front face sits at `z = 0`; the beam travels in `+z`):
+
+```
+beam (z = -2 cm) ──► pTP film (2 µm) / UV acrylic (3 mm) ──► [LAr gap, 3 mm] ──► [MgF2 window, optional] ──► photocathode (Ø 23 mm)
+                     z = -6.002 .. -3 mm                                        z = 0 .. 0.1 mm
+```
+
+| YAML key (`geometry:`)   | Messenger                  | Default | Meaning |
+|--------------------------|----------------------------|---------|---------|
+| `pTPlayerThickness_mm`   | `/detector/pTPlayerthickness` | 0.002 | pTP WLS film thickness |
+| `uvAcrylicThickness_mm`  | `/detector/uvAcrylicThick` | 3.0     | UV-transparent acrylic carrier |
+| `LArThickness_mm`        | `/detector/LArthickness`   | 3.0     | LAr gap, first-layer back face → PMT front face |
+| `lightTrapSize_cm`       | `/detector/lighttrapsize`  | 15.0    | square first-layer side |
+| `pTPsigmaAlpha_rad`      | `/detector/pTPsigmaAlpha`  | 0.0     | pTP surface facet-slope RMS (0 = smooth) |
+| `pmtDiameter_mm`         | `/detector/pmtDiameter`    | 23      | photocathode (sensitive) diameter |
+| `pmtWindowThickness_mm`  | `/detector/pmtWindowThick` | 0       | MgF2 entrance window; 0 = bare photocathode |
+| `pmtQE`                  | `/detector/pmtQE`          | 1.0     | flat quantum efficiency inside the QE band |
+| `pmtQEmin_nm`            | `/detector/pmtQEmin`       | 110     | QE band lower edge [nm] |
+| `pmtQEmax_nm`            | `/detector/pmtQEmax`       | 500     | QE band upper edge [nm]; QE = 0 outside |
+
+The photocathode is a thin disc whose material matches the volume in front of
+it (LAr, or MgF2 behind a window), so it adds no optical boundary: every photon
+reaching it is killed and recorded in `PMTPhotons` (pre-QE), and with
+probability `pmtQE` inside the band also in `PMTHits` (post-QE). Both trees
+carry `eventID, fX, fY, fZ, fT, fwl, fcosTheta, primary`, where `primary = 1`
+tags an unshifted beam photon and `0` a pTP-shifted WLS photon. Two
+pass-through counters on the first layer (`FirstLayerBackplane` on its back
+face, 0.01 mm behind the acrylic so TIR-trapped light is not counted, and
+`FirstLayerEdges` on its ±x edges) record where the WLS light leaves layer 1.
+
+## Running the Simulation
 
 - **Interactive Mode (with Visualization):**
 
@@ -40,178 +85,97 @@ You can run the simulation in three modes:
   ./sim_lighttrap
   ```
 
-  Launches the Qt UI and executes `vis.mac` automatically.
+  Launches the Qt UI and executes `vis.mac` (geometry drawn, 14 mm beam
+  preloaded; use the Run menu or `/run/beamOn 30` to see trajectories).
 
 - **Batch Mode (macro file):**
 
   ```bash
-  ./sim_lighttrap run.mac
+  ./sim_lighttrap run.mac                 # 10 000 photons, 128 nm, 14 mm beam
+  ./sim_lighttrap run_vuv_spectrum.mac    # same beam with the LAr scintillation spectrum
+  ./sim_lighttrap run_285.mac             # measured lamp spectrum (input/spectrum.txt via create_macro.py)
   ```
-
-  You can also use other macro files (e.g., `det.mac`, `scandet.mac`).
 
 - **YAML Configuration Mode:**
 
   Edit `sim_config.yaml` in the build directory, then run:
 
   ```bash
-  # YAML-only: geometry + source + event count all from the YAML file
-  ./sim_lighttrap sim_config.yaml
-
-  # YAML geometry + macro source/run: macro settings override the YAML ones
-  ./sim_lighttrap sim_config.yaml run.mac
+  ./sim_lighttrap sim_config.yaml           # geometry + source + event count from the YAML
+  ./sim_lighttrap sim_config.yaml run.mac   # YAML geometry, macro source/run (macro overrides)
   ```
-
-  The YAML file covers all tunable parameters:
 
   | Section    | Parameters |
   |------------|------------|
-  | `geometry` | `nSiPMs`, layer thicknesses, module size, `backplaneFoil` (`vikuiti` \| `ptfe` \| `none`), `detectorType` (`sipm` \| `pmt`) and the `pmt*` parameters |
-  | `source`   | particle type, energy, position, shape (`Square` half-widths or `Circle` `radius_cm`), direction |
+  | `geometry` | layer thicknesses, first-layer size, pTP roughness, `pmt*` parameters (table above) |
+  | `source`   | particle, energy, GPS position type/shape, `radius_cm` (Circle) or half-widths, direction |
   | `run`      | number of events |
-  | `materials`| per-material optical properties, incl. `vikuiti.reflectivity` and `ptfe.reflectivity` |
+  | `materials`| per-material optical properties: `ptp`, `uvAcrylic`, `lar`, `mgf2` |
 
-  Example — scan with 20 SiPMs and a smaller module:
+  Example — thicker gap, 2 mm MgF2 window, 100k events:
 
   ```yaml
   geometry:
-    nSiPMs: 20
-    lightTrapSize_cm: 10.0
+    LArThickness_mm: 10.0
+    pmtWindowThickness_mm: 2.0
   run:
-    nEvents: 50000
+    nEvents: 100000
   ```
 
-  The YAML config is applied first; any macro file provided afterward can still override individual settings via the usual `/detector/` and `/gps/` messenger commands.
+Output: `output_apexltsim<runID>.root` in the working directory, with trees
+`Energy`, `Primary`, `WLSPhoton`, `OpticalValidation`, `FirstLayerBackplane`,
+`FirstLayerEdges`, `PMTPhotons`, `PMTHits` (see `docs/analysis.org`). Note that
+the sim always writes that fixed name: run verification jobs in a scratch
+directory so you do not overwrite a long production run.
 
-## Comparing backplane reflectors (Vikuiti / PTFE / none)
-
-The reflector foil on the back (`+z`) face of the blue WLS slab is selectable at
-run time, so you can measure its effect on SiPM light collection:
-
-| Value     | Foil                | Optical behaviour                     |
-|-----------|---------------------|---------------------------------------|
-| `vikuiti` | 3M ESR (default)    | specular reflector (~98 %)            |
-| `ptfe`    | sintered PTFE       | diffuse / Lambertian reflector (~95 %)|
-| `none`    | *(no foil)*         | bare face — no reflector (baseline)   |
-
-Select it either in YAML (`geometry.backplaneFoil:`) or from a macro
-(`/detector/backplaneFoil <value>` before `/run/beamOn`).
-
-**Run the three-way comparison** with the helper script. It derives a config per
-mode from `sim_config.yaml`, runs each (renaming `output_apexltsim0.root` →
-`build/out_<foil>.root`), then prints the efficiency chain for each:
-
-```bash
-scripts/compare_backplane.sh                 # all three, nEvents from the YAML
-scripts/compare_backplane.sh 100000          # all three, 100k events each
-scripts/compare_backplane.sh - vikuiti none  # only these modes, YAML's nEvents
-```
-
-(Requires a built `build/sim_lighttrap`. Run it from the repo root; it resolves
-paths relative to its own location, so it also works from anywhere.)
-
-What to look at across the three runs:
-
-- **Collection / detection efficiency** (`SiPMHits`, ntuple 1) — typically
-  `vikuiti ≥ ptfe > none`. The `vikuiti`-vs-`ptfe` gap is the specular-vs-diffuse
-  effect; `none` is the no-reflector baseline.
-- **Back-face escape** (`SecondLayerBackplane`, ntuple 6) — typically
-  `none ≫ ptfe ≳ vikuiti`.
-
-For tighter statistics, raise `run.nEvents` in the YAML (the default is small for
-a quick relative comparison).
-
-## PMT readout mode (first layer + PMT, 14 mm beam)
-
-For the bench measurement of the first layer alone, the whole second stage
-(blue-WLS slab, edge SiPMs, reflector foils, backplane leak counter) can be
-replaced by a PMT model. Select it with `geometry.detectorType: pmt` in YAML or
-`/detector/detectorType pmt` in a macro (followed by `/run/reinitializeGeometry`).
-
-Geometry along `+z` in this mode (the PMT front face sits at `z = 0`):
-
-```
-beam (z = -2 cm) ──► pTP film / UV acrylic ──► [LAr gap, LArThickness_mm] ──► [MgF2 window] ──► photocathode
-```
-
-| YAML key (`geometry:`)   | Messenger                 | Default | Meaning |
-|--------------------------|---------------------------|---------|---------|
-| `detectorType`           | `/detector/detectorType`  | `sipm`  | `sipm` = blue WLS + SiPMs; `pmt` = PMT photocathode |
-| `pmtDiameter_mm`         | `/detector/pmtDiameter`   | 23      | photocathode (sensitive) diameter |
-| `pmtWindowThickness_mm`  | `/detector/pmtWindowThick`| 0       | MgF2 entrance window; 0 = bare photocathode |
-| `pmtQE`                  | `/detector/pmtQE`         | 1.0     | flat quantum efficiency inside the QE band |
-| `pmtQEmin_nm`            | `/detector/pmtQEmin`      | 110     | QE band lower edge [nm] |
-| `pmtQEmax_nm`            | `/detector/pmtQEmax`      | 500     | QE band upper edge [nm]; QE = 0 outside |
-
-The photocathode is a thin disc whose material matches the volume in front of
-it (LAr, or MgF2 behind a window), so it adds no optical boundary: every photon
-reaching it is killed and recorded in ntuple 9 `PMTPhotons` (pre-QE), and with
-probability `pmtQE` inside the band also in ntuple 10 `PMTHits` (post-QE). Both
-carry `eventID, fX, fY, fZ, fT, fwl, fcosTheta, primary`, where `primary = 1`
-tags an unshifted beam photon and `0` a pTP-shifted WLS photon. In this mode
-`SiPMPhotons`, `SiPMHits` and `SecondLayerBackplane` stay empty; `WLSPhoton`,
-`FirstLayerBackplane` and `FirstLayerEdges` are filled as usual.
-
-The light source for this setup is a 14 mm diameter parallel VUV beam rather
-than the full-face square plane: `source.positionShape: Circle` with
-`source.radius_cm: 0.7` (forwarded to `/gps/pos/radius`). Ready-made files:
+## Visualising and validating the geometry
 
 ```bash
 cd build
-./sim_lighttrap sim_config_pmt.yaml                     # YAML only: PMT geometry + 14 mm beam
-./sim_lighttrap sim_config_pmt.yaml run_pmt_beam.mac    # YAML geometry + macro source/run
-./sim_lighttrap run_pmt_beam.mac                        # macro only (sets /detector/ itself)
+./sim_lighttrap                       # interactive Qt viewer (vis.mac)
+./sim_lighttrap draw_offscreen.mac    # headless: writes pmt_geom_*.png + prints the volume tree
 ```
 
-**Visualising the PMT geometry** (to validate it before a long run):
+`draw_offscreen.mac` renders the geometry with the TOOLSSG offscreen driver (no
+display needed) from behind, from the side, and with 30 beam events, and dumps
+the volume tree with ASCIITree. Reference renders are kept in
+`docs/figures/pmt_mode/`. Two caveats of this Geant4 build: the `RayTracer`
+driver segfaults, and the offscreen z-buffer renderer skips translucent
+surfaces and needs `/vis/viewer/set/culling invisible true` (otherwise the
+invisible world box is drawn and hides everything); the macro handles both.
 
-```bash
-cd build
-./sim_lighttrap vis_pmt.mac               # interactive Qt viewer, PMT geometry + 14 mm beam preloaded
-./sim_lighttrap draw_pmt_offscreen.mac    # headless: writes pmt_geom_*.png + prints the volume tree
-```
-
-`vis_pmt.mac` switches to `detectorType pmt`, re-initialises the geometry and
-then runs the usual `vis.mac` scene, so `/run/beamOn 30` in the Qt session shows
-the circular beam, the pTP-shifted light and the photocathode disc (dark red,
-at `z = 0`). `draw_pmt_offscreen.mac` renders the same geometry with the
-TOOLSSG offscreen driver (no display needed) from behind, from the side, and
-with 30 beam events, and dumps the volume tree with ASCIITree. Reference
-renders are kept in `docs/figures/pmt_mode/`. Two caveats of this Geant4 build:
-the `RayTracer` driver segfaults, and the offscreen z-buffer renderer skips
-translucent surfaces and needs `/vis/viewer/set/culling invisible true`
-(otherwise the invisible world box is drawn and hides everything), which the
-macro already handles.
-
-A data-side check of the same geometry (beam footprint on the film, hit map on
-the photocathode, and the z positions of every recorded photon point lined up
-against the layer planes) comes from:
+A data-side check (beam footprint on the film, hit map on the photocathode, and
+the z of every recorded photon point against the layer planes):
 
 ```bash
 python3.13 analysis/plot_pmt_validation.py build/output_apexltsim0.root pmt_validation.png
 ```
 
-(see `docs/figures/pmt_mode/pmt_validation_2000evt.png` for the reference output).
+(reference output: `docs/figures/pmt_mode/pmt_validation_2000evt.png`).
 
-Quick look at the result in ROOT:
+## Analysis
 
-```cpp
-TFile *f = TFile::Open("output_apexltsim0.root");
-((TTree*)f->Get("PMTHits"))->GetEntries();                 // detected photo-electrons
-((TTree*)f->Get("PMTPhotons"))->Draw("fX:fY", "", "colz");  // hit map on the photocathode
+```bash
+python3 analysis/analyze_efficiency.py build/output_apexltsim0.root   # efficiency chain (PyROOT)
+root -l -b -q 'analysis/Analyze_out.C("build/output_apexltsim0.root")' # per-tree summary PDF
 ```
+
+`analyze_efficiency.py` prints the chain beam → pTP WLS → escape from layer 1 →
+photocathode → photo-electrons, each normalised to the previous stage and to
+the number of primaries.
 
 ## Running the unit tests
 
-Source-level checks (config parsing, the `/detector/backplaneFoil` messenger, the
-PTFE surface definition, the `none`-skips-foil logic, etc.) run with `pytest` and
-require no build or simulation:
+Source-level checks (config parsing, messenger wiring, PMT sensitive detector,
+ntuple layout, macros, docs) run with `pytest` and require no build:
 
 ```bash
-python3.13 -m pytest tests/ -v                            # full suite
-python3.13 -m pytest tests/test_backplane_foil_config.py -v  # backplane feature only
-python3.13 -m pytest tests/test_pmt_detector_mode.py -v      # PMT readout mode only
+python3.13 -m pytest tests/ -v                          # full suite
+python3.13 -m pytest tests/test_pmt_detector_mode.py -v # PMT geometry/readout only
 ```
+
+Tests of the two-layer design that are still present as untracked files are
+excluded from collection in `tests/conftest.py`.
 
 ## Visualization
 

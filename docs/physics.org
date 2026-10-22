@@ -1,6 +1,6 @@
 #+TITLE: Physics Processes & Primary Generator
 #+AUTHOR: sim_lighttrap team
-#+DATE: 2026-05-29
+#+DATE: 2026-10-21
 #+OPTIONS: toc:t num:t
 
 * Physics List
@@ -28,14 +28,14 @@ The simulation uses a two-component physics list registered in ~src/physics.cc~:
 
 The generator is implemented via ~G4GeneralParticleSource~ (GPS) in ~src/generator.cc~.
 
-** Default Configuration (run.mac)
+** Default Configuration (run.mac / sim_config.yaml)
 
 | Property    | Value                             | Notes                                        |
 |-------------+-----------------------------------+----------------------------------------------|
 | Particle    | opticalphoton                     | Massless, speed = c                          |
 | Energy      | 9.68 eV  (λ ≈ 128 nm)            | LAr VUV scintillation peak                   |
-| Source shape| Square plane, 25 × 25 cm half-side| Centred at (0, 0, 24.5 cm)                   |
-| Direction   | (0, 0, 1) downward                | Perpendicular to detector surface            |
+| Source shape| Circular plane, radius 7 mm       | 14 mm beam, centred at (0, 0, −2 cm)         |
+| Direction   | (0, 0, 1) into the detector       | Parallel beam, normal to the pTP film        |
 | Polarisation| Random in plane ⊥ momentum        | Angle uniformly sampled in [0, π/2]          |
 | Events      | 10 000 per run (run.mac)          |                                              |
 
@@ -43,10 +43,11 @@ The random polarisation is set in C++ code: a random rotation angle is drawn and
 used to construct a polarisation vector that remains strictly perpendicular to the
 photon momentum, as required by Geant4 for ~opticalphoton~.
 
-** Detector Scan (det.mac / scandet.mac)
+** Spectrum runs
 
-A parameter scan macro loops the number of SiPMs from 20 to 50 in steps of 10,
-running 10 events per configuration to produce comparative statistics.
+~run_vuv_spectrum.mac~ replaces the mono-energetic line by the LAr scintillation
+spectrum (Gaussian, 128 nm, σ = 4.25 nm) as a GPS ~Arb~ histogram; ~run_285.mac~
+uses the measured lamp spectrum converted by ~input/create_macro.py~.
 
 * Tracking and Stepping Logic
 
@@ -73,8 +74,6 @@ Process and material types are encoded to integers using the ~NameMap~ helper
 | Name            | Integer code |
 |-----------------+--------------|
 | pTP             |            1 |
-| acrylicMcMaster |            2 |
-| bluewlsacrylic  |            3 |
 | G4_lAr          |            4 |
 | uvTransAcrylic  |            5 |
 | G4_MAGNESIUM_FLUORIDE |            6 |
@@ -84,35 +83,36 @@ Process and material types are encoded to integers using the ~NameMap~ helper
 *** PostUserTrackingAction
 
 After a track ends, the action completes the optical validation entry by
-determining whether the primary photon was reflected (final z < 24.5 cm) or
+determining whether the primary photon was reflected (final z < vertex z) or
 transmitted, and fills the reflection flag branch.
 
 ** Event Action (src/event.cc)
 
 At the start of each event, energy deposition is reset. At the end:
 
-1. The total deposited energy is written to ntuple 2 (~Energy~).
+1. The total deposited energy is written to ntuple 0 (~Energy~).
 2. Primary vertex data (position, momentum, wavelength, PDG code) are written
-   to ntuple 3 (~Primary~).
+   to ntuple 1 (~Primary~).
 
-Wavelength is derived from kinetic energy via λ (µm) = 1.24 eV·µm / E (eV).
+Wavelength is derived from kinetic energy via λ (nm) = 1239.84 eV·nm / E (eV).
 
 * Sensitive Detector Response
 
-** SiPM — MySensitiveDetector (src/detector.cc)
+** PMT photocathode — MyPMTDetector (src/detector.cc)
 
-Triggered when an optical photon enters any SiPM logical volume.
+Triggered when an optical photon enters the photocathode disc.
 
-1. Records hit position, time, and wavelength to ntuple 0 (~SiPMPhotons~)
-   regardless of detection outcome.
-2. Looks up the photon detection efficiency (PDE) from the Broadcom table
-   (~pde_broadcom.dat~) using linear interpolation on wavelength.
-3. Draws a uniform random number; if it falls below PDE(λ), records the photon
-   to ntuple 1 (~SiPMHits~).
-4. Kills the track (photon absorbed by detector).
+1. Records entry position, time, wavelength, direction cosine and the
+   ~primary~ flag to ntuple 6 (~PMTPhotons~) regardless of detection outcome.
+2. Evaluates the flat quantum efficiency: ~pmtQE~ if the wavelength lies inside
+   [~pmtQEmin~, ~pmtQEmax~] (default 1.0 over 110–500 nm), 0 otherwise.
+3. Draws a uniform random number; if it falls below the QE, records the photon
+   to ntuple 7 (~PMTHits~).
+4. Kills the track (the photocathode is opaque).
 
-** Leak Detectors — MyLeakDetector (src/detector.cc)
+** First-layer counters — MyLeakDetector (src/detector.cc)
 
-100% efficiency counters attached to the Backplane and Edge Strip volumes.
-Record position, time, wavelength, and event ID to their respective ntuples
-(6 and 7) without any efficiency weighting.
+100 % efficiency *pass-through* counters on the first-layer back face
+(ntuple 4, ~FirstLayerBackplane~) and ±x edges (ntuple 5, ~FirstLayerEdges~).
+They record position, time, wavelength, direction cosine and a ~forward~ flag
+(1 if the photon travels in +z) without killing the track.

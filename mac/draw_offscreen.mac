@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# draw_pmt_offscreen.mac — headless geometry pictures of the PMT readout mode.
+# draw_offscreen.mac — headless geometry pictures (first layer + PMT).
 #
-#   ./sim_lighttrap draw_pmt_offscreen.mac        (batch; no display needed)
+#   ./sim_lighttrap draw_offscreen.mac        (batch; no display needed)
 #
 # Writes PNGs with the TOOLSSG offscreen renderer and prints the volume tree
 # (solids, materials, sensitive detectors) with ASCIITree. The offscreen
@@ -9,13 +9,9 @@
 # here; the thin counters are hidden. Note: the RayTracer driver segfaults in
 # this Geant4 11.3.2 build, so it is not used.
 #
-# For interactive inspection use vis_pmt.mac instead (Qt viewer).
+# For interactive inspection use vis.mac instead (Qt viewer).
 # ─────────────────────────────────────────────────────────────────────────────
 
-/detector/detectorType pmt
-/detector/pmtDiameter 23
-/detector/pmtWindowThick 0
-/run/reinitializeGeometry
 /run/initialize
 
 # ── volume tree ────────────────────────────────────────────────────────────

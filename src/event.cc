@@ -21,8 +21,8 @@ void MyEventAction::EndOfEventAction(const G4Event* event)
   // G4cout << "Energy deposition: " << fEdep << G4endl;
 
   G4AnalysisManager *man = G4AnalysisManager::Instance();
-  man->FillNtupleDColumn(2, 0, fEdep);
-  man->AddNtupleRow(2);
+  man->FillNtupleDColumn(0, 0, fEdep);
+  man->AddNtupleRow(0);
 
   // Retrieve primary vertex and primary particle
   G4PrimaryVertex* vertex = event->GetPrimaryVertex(0);
@@ -40,17 +40,17 @@ void MyEventAction::EndOfEventAction(const G4Event* event)
     G4int pdgCode = particle->GetPDGcode();
 
     // Fill the ntuple columns:
-    man->FillNtupleIColumn(3, 0, event->GetEventID());
-    man->FillNtupleDColumn(3, 1, pos.x());
-    man->FillNtupleDColumn(3, 2, pos.y());
-    man->FillNtupleDColumn(3, 3, pos.z());
-    man->FillNtupleDColumn(3, 4, momentum.x());
-    man->FillNtupleDColumn(3, 5, momentum.y());
-    man->FillNtupleDColumn(3, 6, momentum.z());
-    man->FillNtupleDColumn(3, 7, wavelength);
-    man->FillNtupleIColumn(3, 8, pdgCode);
+    man->FillNtupleIColumn(1, 0, event->GetEventID());
+    man->FillNtupleDColumn(1, 1, pos.x());
+    man->FillNtupleDColumn(1, 2, pos.y());
+    man->FillNtupleDColumn(1, 3, pos.z());
+    man->FillNtupleDColumn(1, 4, momentum.x());
+    man->FillNtupleDColumn(1, 5, momentum.y());
+    man->FillNtupleDColumn(1, 6, momentum.z());
+    man->FillNtupleDColumn(1, 7, wavelength);
+    man->FillNtupleIColumn(1, 8, pdgCode);
 
-    man->AddNtupleRow(3);
+    man->AddNtupleRow(1);
   }
 
 

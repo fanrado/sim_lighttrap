@@ -1,34 +1,31 @@
 #+TITLE: Building & Running the Simulation
 #+AUTHOR: sim_lighttrap team
-#+DATE: 2026-05-29
+#+DATE: 2026-10-21
 #+OPTIONS: toc:t num:t
 
 * Prerequisites
 
-- Geant4 ≥ 10.x compiled with UI drivers and visualisation (~-DGEANT4_USE_QT=ON~
-  or ~OPENGL~) and multithreading optional.
-- CMake ≥ 2.6.
-- ROOT (for output file analysis; not a compile-time dependency).
+- Geant4 ≥ 11.x compiled with UI drivers and visualisation (Qt / TOOLSSG);
+  this laptop uses Geant4 11.3.2 from spack.
+- CMake ≥ 3.5, a C++17 compiler.
+- yaml-cpp (found via CMake, or fetched automatically).
+- ROOT (for output file analysis; not a compile-time dependency),
+  Python 3 with uproot + matplotlib for ~analysis/plot_pmt_validation.py~.
 
-Ensure the Geant4 environment is sourced before building:
-
-#+BEGIN_SRC bash
-source /path/to/geant4/bin/geant4.sh   # bash
-# or
-source /path/to/geant4/bin/geant4.csh  # csh
-#+END_SRC
+Point CMake at Geant4 either by sourcing ~geant4.sh~ or via
+~GEANT4_CMAKE_DIR~ / ~-DGeant4_DIR~.
 
 * Building
 
 #+BEGIN_SRC bash
 cd sim_lighttrap
 mkdir build && cd build
-cmake ..
-make -j$(nproc)
+cmake ..          # add -DCMAKE_C_COMPILER=/usr/bin/cc -DCMAKE_CXX_COMPILER=/usr/bin/c++ on macOS with miniconda on PATH
+make -j8
 #+END_SRC
 
-The executable ~sim_lighttrap~ and all macro/data files are placed in the build
-directory by CMake (~file(COPY ...)~ directives in ~CMakeLists.txt~).
+The executable ~sim_lighttrap~, all macros, input data and ~sim_config.yaml~ are
+placed in the build directory by CMake (~file(COPY ...)~ directives).
 
 * Running
 
@@ -38,9 +35,9 @@ directory by CMake (~file(COPY ...)~ directives in ~CMakeLists.txt~).
 ./sim_lighttrap
 #+END_SRC
 
-Loads ~vis.mac~ automatically. An OpenGL viewer opens with trajectory rendering,
-scale bar, axes, and event ID overlay. GUI menus provide camera control and
-test-run buttons.
+Loads ~vis.mac~ automatically: Qt viewer with the first layer and the PMT
+photocathode, axes and scale, trajectories accumulated per event, and the
+14 mm VUV beam preloaded (Run menu → beamOn 30).
 
 ** Batch mode (standard run)
 
@@ -48,39 +45,49 @@ test-run buttons.
 ./sim_lighttrap run.mac
 #+END_SRC
 
-Runs 10 000 events with the default planar square source (25 × 25 cm at z = 24.5 cm,
-λ = 128 nm, downward). Output: ~output_apexltsim0.root~.
+Runs 10 000 events with the default beam (circular plane, radius 7 mm, at
+z = −2 cm, λ = 128 nm, along +z). Output: ~output_apexltsim0.root~.
 
-** Detector parameter scan
+** YAML configuration
 
 #+BEGIN_SRC bash
-./sim_lighttrap det.mac
+./sim_lighttrap sim_config.yaml           # geometry + source + nEvents from YAML
+./sim_lighttrap sim_config.yaml run.mac   # YAML geometry, macro source/run
 #+END_SRC
 
-Loops ~scandet.mac~ over nSiPMs ∈ {20, 30, 40, 50}, running 10 events per step.
-One ROOT file per run ID is produced.
+** Headless geometry pictures
+
+#+BEGIN_SRC bash
+./sim_lighttrap draw_offscreen.mac        # writes pmt_geom_*.png, prints the volume tree
+#+END_SRC
 
 * Runtime Geometry Configuration
 
 Inside an interactive session or at the top of a custom macro:
 
 #+BEGIN_EXAMPLE
-/mydet/nSiPMs 40
+/detector/LArthickness 10
+/detector/pmtWindowThick 2
 /run/reinitializeGeometry
 /run/beamOn 10000
 #+END_EXAMPLE
 
-Other tunable parameters:
-
-| Command              | Default | Effect                                  |
-|----------------------+---------+-----------------------------------------|
-| /mydet/nSiPMs        |      30 | Number of SiPMs in the array            |
-| /mydet/pTPThick      |   2 µm  | pTP deposited layer thickness           |
-| /mydet/subThick      |   6 mm  | Blue WLS acrylic substrate thickness    |
+| Command                   | Default | Effect                                        |
+|---------------------------+---------+-----------------------------------------------|
+| /detector/pTPlayerthickness | 0.002 mm | pTP film thickness                          |
+| /detector/uvAcrylicThick  | 3 mm    | UV acrylic carrier thickness                  |
+| /detector/LArthickness    | 3 mm    | LAr gap, first-layer back face → PMT face     |
+| /detector/lighttrapsize   | 150 mm  | first-layer side length                       |
+| /detector/pTPsigmaAlpha   | 0 rad   | pTP surface roughness                         |
+| /detector/pmtDiameter     | 23 mm   | photocathode diameter                         |
+| /detector/pmtWindowThick  | 0 mm    | MgF2 window thickness (0 = none)              |
+| /detector/pmtQE           | 1.0     | flat QE inside the band                       |
+| /detector/pmtQEmin        | 110 nm  | QE band lower edge                            |
+| /detector/pmtQEmax        | 500 nm  | QE band upper edge                            |
 
 * Output
 
-ROOT file is written to the build directory:
+ROOT file is written to the working directory:
 
 #+BEGIN_EXAMPLE
 output_apexltsim<runID>.root
@@ -90,27 +97,29 @@ Open with ROOT:
 
 #+BEGIN_SRC cpp
 TFile *f = TFile::Open("output_apexltsim0.root");
-f->ls();                         // list all TTrees
-TTree *hits = (TTree*)f->Get("Hits");
-hits->Draw("x:y","","colz");     // 2D SiPM hit map
+f->ls();                                   // list all TTrees
+TTree *hits = (TTree*)f->Get("PMTHits");
+hits->Draw("fX:fY","","colz");             // 2D photocathode hit map
 #+END_SRC
 
 See [[file:analysis.org][Output Ntuples & Analysis]] for the full branch reference.
 
 * Macro Files Reference
 
-| File           | Purpose                                                     |
-|----------------+-------------------------------------------------------------|
-| mac/vis.mac    | Interactive visualisation; loaded automatically with no args|
-| mac/run.mac    | Standard 10 000-event batch run                             |
-| mac/det.mac    | Outer loop for SiPM count scan (calls scandet.mac)          |
-| mac/scandet.mac| Single-configuration run inside the scan loop               |
+| File                     | Purpose                                                        |
+|--------------------------+----------------------------------------------------------------|
+| mac/vis.mac              | Interactive visualisation; loaded automatically with no args   |
+| mac/run.mac              | Standard 10 000-event batch run, 14 mm beam at 128 nm          |
+| mac/run_vuv_spectrum.mac | Same beam with the LAr scintillation spectrum (GPS Arb)        |
+| mac/run_285.mac          | Measured lamp spectrum (executes spectrum_macro.mac)           |
+| mac/spectrum_macro.mac   | Generated by input/create_macro.py from input/spectrum.txt     |
+| mac/draw_offscreen.mac   | Headless PNG renders + ASCIITree volume dump                   |
 
 * Tips
 
 - Increase verbosity for debugging: ~/tracking/verbose 2~ or ~/event/verbose 1~.
 - To suppress visualisation overhead in large runs, always use batch mode.
-- The Broadcom PDE file (~pde_broadcom.dat~) must be present in the working
-  directory (build); CMake copies it automatically.
+- The output file name is fixed; run verification jobs in a scratch directory
+  so you do not overwrite a long production run.
 - Physics random seed can be set with ~/random/setSeeds <s1> <s2>~ for
   reproducible results.
