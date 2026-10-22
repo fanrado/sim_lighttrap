@@ -354,6 +354,18 @@ def test_with_sample_switch():
         assert yaml.safe_load(fh)["geometry"]["withSample"] is True
 
 
+def test_geometry_rebuilt_immediately_after_switches():
+    """/run/reinitializeGeometry only flags the rebuild; main must follow it with
+    /run/initialize so the viewer / volume dump / first run see the new geometry
+    (regression: with_sample=off still showed the sample in the Qt viewer)."""
+    main = strip_comments(read(MAIN_CC))
+    reinit = [m.start() for m in re.finditer(r'"/run/reinitializeGeometry"', main)]
+    assert reinit, "no /run/reinitializeGeometry in main"
+    for pos in reinit:
+        nxt = main.find('"/run/initialize"', pos)
+        assert nxt != -1 and nxt - pos < 400, "each /run/reinitializeGeometry must be followed by /run/initialize"
+
+
 def test_without_sample_keeps_beam_pmt_and_reference_plane(construction_cc):
     # raw source (comments kept): the "} // fWithSample" block-end markers are comments
     body = construction_cc[construction_cc.index("MyLightTrapConstruction::Construct()"):]

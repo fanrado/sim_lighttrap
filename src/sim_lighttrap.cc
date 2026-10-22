@@ -115,6 +115,9 @@ int main(int argc, char** argv)
         // No YAML: only the sample switch changes the default geometry.
         UImanager->ApplyCommand(std::string("/detector/withSample ") + (cfg.withSample ? "true" : "false"));
         UImanager->ApplyCommand("/run/reinitializeGeometry");
+        // /run/reinitializeGeometry only flags the rebuild; force it now so the
+        // sample-free geometry is what the viewer / volume dump / first run sees.
+        UImanager->ApplyCommand("/run/initialize");
     }
     if (hasConfig) {
         UImanager->ApplyCommand(std::string("/detector/withSample ") + (cfg.withSample ? "true" : "false"));
@@ -136,6 +139,10 @@ int main(int argc, char** argv)
         UImanager->ApplyCommand("/detector/pmtQEmin "            + d2s(cfg.pmtQEmin_nm));
         UImanager->ApplyCommand("/detector/pmtQEmax "            + d2s(cfg.pmtQEmax_nm));
         UImanager->ApplyCommand("/run/reinitializeGeometry");
+        // Rebuild immediately (reinitializeGeometry only flags it), so that a
+        // macro drawing or dumping the geometry before /run/beamOn sees the
+        // YAML geometry, not the default one built by runManager->Initialize().
+        UImanager->ApplyCommand("/run/initialize");
 
         // Source — GPS commands accept explicit unit tokens
         UImanager->ApplyCommand("/gps/particle "   + cfg.particle);

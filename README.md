@@ -121,8 +121,9 @@ face, 0.01 mm behind the acrylic so TIR-trapped light is not counted, and
   ```
 
   `with_sample=off` removes the pTP film and the UV acrylic (and the first-layer
-  edge counters) and leaves everything else untouched: same beam, same 7 mm gap
-  position, same PMT. The `FirstLayerBackplane` counter stays as a reference
+  edge counters) from the geometry — they are not built at all, so they are
+  absent from the viewer, the volume tree and the run — and leaves everything
+  else untouched: same beam, same 7 mm gap position, same PMT. The `FirstLayerBackplane` counter stays as a reference
   plane at the position of the acrylic back face. The transmission of the
   sample is then `N(PMTHits, on) / N(PMTHits, off)` for the same number of beam
   photons. The switch is also available as `geometry.withSample: true|false` in
