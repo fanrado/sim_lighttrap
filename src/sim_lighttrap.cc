@@ -62,6 +62,21 @@ static bool parseWorldMediumArg(const std::string& arg, std::string& value)
     std::exit(2);
 }
 
+// Parses "rough=on|off" (also --rough=): sets the {ROUGH} macro alias (1/0) that
+// draw_offscreen.mac uses to apply roughness_knobs.mac.
+static bool parseRoughArg(const std::string& arg, bool& value)
+{
+    std::string key = arg, lower;
+    while (!key.empty() && key[0] == '-') key.erase(0, 1);
+    for (char c : key) lower += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    if (lower.rfind("rough=", 0) != 0) return false;
+    const std::string v = lower.substr(6);
+    if (v == "on" || v == "true" || v == "1" || v == "yes")       value = true;
+    else if (v == "off" || v == "false" || v == "0" || v == "no") value = false;
+    else { std::cerr << "error: " << arg << " -- expected rough=on|off\n"; std::exit(2); }
+    return true;
+}
+
 // Parses "pmt_qe=<file>" (also --pmt_qe=, --pmt-qe=, pmt-qe=): PMT QE table.
 static bool parsePMTQEArg(const std::string& arg, std::string& value)
 {
@@ -86,7 +101,9 @@ static void usage()
         "  world_medium=...   medium filling the beam path and the gap: gar (argon gas, 1 atm,\n"
         "                     default) | lar (liquid argon) | vacuum; overrides geometry.worldMedium\n"
         "  pmt_qe=<file>      PMT quantum-efficiency table '<wavelength_nm> <QE>' (fraction or %);\n"
-        "                     replaces the flat QE band; overrides geometry.pmtQEFile\n";
+        "                     replaces the flat QE band; overrides geometry.pmtQEFile\n"
+        "  rough=on|off       define the macro alias {ROUGH} = 1|0 (also env ROUGH=1); used by\n"
+        "                     draw_offscreen.mac to apply roughness_knobs.mac (bumpy pTP film)\n";
 }
 
 static std::string d2s(double v)
@@ -103,12 +120,15 @@ int main(int argc, char** argv)
     bool withSampleArg = true, hasWithSampleArg = false;
     std::string worldMediumArg, pmtQEArg;
     bool hasPMTQEArg = false;
+    const char* roughEnv = std::getenv("ROUGH");
+    bool rough = roughEnv && (std::string(roughEnv) == "1" || std::string(roughEnv) == "on");
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
         if (arg == "-h" || arg == "--help") { usage(); return 0; }
         if (parseWithSampleArg(arg, withSampleArg)) { hasWithSampleArg = true; continue; }
         if (parseWorldMediumArg(arg, worldMediumArg)) continue;
         if (parsePMTQEArg(arg, pmtQEArg)) { hasPMTQEArg = true; continue; }
+        if (parseRoughArg(arg, rough)) continue;
         if (isYamlFile(arg))
             configFile = arg;
         else
@@ -156,6 +176,9 @@ int main(int argc, char** argv)
     visManager->Initialize();
 
     G4UImanager *UImanager = G4UImanager::GetUIpointer();
+    // {ROUGH} alias for macros (draw_offscreen.mac): 1 with rough=on / ROUGH=1, else 0
+    UImanager->SetAlias(rough ? "ROUGH 1" : "ROUGH 0");
+    if (rough) std::cout << "[sim_lighttrap] rough = on ({ROUGH} = 1: macros may apply roughness_knobs.mac)\n";
 
     // ── Apply YAML settings via the existing messenger commands ──────────────
     // Geometry parameters (/detector/ messenger — DeclareProperty expects G4

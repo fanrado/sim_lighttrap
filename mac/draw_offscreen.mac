@@ -9,9 +9,16 @@
 # here; the thin counters are hidden. Note: the RayTracer driver segfaults in
 # this Geant4 11.3.2 build, so it is not used.
 #
-# For interactive inspection use vis.mac instead (Qt viewer).
+# Rough pTP film: add rough=on on the command line (or set ROUGH=1 in the
+# environment) to apply the same roughness_knobs.mac as vis_roughness.mac
+# (bumpy 1 mm film, 400 nm beam):
+#     ./sim_lighttrap draw_offscreen.mac rough=on
+# Without it the standard geometry (flat 2 µm film, 128 nm beam) is drawn.
+# The {ROUGH} alias (0/1) is defined by sim_lighttrap itself.
+# For interactive inspection use vis.mac / vis_roughness.mac (Qt viewer).
 # ─────────────────────────────────────────────────────────────────────────────
 
+/control/if {ROUGH} == 1 roughness_knobs.mac
 /run/initialize
 
 # ── volume tree ────────────────────────────────────────────────────────────
@@ -82,8 +89,12 @@
 /vis/viewer/set/upVector 0 0 1
 /vis/viewer/set/targetPoint 0 0 -8 mm
 /vis/viewer/zoomTo 2.5
+# 128 nm beam; with ROUGH=1 a 400 nm beam that pTP does not absorb, so the
+# deflection by the bumps is visible
+/control/alias beamE 9.68
+/control/if {ROUGH} == 1 beam_400nm_alias.mac
 /gps/particle opticalphoton
-/gps/energy 9.68 eV
+/gps/energy {beamE} eV
 /gps/pos/type Plane
 /gps/pos/shape Circle
 /gps/pos/centre 0. 0. -10. cm
@@ -91,3 +102,12 @@
 /gps/direction 0 0 1
 /run/beamOn 500
 /vis/viewer/flush
+
+# 5) close-up of the pTP film with the same events (shows the bumps with ROUGH=1)
+/vis/tsg/offscreen/set/file pmt_geom_film_closeup.png
+/vis/viewer/set/viewpointVector -1 -0.05 0.02
+/vis/viewer/set/upVector 0 0 1
+/vis/viewer/set/targetPoint 0 0 -9 mm
+/vis/viewer/zoomTo 9
+/vis/viewer/flush
+

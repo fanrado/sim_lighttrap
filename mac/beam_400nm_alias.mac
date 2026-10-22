@@ -1,0 +1,2 @@
+# beam_400nm_alias.mac — helper of draw_offscreen.mac (ROUGH=1): 400 nm beam energy alias
+/control/alias beamE 3.0996

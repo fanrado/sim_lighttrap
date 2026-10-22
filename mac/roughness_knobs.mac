@@ -1,0 +1,12 @@
+# roughness_knobs.mac — THE roughness settings of the pTP film, in one place.
+# Used by vis_roughness.mac (Qt viewer) and by draw_offscreen.mac when you run
+# it with ROUGH=1 (e.g.  ROUGH=1 ./sim_lighttrap draw_offscreen.mac), so both
+# show the same film. Edit the three values below, nothing else.
+/detector/pTPlayerthickness 1.0     # film thickness [mm]   (real film: 0.002 — invisible, hence 1 mm here)
+/detector/pTPgeomRoughCells 30      # bumps per side: lateral bump size = 150 mm / 30 = 5 mm  (0 = flat film)
+/detector/pTPgeomRoughAmp 0.3       # RMS bump height [mm]  (clipped at ±3 RMS and 0.8 × thickness)
+# Optional statistical roughness used for physics (micro-facet RMS slope, rad;
+# invisible in the geometry, acts on the ray directions):
+# /detector/pTPsigmaAlpha 0.8
+/run/reinitializeGeometry
+/run/initialize

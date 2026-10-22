@@ -264,7 +264,8 @@ cd build
 
 `draw_offscreen.mac` renders the geometry with the TOOLSSG offscreen driver (no
 display needed) obliquely, from the PMT side, from the side (whole tube and a
-close-up of the 7 mm gap), and with 30 beam events, and dumps
+close-up of the 7 mm gap), with beam events, plus a close-up of the pTP film
+(add `rough=on` to draw the bumpy film of `vis_roughness.mac`), and dumps
 the volume tree with ASCIITree. Reference renders are kept in
 `docs/figures/pmt_mode/`. Two caveats of this Geant4 build: the `RayTracer`
 driver segfaults, and the offscreen z-buffer renderer skips translucent
@@ -280,10 +281,17 @@ cd build && ./sim_lighttrap vis_roughness.mac
 That opens the viewer with an exaggerated, physically bumpy pTP film (random
 height map on the beam-facing face: 1 mm film, 30 × 30 bumps of 5 mm, 0.3 mm
 RMS) and sends a 400 nm beam, which pTP does not absorb, through it; each ray
-is deflected by the bump it hits. The three knobs are the first three
-commands of that macro (film thickness, bumps per side, RMS bump height). The
-same three settings exist in the YAML as `pTPgeomRoughCells`,
-`pTPgeomRoughAmplitude_mm`, `pTPgeomRoughSeed` (default off = flat film).
+is deflected by the bump it hits. The three knobs (film thickness, bumps per
+side, RMS bump height) live in **one file, `roughness_knobs.mac`**, shared by
+the viewer and by the headless renders:
+
+```bash
+./sim_lighttrap draw_offscreen.mac rough=on    # same bumpy film, PNGs incl. pmt_geom_film_closeup.png
+```
+
+(`ROUGH=1` in the environment does the same.) The same three settings exist in
+the YAML as `pTPgeomRoughCells`, `pTPgeomRoughAmplitude_mm`, `pTPgeomRoughSeed`
+(default off = flat film) for production runs.
 
 Note the physics: a real 2 µm film has sub-wavelength roughness that Geant4
 models statistically with `pTPsigmaAlpha_rad` (micro-facet RMS slope); it is

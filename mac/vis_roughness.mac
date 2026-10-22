@@ -8,17 +8,10 @@
 # 400 nm is not absorbed by pTP, so you see each ray deflected by the bump it
 # hits. Zoom in on the yellow film (side view) to see the bumps themselves.
 #
-# THE THREE KNOBS (edit here, nothing else):
-/detector/pTPlayerthickness 1.0     # film thickness [mm]   (real film: 0.002 — invisible, hence 1 mm here)
-/detector/pTPgeomRoughCells 30      # bumps per side: lateral bump size = 150 mm / 30 = 5 mm  (0 = flat film)
-/detector/pTPgeomRoughAmp 0.3       # RMS bump height [mm]  (clipped at ±3 RMS and 0.8 × thickness)
-#
-# Optional: the statistical roughness model used for physics (micro-facet RMS
-# slope in rad, invisible in the geometry but visible on the ray directions):
-# /detector/pTPsigmaAlpha 0.8
+# THE KNOBS live in roughness_knobs.mac (film thickness, bumps per side, RMS
+# bump height) — edit that file; it is shared with draw_offscreen.mac (ROUGH=1).
 # ─────────────────────────────────────────────────────────────────────────────
-/run/reinitializeGeometry
-/run/initialize
+/control/execute roughness_knobs.mac
 
 # Same camera setup as vis.mac (default up vector, so the mouse rotates freely):
 # beam comes from the left, sample in the middle, PMT on the right.

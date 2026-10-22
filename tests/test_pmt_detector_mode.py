@@ -498,16 +498,25 @@ def test_vis_roughness_macro():
     import os
     mac = read("mac/vis_roughness.mac")
     cmds = [l.split("#")[0].strip() for l in mac.splitlines() if l.strip() and not l.lstrip().startswith("#")]
-    assert any(c.startswith("/detector/pTPlayerthickness 1.0") for c in cmds)
-    assert any(c.startswith("/detector/pTPgeomRoughCells 30") for c in cmds)
-    assert any(c.startswith("/detector/pTPgeomRoughAmp 0.3") for c in cmds)
-    assert "/run/initialize" in cmds and cmds.index("/run/initialize") < cmds.index("/vis/drawVolume"), \
-        "geometry must be rebuilt before it is drawn"
+    assert cmds.index("/control/execute roughness_knobs.mac") < cmds.index("/vis/drawVolume"), \
+        "geometry must be rebuilt (knobs macro) before it is drawn"
     assert any(c.startswith("/gps/energy 3.0996 eV") for c in cmds), "400 nm beam: pTP must not absorb it"
     for gone in ("mac/roughness_demo.mac", "mac/roughness_off.mac", "mac/roughness_geom_demo.mac",
                  "mac/draw_roughness_panel.mac", "scripts/draw_roughness.sh"):
         assert not os.path.exists(gone), f"{gone} should have been consolidated into vis_roughness.mac"
     assert "vis_roughness.mac" in read("mac/vis.mac")
+    # knobs live in roughness_knobs.mac, shared with draw_offscreen.mac via {ROUGH}
+    assert "/control/execute roughness_knobs.mac" in mac
+    knobs = read("mac/roughness_knobs.mac")
+    for c in ("/detector/pTPlayerthickness 1.0", "/detector/pTPgeomRoughCells 30", "/detector/pTPgeomRoughAmp 0.3",
+              "/run/reinitializeGeometry", "/run/initialize"):
+        assert c in knobs, c
+    off = read("mac/draw_offscreen.mac")
+    assert "/control/if {ROUGH} == 1 roughness_knobs.mac" in off
+    assert "/control/getEnv" not in off, "getEnv aborts batch macros when the variable is unset"
+    assert "pmt_geom_film_closeup.png" in off and "/gps/energy {beamE} eV" in off
+    main = strip_comments(read(MAIN_CC))
+    assert "parseRoughArg" in main and 'SetAlias(rough ? "ROUGH 1" : "ROUGH 0")' in main
 
 
 def test_geometric_roughness_option():
