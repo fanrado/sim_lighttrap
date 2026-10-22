@@ -53,6 +53,8 @@ MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
       LArthickness,         "LAr gap between the first-layer back face and the PMT faceplate [default 7 mm]");
   fMessenger->DeclareProperty("lighttrapsize",
       lighttrapsize,        "Square first-layer side length [default 15 cm]");
+  fMessenger->DeclareProperty("worldHalfZ",
+      worldHalfZ,           "World box half-length in z [mm]; 0 = automatic (0.6*side + PMT length)");
   fMessenger->DeclareProperty("pTPsigmaAlpha",
       pTPsigmaAlpha,        "pTP surface facet-slope RMS [rad]; 0 = perfectly smooth");
   fMessenger->DeclareProperty("pmtDiameter",
@@ -79,6 +81,7 @@ MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
   uvAcrylicThickness    = 3.*mm;    // 3 mm UV-transparent acrylic carrier
   LArthickness          = 7.*mm;    // 7 mm LAr gap between first layer and PMT faceplate
   lighttrapsize         = 15.*cm;   // 15 cm × 15 cm first layer (real detector size)
+  worldHalfZ            = 0.;       // automatic world z half-length
   pTPsigmaAlpha         = 0.0;      // perfectly smooth pTP surface (no wiggle); rad
   pmtDiameter           = 23.*mm;   // photocathode min. effective area (Hamamatsu R6836)
   pmtTubeDiameter       = 28.2*mm;  // R6836 tube / faceplate diameter (28.2 ± 0.8 mm)
@@ -105,6 +108,12 @@ MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
 
 MyLightTrapConstruction::~MyLightTrapConstruction()
 {}
+
+G4double MyLightTrapConstruction::WorldHalfZ() const
+{
+  const G4double autoHalf = lighttrapsize * 0.6 + pmtLength;
+  return (worldHalfZ > autoHalf) ? worldHalfZ : autoHalf;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Material definitions
@@ -448,9 +457,13 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   // ══ WORLD VOLUME ════════════════════════════════════════════════════════════
   // Box of the selected medium (argon gas by default), 60 % larger than the
   // first layer in x and y; in z it is extended by the PMT length so the whole
-  // tube fits behind the first layer.
+  // tube fits behind the first layer, or more if /detector/worldHalfZ asks for
+  // it (e.g. to put the beam source farther away).  The beam source MUST lie
+  // inside this box: MyPrimaryGenerator aborts otherwise.
   solidWorld = new G4Box("solidWorld",
-      lighttrapsize * 0.6, lighttrapsize * 0.6, lighttrapsize * 0.6 + pmtLength);
+      lighttrapsize * 0.6, lighttrapsize * 0.6, WorldHalfZ());
+  G4cout << "[Construction] world box half-lengths: " << lighttrapsize*0.6/cm << " x "
+         << lighttrapsize*0.6/cm << " x " << WorldHalfZ()/cm << " cm (z); sources must be inside" << G4endl;
   logicWorld = new G4LogicalVolume(solidWorld, worldMat, "logicWorld");
   physWorld  = new G4PVPlacement(0, G4ThreeVector(0., 0., 0.),
       logicWorld, "physWorld", 0, false, 0, true);

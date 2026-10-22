@@ -83,6 +83,10 @@ struct SimConfig {
     double uvAcrylicThickness_mm    = 3.0;    // UV-transparent acrylic carrier
     double LArThickness_mm          = 7.0;    // LAr gap: first-layer back face → PMT window front face
     double lightTrapSize_cm         = 15.0;   // square first-layer side
+    // World box half-length along z [mm]; 0 = automatic (0.6 * first-layer side
+    // + PMT length, i.e. 18.2 cm by default).  Raise it to place the beam source
+    // farther away: a source outside the world is rejected at run time.
+    double worldHalfZ_mm            = 0.0;
     double pTPsigmaAlpha_rad        = 0.0;    // pTP surface facet-slope RMS; 0 = smooth
 
     // ── PMT readout: Hamamatsu R6836-like cylinder facing the first layer ────

@@ -418,6 +418,26 @@ def test_without_sample_keeps_beam_pmt_and_reference_plane(construction_cc):
     assert re.search(r"if\s*\(\s*fWithSample\s*\)\s*\{\s*G4OpticalSurface\s*\*pTPRoughSurf", body)
 
 
+def test_source_outside_world_is_rejected_and_world_is_resizable():
+    gen = strip_comments(read("src/generator.cc"))
+    assert "SourceOutsideWorld" in gen and "FatalException" in gen
+    assert re.search(r"solid->Inside\s*\(\s*pos\s*\)\s*==\s*kOutside", gen)
+    con = strip_comments(read(CONSTRUCTION_CC))
+    assert re.search(r'DeclareProperty\s*\(\s*"worldHalfZ"\s*,\s*worldHalfZ', con)
+    assert re.search(r"new\s+G4Box\s*\(\s*\"solidWorld\"\s*,[^;]*WorldHalfZ\(\)", con)
+    assert re.search(r"autoHalf\s*=\s*lighttrapsize\s*\*\s*0\.6\s*\+\s*pmtLength", con)
+    assert 'geo["worldHalfZ_mm"]' in strip_comments(read(CONFIG_CC))
+    assert '"/detector/worldHalfZ "' in strip_comments(read(MAIN_CC))
+    with open(CONFIG_YAML) as fh:
+        assert yaml.safe_load(fh)["geometry"]["worldHalfZ_mm"] == 0.0
+    # every shipped macro / YAML source sits inside the default world (|z| < 18.2 cm)
+    for mac_file in ("mac/vis.mac", "mac/run.mac", "mac/run_vuv_spectrum.mac", "mac/run_285.mac"):
+        m = re.search(r"^/gps/pos/centre\s+\S+\s+\S+\s+(\S+)\s+(\w+)", read(mac_file), re.M)
+        assert m, f"{mac_file}: no /gps/pos/centre"
+        z = float(m.group(1)) * {"cm": 10.0, "mm": 1.0, "m": 1000.0}[m.group(2)]
+        assert abs(z) < 182.0, f"{mac_file}: source z = {z} mm is outside the default world"
+
+
 def test_scan_script_runs_with_and_without_sample():
     src = read("scripts/scan_wavelength.py")
     assert "with_sample=" in src and '"--sample"' in src

@@ -151,6 +151,9 @@ SimConfig SimConfig::fromFile(const std::string& path)
         if (geo["uvAcrylicThickness_mm"])     cfg.uvAcrylicThickness_mm    = geo["uvAcrylicThickness_mm"].as<double>();
         if (geo["LArThickness_mm"])           cfg.LArThickness_mm          = geo["LArThickness_mm"].as<double>();
         if (geo["lightTrapSize_cm"])          cfg.lightTrapSize_cm         = geo["lightTrapSize_cm"].as<double>();
+        if (geo["worldHalfZ_mm"])             cfg.worldHalfZ_mm            = geo["worldHalfZ_mm"].as<double>();
+        if (cfg.worldHalfZ_mm < 0.0)
+            throw std::runtime_error("SimConfig: geometry.worldHalfZ_mm must be >= 0 (0 = automatic)");
         if (geo["pTPsigmaAlpha_rad"])         cfg.pTPsigmaAlpha_rad        = geo["pTPsigmaAlpha_rad"].as<double>();
         if (geo["pmtDiameter_mm"])            cfg.pmtDiameter_mm           = geo["pmtDiameter_mm"].as<double>();
         if (geo["pmtTubeDiameter_mm"])        cfg.pmtTubeDiameter_mm       = geo["pmtTubeDiameter_mm"].as<double>();

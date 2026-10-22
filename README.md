@@ -73,6 +73,7 @@ refracts into the vacuum and is absorbed on the envelope.
 | `uvAcrylicThickness_mm`  | `/detector/uvAcrylicThick` | 3.0     | UV-transparent acrylic carrier |
 | `LArThickness_mm`        | `/detector/LArthickness`   | 7.0     | gap (world medium), back of the acrylic → PMT faceplate |
 | `lightTrapSize_cm`       | `/detector/lighttrapsize`  | 15.0    | square first-layer side |
+| `worldHalfZ_mm`          | `/detector/worldHalfZ`     | 0       | world half-length in z; 0 = automatic (18.2 cm); the source must be inside |
 | `pTPsigmaAlpha_rad`      | `/detector/pTPsigmaAlpha`  | 0.0     | pTP surface facet-slope RMS (0 = smooth) |
 | `pmtDiameter_mm`         | `/detector/pmtDiameter`    | 23      | photocathode (sensitive) diameter |
 | `pmtTubeDiameter_mm`     | `/detector/pmtTubeDiameter`| 28.2    | tube / faceplate outer diameter |
@@ -129,6 +130,16 @@ face, 0.01 mm behind the acrylic so TIR-trapped light is not counted, and
   2 cm path (0.9 m scattering length), which is what the stray tracks in a
   `lar` run are. Also `geometry.worldMedium` in the YAML and
   `/detector/worldMedium` in a macro.
+
+- **The beam source must be inside the world box.** The world is a box of
+  half-length `0.6 × lightTrapSize` in x and y and `0.6 × lightTrapSize + pmtLength`
+  (18.2 cm) in z. Geant4 gives no warning for a primary vertex outside the
+  world; it then tracks the photon with a stale navigator state, and the photon
+  crosses the sample without interacting (a source at `z = -20 cm` gave 0 WLS
+  photons and 97 % of the beam on the photocathode). The generator therefore
+  aborts with `SourceOutsideWorld` and the world size in the message. To start
+  the beam farther away, enlarge the world with `geometry.worldHalfZ_mm`
+  (`/detector/worldHalfZ`, in mm, 0 = automatic).
 
 - **End-of-run summary.** Every run (batch or Qt session) ends with a block
   like the one below in the terminal / Qt *Output* pane, so the physics can be

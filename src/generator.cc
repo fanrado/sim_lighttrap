@@ -1,4 +1,12 @@
 #include "generator.hh"
+#include "G4TransportationManager.hh"
+#include "G4Navigator.hh"
+#include "G4VPhysicalVolume.hh"
+#include "G4LogicalVolume.hh"
+#include "G4VSolid.hh"
+#include "G4Box.hh"
+#include "G4Exception.hh"
+#include <sstream>
 
 MyPrimaryGenerator::MyPrimaryGenerator()
 {
@@ -38,6 +46,35 @@ void MyPrimaryGenerator::GeneratePrimaries(G4Event *anEvent)
 {
   //fParticleGun->GeneratePrimaryVertex(anEvent);
   fGPS->GeneratePrimaryVertex(anEvent);
+
+  // ── Guard: the primary vertex must lie inside the world box ────────────────
+  // Geant4 does NOT warn when a vertex is outside the world; the photon is
+  // then tracked with a stale navigator state and crosses the sample without
+  // interacting (observed: /gps/pos/centre -20 cm with an 18.2 cm world half-
+  // length gave 0 WLS photons and 97 % of the beam on the photocathode).
+  // Abort with a clear message instead of producing silently wrong physics.
+  {
+    const G4VPhysicalVolume* world =
+        G4TransportationManager::GetTransportationManager()->GetNavigatorForTracking()->GetWorldVolume();
+    const G4PrimaryVertex* vtx = anEvent->GetPrimaryVertex(0);
+    if (world && vtx) {
+      const G4ThreeVector pos = vtx->GetPosition();
+      const G4VSolid* solid = world->GetLogicalVolume()->GetSolid();
+      if (solid->Inside(pos) == kOutside) {
+        std::ostringstream msg;
+        msg << "Primary vertex at (" << pos.x()/cm << ", " << pos.y()/cm << ", " << pos.z()/cm
+            << ") cm is OUTSIDE the world volume";
+        if (const auto* box = dynamic_cast<const G4Box*>(solid))
+          msg << " (world half-lengths: " << box->GetXHalfLength()/cm << " x " << box->GetYHalfLength()/cm
+              << " x " << box->GetZHalfLength()/cm << " cm)";
+        msg << ".\nGeant4 would track it without seeing the sample. Move the source "
+               "(/gps/pos/centre, source.centerZ_cm) inside the world, or enlarge the world "
+               "with geometry.worldHalfZ_mm / /detector/worldHalfZ.";
+        G4Exception("MyPrimaryGenerator::GeneratePrimaries", "SourceOutsideWorld",
+                    FatalException, msg.str().c_str());
+      }
+    }
+  }
 
   // Generate a random polarization vector for optical photons (default GPS particle)
   // Retrieve the momentum direction (assumed to be normalized)

@@ -30,6 +30,7 @@ public:
   G4bool   WithSample()      const { return fWithSample; }
   G4String WorldMedium()     const { return fWorldMedium; }
   G4double GapThickness()    const { return LArthickness; }
+  G4double WorldHalfZ()      const;   // effective value (auto resolved)
   G4double PMTDiameter()     const { return pmtDiameter; }
   G4double WindowThickness() const { return pmtWindowThickness; }
 
@@ -43,6 +44,7 @@ private:
   G4double uvAcrylicThickness;    // UV-transparent acrylic thickness  (default 3 mm)
   G4double LArthickness;          // LAr gap: first layer → PMT face   (default 7 mm)
   G4double lighttrapsize;         // square first-layer side length    (default 15 cm)
+  G4double worldHalfZ;            // world half-length in z; 0 = auto   (default 0)
   G4double pTPsigmaAlpha;         // pTP surface facet-slope RMS [rad]  (default 0 = smooth)
   G4double pmtDiameter;           // PMT photocathode diameter            (default 23 mm)
   G4double pmtTubeDiameter;       // tube / faceplate outer diameter      (default 28.2 mm)
