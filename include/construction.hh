@@ -26,6 +26,13 @@ public:
 
   virtual G4VPhysicalVolume *Construct();
 
+  // Read-only access for the end-of-run summary
+  G4bool   WithSample()      const { return fWithSample; }
+  G4String WorldMedium()     const { return fWorldMedium; }
+  G4double GapThickness()    const { return LArthickness; }
+  G4double PMTDiameter()     const { return pmtDiameter; }
+  G4double WindowThickness() const { return pmtWindowThickness; }
+
 private:
   virtual void ConstructSDandField();
 

@@ -1,4 +1,5 @@
 #include "detector.hh"
+#include "counters.hh"
 
 
 // ---------------------------------------------------------------------------
@@ -42,6 +43,9 @@ G4bool MyLeakDetector::ProcessHits(G4Step *aStep, G4TouchableHistory *)
   man->FillNtupleDColumn(fNtupleID, 6, cosTheta);
   man->FillNtupleIColumn(fNtupleID, 7, forward);
   man->AddNtupleRow(fNtupleID);
+
+  if (fNtupleID == 4) { if (forward) ++RunCounters::Instance().nLayer1Forward; }
+  else if (fNtupleID == 5) ++RunCounters::Instance().nLayer1Edges;
 
   return true;
 }
@@ -89,6 +93,8 @@ G4bool MyPMTDetector::ProcessHits(G4Step *aStep, G4TouchableHistory *)
   man->FillNtupleDColumn(6, 6, cosTheta);
   man->FillNtupleIColumn(6, 7, primary);
   man->AddNtupleRow(6);
+  ++RunCounters::Instance().nPMTPhotons;
+  if (primary) ++RunCounters::Instance().nPMTDirect;
 
   // Ntuple 7: detected photo-electrons (post-QE)
   if (G4UniformRand() < Efficiency(wl)) {
@@ -101,6 +107,7 @@ G4bool MyPMTDetector::ProcessHits(G4Step *aStep, G4TouchableHistory *)
     man->FillNtupleDColumn(7, 6, cosTheta);
     man->FillNtupleIColumn(7, 7, primary);
     man->AddNtupleRow(7);
+    ++RunCounters::Instance().nPMTHits;
   }
 
   return true;

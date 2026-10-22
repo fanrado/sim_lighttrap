@@ -1,4 +1,9 @@
 #include "run.hh"
+#include "counters.hh"
+#include "construction.hh"
+#include "G4RunManager.hh"
+#include "G4SystemOfUnits.hh"
+#include <iomanip>
 
 MyRunAction::MyRunAction()
 {
@@ -129,12 +134,46 @@ void MyRunAction::BeginOfRunAction(const G4Run* run)
   strRunID << runNumber;
   man->OpenFile("output_apexltsim"+strRunID.str()+".root");
 
+  RunCounters::Instance().Reset();
 }
 
-void MyRunAction::EndOfRunAction(const G4Run*)
+void MyRunAction::EndOfRunAction(const G4Run* run)
 {
   G4AnalysisManager *man = G4AnalysisManager::Instance();
 
   man->Write();
   man->CloseFile();
+
+  // ── Viewer-independent run summary ──────────────────────────────────────────
+  // Printed to G4cout (terminal / Qt "Output" pane) after every /run/beamOn so
+  // the physics of the run can be checked without the ROOT file or the viewer.
+  RunCounters& c = RunCounters::Instance();
+  c.nPrimary = run->GetNumberOfEvent();
+  const auto* det = dynamic_cast<const MyLightTrapConstruction*>(
+      G4RunManager::GetRunManager()->GetUserDetectorConstruction());
+  auto pct = [&](G4long k) -> G4String {
+    if (c.nPrimary == 0) return "   n/a";
+    std::ostringstream os; os << std::fixed << std::setprecision(1) << std::setw(5)
+                              << 100.0 * k / c.nPrimary << " %";
+    return os.str();
+  };
+  G4cout << "\n============ sim_lighttrap run " << run->GetRunID() << " summary ============\n";
+  if (det)
+    G4cout << "  sample (pTP on acrylic) : " << (det->WithSample() ? "IN the beam (with_sample=on)" : "ABSENT (with_sample=off, reference run)") << "\n"
+           << "  world medium            : " << det->WorldMedium()
+           << "   gap " << det->GapThickness()/mm << " mm, PMT faceplate " << det->WindowThickness()/mm
+           << " mm, photocathode Ø " << det->PMTDiameter()/mm << " mm\n";
+  G4cout << "  beam photons            : " << std::setw(8) << c.nPrimary << "\n"
+         << "  WLS photons born in pTP : " << std::setw(8) << c.nWLSpTP      << "  (" << pct(c.nWLSpTP) << " of beam)";
+  if (c.nWLSother) G4cout << "   [+" << c.nWLSother << " born elsewhere]";
+  G4cout << "\n"
+         << "  leaving layer 1 -> PMT  : " << std::setw(8) << c.nLayer1Forward << "  (" << pct(c.nLayer1Forward) << ")\n"
+         << "  reaching layer-1 edges  : " << std::setw(8) << c.nLayer1Edges   << "\n"
+         << "  photons on photocathode : " << std::setw(8) << c.nPMTPhotons    << "  (" << pct(c.nPMTPhotons) << ")  unshifted beam: "
+         << c.nPMTDirect << ", pTP-shifted: " << (c.nPMTPhotons - c.nPMTDirect) << "\n"
+         << "  PMT hits (after QE)     : " << std::setw(8) << c.nPMTHits       << "  (" << pct(c.nPMTHits) << " of beam)\n";
+  if (det && det->WithSample() && c.nPrimary > 0 && c.nWLSpTP == 0)
+    G4cout << "  !! sample present but NO wavelength shifting occurred - check the beam energy "
+              "(pTP absorbs < ~320 nm) and the materials !!\n";
+  G4cout << "=====================================================\n" << G4endl;
 }

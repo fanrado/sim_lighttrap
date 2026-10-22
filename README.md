@@ -130,6 +130,28 @@ face, 0.01 mm behind the acrylic so TIR-trapped light is not counted, and
   `lar` run are. Also `geometry.worldMedium` in the YAML and
   `/detector/worldMedium` in a macro.
 
+- **End-of-run summary.** Every run (batch or Qt session) ends with a block
+  like the one below in the terminal / Qt *Output* pane, so the physics can be
+  validated without opening the ROOT file and independently of the viewer:
+
+  ```
+  ============ sim_lighttrap run 0 summary ============
+    sample (pTP on acrylic) : IN the beam (with_sample=on)
+    world medium            : gar   gap 7 mm, PMT faceplate 1.5 mm, photocathode Ø 23 mm
+    beam photons            :      500
+    WLS photons born in pTP :      466  ( 93.2 % of beam)
+    leaving layer 1 -> PMT  :      287  ( 57.4 %)
+    reaching layer-1 edges  :        0
+    photons on photocathode :      115  ( 23.0 %)  unshifted beam: 0, pTP-shifted: 115
+    PMT hits (after QE)     :      115  ( 23.0 % of beam)
+  =====================================================
+  ```
+
+  If the sample is in the beam and the WLS line is zero, the block prints a
+  warning. In the Qt session the *Run* menu also has *Redraw (rebuild view)*
+  (`/vis/viewer/rebuild`) in case the viewer has not repainted the trajectories
+  of the last run.
+
 - **With / without the sample (`with_sample=on|off`):**
 
   ```bash

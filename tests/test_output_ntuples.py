@@ -105,3 +105,20 @@ def test_first_layer_counters_wired_to_their_ids():
     assert re.search(r'MyLeakDetector\s*\(\s*"FirstLayerBackplaneDetector"\s*,\s*4\s*,\s*false\s*\)', sd)
     assert re.search(r'MyLeakDetector\s*\(\s*"FirstLayerEdgeDetector"\s*,\s*5\s*,\s*false\s*\)', sd)
     assert "BackplaneLeakDetector" not in sd
+
+
+# ── end-of-run summary (viewer-independent validation) ────────────────────────
+
+def test_run_summary_counters_wired():
+    hh = read("include/counters.hh")
+    for f in ("nPrimary", "nWLSpTP", "nLayer1Forward", "nLayer1Edges", "nPMTPhotons", "nPMTDirect", "nPMTHits"):
+        assert f in hh, f"RunCounters.{f} missing"
+    run = strip_comments(read(RUN_CC))
+    assert "RunCounters::Instance().Reset()" in run, "counters must be reset at BeginOfRunAction"
+    assert "summary ============" in run and "WLS photons born in pTP" in run and "PMT hits (after QE)" in run
+    assert "NO wavelength shifting" in run
+    trk = strip_comments(read("src/tracking.cc"))
+    assert "nWLSpTP" in trk
+    det = strip_comments(read("src/detector.cc"))
+    assert "nPMTPhotons" in det and "nPMTHits" in det and "nLayer1Forward" in det
+    assert "/vis/viewer/rebuild" in read("mac/vis.mac")

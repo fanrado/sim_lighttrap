@@ -1,5 +1,6 @@
 #include "tracking.hh"
 #include "namemap.hh"
+#include "counters.hh"
 
 #include "G4Track.hh"
 #include "G4AnalysisManager.hh"
@@ -63,6 +64,9 @@ void MyTrackingAction::PreUserTrackingAction(const G4Track* track)
         man->FillNtupleDColumn(2, 9, wavelength);
         man->FillNtupleIColumn(2, 10, NameMap::Encode(materialName));
         man->AddNtupleRow(2);
+
+        if (materialName == "pTP") ++RunCounters::Instance().nWLSpTP;
+        else                       ++RunCounters::Instance().nWLSother;
       }
     }
   }
