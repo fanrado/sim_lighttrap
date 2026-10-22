@@ -494,20 +494,20 @@ def test_qt_session_opens_with_yaml_and_vis_macro():
     assert not expr.strip().startswith("!hasConfig &&"), "the viewer must not be disabled by a YAML config"
 
 
-def test_roughness_demo_macros_and_script():
-    demo = read("mac/roughness_demo.mac")
-    assert re.search(r"^/detector/pTPsigmaAlpha\s+0\.8", demo, re.M)
-    assert re.search(r"^/run/reinitializeGeometry", demo, re.M) and re.search(r"^/run/initialize", demo, re.M)
-    assert re.search(r"^/gps/energy\s+3\.0996\s+eV", demo, re.M), "400 nm beam: pTP must not absorb it"
-    assert demo.index("/run/initialize") < demo.index("/run/beamOn")
-    off = read("mac/roughness_off.mac")
-    assert re.search(r"^/detector/pTPsigmaAlpha\s+0\.0", off, re.M) and re.search(r"^/gps/energy\s+9\.68\s+eV", off, re.M)
-    panel = read("mac/draw_roughness_panel.mac")
-    assert "{sa}" in panel and "{out}" in panel and "TSG_OFFSCREEN" in panel
-    vis = read("mac/vis.mac")
-    assert "roughness_demo.mac" in vis and "roughness_off.mac" in vis
-    sh = read("scripts/draw_roughness.sh")
-    assert "/control/alias sa" in sh and "draw_roughness_panel.mac" in sh
+def test_vis_roughness_macro():
+    import os
+    mac = read("mac/vis_roughness.mac")
+    cmds = [l.split("#")[0].strip() for l in mac.splitlines() if l.strip() and not l.lstrip().startswith("#")]
+    assert any(c.startswith("/detector/pTPlayerthickness 1.0") for c in cmds)
+    assert any(c.startswith("/detector/pTPgeomRoughCells 30") for c in cmds)
+    assert any(c.startswith("/detector/pTPgeomRoughAmp 0.3") for c in cmds)
+    assert "/run/initialize" in cmds and cmds.index("/run/initialize") < cmds.index("/vis/drawVolume"), \
+        "geometry must be rebuilt before it is drawn"
+    assert any(c.startswith("/gps/energy 3.0996 eV") for c in cmds), "400 nm beam: pTP must not absorb it"
+    for gone in ("mac/roughness_demo.mac", "mac/roughness_off.mac", "mac/roughness_geom_demo.mac",
+                 "mac/draw_roughness_panel.mac", "scripts/draw_roughness.sh"):
+        assert not os.path.exists(gone), f"{gone} should have been consolidated into vis_roughness.mac"
+    assert "vis_roughness.mac" in read("mac/vis.mac")
 
 
 def test_geometric_roughness_option():
@@ -526,12 +526,6 @@ def test_geometric_roughness_option():
     with open(CONFIG_YAML) as fh:
         g = yaml.safe_load(fh)["geometry"]
     assert g["pTPgeomRoughCells"] == 0 and g["pTPgeomRoughAmplitude_mm"] == 0.0
-    demo = read("mac/roughness_geom_demo.mac")
-    assert re.search(r"^/detector/pTPgeomRoughCells\s+30", demo, re.M) and re.search(r"^/detector/pTPgeomRoughAmp\s+0\.3", demo, re.M)
-    assert demo.index("/run/initialize") < demo.index("/run/beamOn")
-    off = read("mac/roughness_off.mac")
-    assert re.search(r"^/detector/pTPgeomRoughCells\s+0", off, re.M) and re.search(r"^/detector/pTPlayerthickness\s+0\.002", off, re.M)
-    assert "roughness_geom_demo.mac" in read("mac/vis.mac")
 
 
 def test_scan_script_runs_with_and_without_sample():

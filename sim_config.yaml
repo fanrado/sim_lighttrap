@@ -28,13 +28,10 @@ geometry:
   pTPlayerThickness_mm: 0.002     # pTP film thickness [mm]  (default: 2 µm)
   pTPsigmaAlpha_rad: 0.0          # pTP surface facet-slope RMS [rad]; 0.0 = flat, perfectly smooth (no wiggle)
                                   #   raise to model coating waviness/roughness, e.g. 0.1 rad ≈ 6°
-  # Geometric roughness demonstrator (visual): the film becomes a tessellated solid whose
-  # beam-facing face carries a Gaussian random height map on an N×N grid. 0 = flat box.
-  # Physics of sub-wavelength roughness stays pTPsigmaAlpha_rad; use this to SEE bumps,
-  # e.g. with pTPlayerThickness_mm: 1.0, pTPgeomRoughCells: 30, pTPgeomRoughAmplitude_mm: 0.3
-  pTPgeomRoughCells: 0            # height-map cells per side (0 = off); lateral bump size = side / cells
-  pTPgeomRoughAmplitude_mm: 0.0   # RMS bump height [mm] (clipped at ±3 RMS and 0.8 × film thickness)
-  pTPgeomRoughSeed: 12345         # random seed of the height map
+  # Visible bumps on the film (demonstrator, see vis_roughness.mac); 0 = flat film
+  pTPgeomRoughCells: 0            # bumps per side (lateral size = side / cells)
+  pTPgeomRoughAmplitude_mm: 0.0   # RMS bump height [mm]
+  pTPgeomRoughSeed: 12345
   lightTrapSize_cm: 15.0          # acrylic sample side length (square plate) [cm]
   uvAcrylicThickness_mm: 3.0      # acrylic sample thickness [mm]
 

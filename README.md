@@ -271,42 +271,27 @@ driver segfaults, and the offscreen z-buffer renderer skips translucent
 surfaces and needs `/vis/viewer/set/culling invisible true` (otherwise the
 invisible world box is drawn and hides everything); the macro handles both.
 
-**Seeing the pTP surface roughness (`sigmaAlpha`).** `sigmaAlpha` is not a
-geometric feature: Geant4's UNIFIED model keeps the pTP faces flat and tilts the
-micro-facet normal by a random angle (RMS `sigmaAlpha`) at each crossing, so it
-cannot be drawn in the volume view. It is visible through the photon
-directions: send a 400 nm beam, which the pTP does **not** absorb, through the
-sample and compare a smooth surface with an exaggerated one.
+**Seeing the roughness of the pTP layer.**
 
 ```bash
-cd build && ./sim_lighttrap                 # Qt: Run → "Roughness demo" (sigmaAlpha 0.8 rad, 400 nm), "Roughness off"
-scripts/draw_roughness.sh                   # headless panels roughness/rough_sa{0.0,0.3,0.8}.png
-scripts/draw_roughness.sh 0.0 0.1 0.5 1.0   # your own values (rad)
+cd build && ./sim_lighttrap vis_roughness.mac
 ```
 
-Measured with 2000 photons at 400 nm (fraction of photons leaving the sample
-within 2.6° of the beam axis): 99.7 % at `sigmaAlpha` 0, 1.9 % at 0.3 rad,
-0.4 % at 0.8 rad; photons reaching the photocathode 1712 / 1734 / 979.
-Reference panels: `docs/figures/pmt_mode/roughness_sa0.0.png` and
-`roughness_sa0.8.png`.
+That opens the viewer with an exaggerated, physically bumpy pTP film (random
+height map on the beam-facing face: 1 mm film, 30 × 30 bumps of 5 mm, 0.3 mm
+RMS) and sends a 400 nm beam, which pTP does not absorb, through it; each ray
+is deflected by the bump it hits. The three knobs are the first three
+commands of that macro (film thickness, bumps per side, RMS bump height). The
+same three settings exist in the YAML as `pTPgeomRoughCells`,
+`pTPgeomRoughAmplitude_mm`, `pTPgeomRoughSeed` (default off = flat film).
 
-**Geometric roughness (bumps that exist in the geometry).** If you want to
-*see* a rough film, the pTP layer can be built as a tessellated solid whose
-beam-facing face carries a Gaussian random height map on an N × N grid (flat
-back face on the acrylic, closed side walls), with `pTPgeomRoughCells`
-(cells per side, 0 = flat box), `pTPgeomRoughAmplitude_mm` (RMS bump height,
-clipped at ±3 RMS and 0.8 × film thickness) and `pTPgeomRoughSeed` in the YAML
-or `/detector/pTPgeomRoughCells`, `pTPgeomRoughAmp`, `pTPgeomRoughSeed` in a
-macro. Each ray is then refracted by the facet it hits. At the true scale
-(2 µm film, sub-µm bumps) the facets are far larger than the wavelength and
-tilt by ~1e-4 rad, so this is a *facet-level demonstrator*, not a model of
-sub-wavelength roughness, which stays `sigmaAlpha`. The exaggerated demo
-(1 mm film, 30 × 30 cells of 5 mm, 0.3 mm RMS bumps, 400 nm beam) is in the Qt
-*Run* menu ("Geometric roughness demo") or `mac/roughness_geom_demo.mac`; the
-overlap check passes and 3840 facets cost nothing noticeable. Reference renders:
-`docs/figures/pmt_mode/roughness_geom_film.png` (the bumpy film) and
-`roughness_geom_side_tracks.png` (400 nm beam deflected by the facets). The run
-summary reports the film geometry in use.
+Note the physics: a real 2 µm film has sub-wavelength roughness that Geant4
+models statistically with `pTPsigmaAlpha_rad` (micro-facet RMS slope); it is
+invisible in the geometry and acts only on the photon directions. The bumpy
+film above is a demonstrator to *see* the effect. Reference renders:
+`docs/figures/pmt_mode/roughness_geom_film.png`, `roughness_geom_side_tracks.png`
+(geometric) and `roughness_sa0.0.png` / `roughness_sa0.8.png` (`sigmaAlpha`
+0 vs 0.8 rad on a 400 nm beam).
 
 A data-side check (beam footprint on the film, hit map on the photocathode, and
 the z of every recorded photon point against the layer planes):

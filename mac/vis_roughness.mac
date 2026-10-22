@@ -1,0 +1,43 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# vis_roughness.mac — SEE the roughness of the pTP layer.
+#
+#     cd build && ./sim_lighttrap vis_roughness.mac
+#
+# Opens the Qt viewer with an exaggerated, physically bumpy pTP film (random
+# height map on the beam-facing face) and shoots a 400 nm beam through it:
+# 400 nm is not absorbed by pTP, so you see each ray deflected by the bump it
+# hits. Zoom in on the yellow film (side view) to see the bumps themselves.
+#
+# THE THREE KNOBS (edit here, nothing else):
+/detector/pTPlayerthickness 1.0     # film thickness [mm]   (real film: 0.002 — invisible, hence 1 mm here)
+/detector/pTPgeomRoughCells 30      # bumps per side: lateral bump size = 150 mm / 30 = 5 mm  (0 = flat film)
+/detector/pTPgeomRoughAmp 0.3       # RMS bump height [mm]  (clipped at ±3 RMS and 0.8 × thickness)
+#
+# Optional: the statistical roughness model used for physics (micro-facet RMS
+# slope in rad, invisible in the geometry but visible on the ray directions):
+# /detector/pTPsigmaAlpha 0.8
+# ─────────────────────────────────────────────────────────────────────────────
+/run/reinitializeGeometry
+/run/initialize
+
+/vis/open Qt3D
+/vis/drawVolume
+/vis/viewer/set/viewpointVector -1 0 0
+/vis/viewer/set/upVector 0 0 1
+/vis/viewer/set/autoRefresh true
+/vis/scene/add/axes
+/vis/scene/add/trajectories smooth
+/vis/scene/endOfEventAction accumulate
+
+/gui/addMenu run Run
+/gui/addButton run "beamOn 40 (400 nm, through the bumpy film)" "/run/beamOn 40"
+/gui/addButton run "Redraw (rebuild view)" "/vis/viewer/rebuild"
+
+/gps/particle opticalphoton
+/gps/energy 3.0996 eV
+/gps/pos/type Plane
+/gps/pos/shape Circle
+/gps/pos/centre 0. 0. -2. cm
+/gps/pos/radius 7 mm
+/gps/direction 0 0 1
+/run/beamOn 40
