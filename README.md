@@ -102,13 +102,16 @@ face, 0.01 mm behind the acrylic so TIR-trapped light is not counted, and
   ./sim_lighttrap
   ```
 
-  Launches the Qt UI and executes `vis.mac` (OpenGL/Qt viewer, geometry drawn,
-  14 mm beam preloaded; use the Run menu or `/run/beamOn 30` to see
-  trajectories, optical photons in blue). Note: the experimental `Qt3D` driver
-  did not draw the WLS secondaries in this build (the beam seemed to stop at
-  the sample even though the run produced the shifted light), so `vis.mac`
-  uses `OGL`; `./sim_lighttrap draw_offscreen.mac` is the display-free
-  cross-check (`docs/figures/pmt_mode/pmt_geom_side_tracks.png`).
+  Launches the Qt UI and executes `vis.mac` (TOOLSSG Qt viewer `TSG`, geometry
+  drawn, 14 mm beam preloaded; use the Run menu or `/run/beamOn 30` to see
+  trajectories, optical photons in blue). `TSG` is the Geant4 11 recommended
+  Qt driver and the on-screen twin of the `TSG_OFFSCREEN` renderer behind
+  `draw_offscreen.mac`, so the window shows the same scene as the validated
+  PNGs. Do not switch it to `Qt3D` (it did not draw the WLS secondaries in this
+  build) or `OGL` (blank window with Qt6 on macOS). To save the current view
+  from the session: `/vis/tsg/export zb_png view.png`. Display-free
+  cross-check: `./sim_lighttrap draw_offscreen.mac`
+  (`docs/figures/pmt_mode/pmt_geom_side_tracks.png`).
 
 - **Batch Mode (macro file):**
 

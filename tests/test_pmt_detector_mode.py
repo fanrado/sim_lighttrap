@@ -178,7 +178,7 @@ def test_run_macros_use_14mm_circular_beam(mac_file):
 
 def test_vis_macro_draws_geometry_and_preloads_beam():
     mac = read("mac/vis.mac")
-    assert re.search(r"^/vis/open\s+OGL\b", mac, re.M), "interactive viewer must use the OpenGL Qt driver (Qt3D hid WLS tracks)"
+    assert re.search(r"^/vis/open\s+TSG\s*$", mac, re.M), "interactive viewer must use the TOOLSSG Qt driver (Qt3D hid WLS tracks, OGL showed nothing)"
     assert re.search(r"^/vis/modeling/trajectories/drawByParticleID-0/set\s+opticalphoton", mac, re.M)
     assert re.search(r"^/vis/drawVolume", mac, re.M)
     assert re.search(r"^/gps/pos/shape\s+Circle\s*$", mac, re.M)
