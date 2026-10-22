@@ -9,3 +9,6 @@ build/
 .beads/proxieddb/
 CLAUDE.md
 AGENTS.md
+# Python / editor artefacts
+__pycache__/
+*~
