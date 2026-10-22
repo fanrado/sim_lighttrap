@@ -102,8 +102,13 @@ face, 0.01 mm behind the acrylic so TIR-trapped light is not counted, and
   ./sim_lighttrap
   ```
 
-  Launches the Qt UI and executes `vis.mac` (geometry drawn, 14 mm beam
-  preloaded; use the Run menu or `/run/beamOn 30` to see trajectories).
+  Launches the Qt UI and executes `vis.mac` (OpenGL/Qt viewer, geometry drawn,
+  14 mm beam preloaded; use the Run menu or `/run/beamOn 30` to see
+  trajectories, optical photons in blue). Note: the experimental `Qt3D` driver
+  did not draw the WLS secondaries in this build (the beam seemed to stop at
+  the sample even though the run produced the shifted light), so `vis.mac`
+  uses `OGL`; `./sim_lighttrap draw_offscreen.mac` is the display-free
+  cross-check (`docs/figures/pmt_mode/pmt_geom_side_tracks.png`).
 
 - **Batch Mode (macro file):**
 
