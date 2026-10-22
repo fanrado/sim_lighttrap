@@ -88,6 +88,15 @@ struct SimConfig {
     // farther away: a source outside the world is rejected at run time.
     double worldHalfZ_mm            = 0.0;
     double pTPsigmaAlpha_rad        = 0.0;    // pTP surface facet-slope RMS; 0 = smooth
+    // Optional GEOMETRIC roughness of the pTP film (visual / facet demonstrator):
+    // the film becomes a tessellated solid whose beam-facing (-z) face carries a
+    // Gaussian random height map on an N x N grid (flat back face on the acrylic).
+    // 0 cells = ordinary flat box. Sub-wavelength roughness physics remains the
+    // statistical sigmaAlpha above; use this to SEE bumps in the viewer, e.g.
+    // with an exaggerated film thickness (1 mm) and amplitude (0.3 mm).
+    int    pTPgeomRoughCells        = 0;      // grid cells per side (0 = off)
+    double pTPgeomRoughAmplitude_mm = 0.0;    // RMS bump height [mm]
+    int    pTPgeomRoughSeed         = 12345;  // random seed of the height map
 
     // ── PMT readout: Hamamatsu R6836-like cylinder facing the first layer ────
     // Datasheet (TPMH1264E): tube/faceplate Ø 28.2 ± 0.8 mm, photocathode

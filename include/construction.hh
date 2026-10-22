@@ -31,6 +31,7 @@ public:
   G4String WorldMedium()     const { return fWorldMedium; }
   G4double GapThickness()    const { return LArthickness; }
   G4double PTPSigmaAlpha()   const { return pTPsigmaAlpha; }
+  G4String PTPFilmDescription() const { return fPTPFilmDescription; }
   G4double WorldHalfZ()      const;   // effective value (auto resolved)
   G4double PMTDiameter()     const { return pmtDiameter; }
   G4double WindowThickness() const { return pmtWindowThickness; }
@@ -48,6 +49,9 @@ private:
   G4double lighttrapsize;         // square first-layer side length    (default 15 cm)
   G4double worldHalfZ;            // world half-length in z; 0 = auto   (default 0)
   G4double pTPsigmaAlpha;         // pTP surface facet-slope RMS [rad]  (default 0 = smooth)
+  G4int    pTPgeomRoughCells;     // geometric roughness grid (0 = flat box)
+  G4double pTPgeomRoughAmp;       // geometric roughness RMS height
+  G4int    pTPgeomRoughSeed;      // height-map seed
   G4double pmtDiameter;           // PMT photocathode diameter            (default 23 mm)
   G4double pmtTubeDiameter;       // tube / faceplate outer diameter      (default 28.2 mm)
   G4double pmtLength;             // faceplate front → end of glass body  (default 92 mm)
@@ -64,7 +68,9 @@ private:
   G4VPhysicalVolume *physWorld;
 
   // ── First layer: pTP WLS film + UV-transparent acrylic carrier ───────────────
-  G4Box             *pTPlayer,      *uvAcrylicSlab;
+  // pTPlayer is a G4Box, or a G4TessellatedSolid when geometric roughness is on.
+  G4VSolid          *pTPlayer;
+  G4Box             *uvAcrylicSlab;
   G4LogicalVolume   *logicpTPlayer, *logicUVAcrylic;
   G4VPhysicalVolume *physpTPlayer,  *physUVAcrylic;
 
@@ -90,6 +96,12 @@ private:
   // ── Runtime messenger ────────────────────────────────────────────────────────
   G4GenericMessenger *fMessenger;
   G4String fPMTQEDescription;     // filled in ConstructSDandField for the run summary
+  G4String fPTPFilmDescription;   // "flat box" or the tessellated height-map parameters
+
+  // Builds the pTP film as a closed tessellated solid: flat back face at
+  // +thick/2, random Gaussian height map on the -z (beam-facing) face.
+  G4VSolid* BuildRoughPTPSolid(G4double side, G4double thick, G4int cells,
+                               G4double rmsAmp, G4int seed);
 
   // ── Config snapshot (set at construction, used by DefineMaterials) ───────────
   SimConfig fCfg;

@@ -290,6 +290,24 @@ within 2.6° of the beam axis): 99.7 % at `sigmaAlpha` 0, 1.9 % at 0.3 rad,
 Reference panels: `docs/figures/pmt_mode/roughness_sa0.0.png` and
 `roughness_sa0.8.png`.
 
+**Geometric roughness (bumps that exist in the geometry).** If you want to
+*see* a rough film, the pTP layer can be built as a tessellated solid whose
+beam-facing face carries a Gaussian random height map on an N × N grid (flat
+back face on the acrylic, closed side walls), with `pTPgeomRoughCells`
+(cells per side, 0 = flat box), `pTPgeomRoughAmplitude_mm` (RMS bump height,
+clipped at ±3 RMS and 0.8 × film thickness) and `pTPgeomRoughSeed` in the YAML
+or `/detector/pTPgeomRoughCells`, `pTPgeomRoughAmp`, `pTPgeomRoughSeed` in a
+macro. Each ray is then refracted by the facet it hits. At the true scale
+(2 µm film, sub-µm bumps) the facets are far larger than the wavelength and
+tilt by ~1e-4 rad, so this is a *facet-level demonstrator*, not a model of
+sub-wavelength roughness, which stays `sigmaAlpha`. The exaggerated demo
+(1 mm film, 30 × 30 cells of 5 mm, 0.3 mm RMS bumps, 400 nm beam) is in the Qt
+*Run* menu ("Geometric roughness demo") or `mac/roughness_geom_demo.mac`; the
+overlap check passes and 3840 facets cost nothing noticeable. Reference renders:
+`docs/figures/pmt_mode/roughness_geom_film.png` (the bumpy film) and
+`roughness_geom_side_tracks.png` (400 nm beam deflected by the facets). The run
+summary reports the film geometry in use.
+
 A data-side check (beam footprint on the film, hit map on the photocathode, and
 the z of every recorded photon point against the layer planes):
 

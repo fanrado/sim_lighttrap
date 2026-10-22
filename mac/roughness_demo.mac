@@ -16,6 +16,7 @@
 /detector/pTPsigmaAlpha 0.8
 /run/reinitializeGeometry
 /run/initialize
+/vis/viewer/rebuild
 /gps/particle opticalphoton
 /gps/energy 3.0996 eV
 /gps/pos/type Plane

@@ -1,0 +1,31 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# roughness_geom_demo.mac — GEOMETRIC roughness of the pTP film, exaggerated so
+# it can be seen in the viewer.
+#
+# The film is rebuilt as a tessellated solid: flat back face on the acrylic, and
+# a random Gaussian height map on the beam-facing face (N x N cells, RMS bump
+# height pTPgeomRoughAmp). Here the film is made 1 mm thick with 30 x 30 cells
+# of 5 mm and 0.3 mm RMS bumps, and a 400 nm beam (not absorbed by pTP) is sent
+# through it: each ray is refracted by the local facet it hits, so the beam is
+# visibly deflected. This is a demonstrator of facet-level roughness; the real
+# sub-wavelength roughness of a 2 µm film is modelled statistically with
+# /detector/pTPsigmaAlpha (see roughness_demo.mac). Undo with roughness_off.mac
+# (which also restores the 2 µm flat film).
+#
+# Qt session: Run menu → "Geometric roughness demo"  (or /control/execute roughness_geom_demo.mac)
+# ─────────────────────────────────────────────────────────────────────────────
+/detector/pTPlayerthickness 1.0
+/detector/pTPgeomRoughCells 30
+/detector/pTPgeomRoughAmp 0.3
+/detector/pTPgeomRoughSeed 12345
+/run/reinitializeGeometry
+/run/initialize
+/vis/viewer/rebuild
+/gps/particle opticalphoton
+/gps/energy 3.0996 eV
+/gps/pos/type Plane
+/gps/pos/shape Circle
+/gps/pos/centre 0. 0. -2. cm
+/gps/pos/radius 7 mm
+/gps/direction 0 0 1
+/run/beamOn 40

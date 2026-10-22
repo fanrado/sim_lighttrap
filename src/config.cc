@@ -172,6 +172,13 @@ SimConfig SimConfig::fromFile(const std::string& path)
         if (cfg.worldHalfZ_mm < 0.0)
             throw std::runtime_error("SimConfig: geometry.worldHalfZ_mm must be >= 0 (0 = automatic)");
         if (geo["pTPsigmaAlpha_rad"])         cfg.pTPsigmaAlpha_rad        = geo["pTPsigmaAlpha_rad"].as<double>();
+        if (geo["pTPgeomRoughCells"])         cfg.pTPgeomRoughCells        = geo["pTPgeomRoughCells"].as<int>();
+        if (geo["pTPgeomRoughAmplitude_mm"])  cfg.pTPgeomRoughAmplitude_mm = geo["pTPgeomRoughAmplitude_mm"].as<double>();
+        if (geo["pTPgeomRoughSeed"])          cfg.pTPgeomRoughSeed         = geo["pTPgeomRoughSeed"].as<int>();
+        if (cfg.pTPgeomRoughCells < 0 || cfg.pTPgeomRoughCells > 400)
+            throw std::runtime_error("SimConfig: geometry.pTPgeomRoughCells must be in [0, 400]");
+        if (cfg.pTPgeomRoughAmplitude_mm < 0.0)
+            throw std::runtime_error("SimConfig: geometry.pTPgeomRoughAmplitude_mm must be >= 0");
         if (geo["pmtDiameter_mm"])            cfg.pmtDiameter_mm           = geo["pmtDiameter_mm"].as<double>();
         if (geo["pmtTubeDiameter_mm"])        cfg.pmtTubeDiameter_mm       = geo["pmtTubeDiameter_mm"].as<double>();
         if (geo["pmtLength_mm"])              cfg.pmtLength_mm             = geo["pmtLength_mm"].as<double>();

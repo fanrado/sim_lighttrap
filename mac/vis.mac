@@ -36,7 +36,8 @@
 /gui/addButton run "beamOn 200" "/run/beamOn 1000"
 /gui/addButton run "Redraw (rebuild view)" "/vis/viewer/rebuild"
 /gui/addButton run "Roughness demo (sigmaAlpha 0.8 rad, 400 nm beam)" "/control/execute roughness_demo.mac"
-/gui/addButton run "Roughness off (sigmaAlpha 0, 128 nm beam)"        "/control/execute roughness_off.mac"
+/gui/addButton run "Geometric roughness demo (1 mm film, 0.3 mm bumps, 400 nm)" "/control/execute roughness_geom_demo.mac"
+/gui/addButton run "Roughness off (flat 2 um film, sigmaAlpha 0, 128 nm beam)" "/control/execute roughness_off.mac"
 # After every run a "sim_lighttrap run N summary" block is printed in the
 # Output pane (beam photons, WLS photons born in pTP, photons on the PMT):
 # use it to validate the physics independently of what the viewer draws.

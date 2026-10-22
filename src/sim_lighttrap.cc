@@ -182,6 +182,9 @@ int main(int argc, char** argv)
         UImanager->ApplyCommand("/detector/worldHalfZ "          + d2s(cfg.worldHalfZ_mm));
         // pTP surface facet-slope RMS [rad]; 0 = perfectly smooth (no wiggle)
         UImanager->ApplyCommand("/detector/pTPsigmaAlpha "       + d2s(cfg.pTPsigmaAlpha_rad));
+        UImanager->ApplyCommand("/detector/pTPgeomRoughCells "   + std::to_string(cfg.pTPgeomRoughCells));
+        UImanager->ApplyCommand("/detector/pTPgeomRoughAmp "     + d2s(cfg.pTPgeomRoughAmplitude_mm));
+        UImanager->ApplyCommand("/detector/pTPgeomRoughSeed "    + std::to_string(cfg.pTPgeomRoughSeed));
         // PMT readout
         UImanager->ApplyCommand("/detector/pmtDiameter "         + d2s(cfg.pmtDiameter_mm));
         UImanager->ApplyCommand("/detector/pmtTubeDiameter "     + d2s(cfg.pmtTubeDiameter_mm));

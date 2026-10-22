@@ -510,6 +510,30 @@ def test_roughness_demo_macros_and_script():
     assert "/control/alias sa" in sh and "draw_roughness_panel.mac" in sh
 
 
+def test_geometric_roughness_option():
+    con = strip_comments(read(CONSTRUCTION_CC))
+    assert '#include "G4TessellatedSolid.hh"' in read(CONSTRUCTION_CC)
+    assert "BuildRoughPTPSolid" in con and "SetSolidClosed(true)" in con
+    assert re.search(r"if\s*\(\s*pTPgeomRoughCells\s*>\s*0\s*&&\s*pTPgeomRoughAmp\s*>\s*0\.\s*\)", con)
+    for prop in ("pTPgeomRoughCells", "pTPgeomRoughAmp", "pTPgeomRoughSeed"):
+        assert re.search(rf'DeclareProperty\s*\(\s*"{prop}"', con), prop
+    hh = strip_comments(read(CONFIG_HH))
+    assert re.search(r"int\s+pTPgeomRoughCells\s*=\s*0;", hh), "flat box must stay the default"
+    assert re.search(r"G4VSolid\s*\*pTPlayer;", read(CONSTRUCTION_HH))
+    cc = strip_comments(read(CONFIG_CC))
+    assert 'geo["pTPgeomRoughCells"]' in cc and 'geo["pTPgeomRoughAmplitude_mm"]' in cc
+    assert '"/detector/pTPgeomRoughCells "' in strip_comments(read(MAIN_CC))
+    with open(CONFIG_YAML) as fh:
+        g = yaml.safe_load(fh)["geometry"]
+    assert g["pTPgeomRoughCells"] == 0 and g["pTPgeomRoughAmplitude_mm"] == 0.0
+    demo = read("mac/roughness_geom_demo.mac")
+    assert re.search(r"^/detector/pTPgeomRoughCells\s+30", demo, re.M) and re.search(r"^/detector/pTPgeomRoughAmp\s+0\.3", demo, re.M)
+    assert demo.index("/run/initialize") < demo.index("/run/beamOn")
+    off = read("mac/roughness_off.mac")
+    assert re.search(r"^/detector/pTPgeomRoughCells\s+0", off, re.M) and re.search(r"^/detector/pTPlayerthickness\s+0\.002", off, re.M)
+    assert "roughness_geom_demo.mac" in read("mac/vis.mac")
+
+
 def test_scan_script_runs_with_and_without_sample():
     src = read("scripts/scan_wavelength.py")
     assert "with_sample=" in src and '"--sample"' in src

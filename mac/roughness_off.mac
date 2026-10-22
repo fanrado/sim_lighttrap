@@ -1,8 +1,13 @@
-# roughness_off.mac — undo roughness_demo.mac: smooth pTP surface (sigmaAlpha = 0)
-# and the standard 128 nm VUV beam, then 40 events.
+# roughness_off.mac — undo roughness_demo.mac / roughness_geom_demo.mac: smooth
+# flat 2 µm pTP film (sigmaAlpha = 0, no geometric height map) and the standard
+# 128 nm VUV beam, then 40 events.
 /detector/pTPsigmaAlpha 0.0
+/detector/pTPgeomRoughCells 0
+/detector/pTPgeomRoughAmp 0
+/detector/pTPlayerthickness 0.002
 /run/reinitializeGeometry
 /run/initialize
+/vis/viewer/rebuild
 /gps/particle opticalphoton
 /gps/energy 9.68 eV
 /gps/pos/type Plane

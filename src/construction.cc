@@ -1,6 +1,9 @@
 #include "construction.hh"
 #include "G4VisAttributes.hh"
 #include "G4Colour.hh"
+#include "G4TessellatedSolid.hh"
+#include "G4TriangularFacet.hh"
+#include <random>
 
 #include <cmath>
 #include <vector>
@@ -57,6 +60,12 @@ MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
       worldHalfZ,           "World box half-length in z [mm]; 0 = automatic (0.6*side + PMT length)");
   fMessenger->DeclareProperty("pTPsigmaAlpha",
       pTPsigmaAlpha,        "pTP surface facet-slope RMS [rad]; 0 = perfectly smooth");
+  fMessenger->DeclareProperty("pTPgeomRoughCells",
+      pTPgeomRoughCells,    "Geometric pTP roughness: N x N height-map cells on the beam face (0 = flat box)");
+  fMessenger->DeclareProperty("pTPgeomRoughAmp",
+      pTPgeomRoughAmp,      "Geometric pTP roughness: RMS bump height [mm]");
+  fMessenger->DeclareProperty("pTPgeomRoughSeed",
+      pTPgeomRoughSeed,     "Geometric pTP roughness: random seed of the height map");
   fMessenger->DeclareProperty("pmtDiameter",
       pmtDiameter,          "PMT photocathode diameter [default 23 mm]");
   fMessenger->DeclareProperty("pmtTubeDiameter",
@@ -85,6 +94,9 @@ MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
   lighttrapsize         = 15.*cm;   // 15 cm × 15 cm first layer (real detector size)
   worldHalfZ            = 0.;       // automatic world z half-length
   pTPsigmaAlpha         = 0.0;      // perfectly smooth pTP surface (no wiggle); rad
+  pTPgeomRoughCells     = 0;        // flat box film by default
+  pTPgeomRoughAmp       = 0.*mm;
+  pTPgeomRoughSeed      = 12345;
   pmtDiameter           = 23.*mm;   // photocathode min. effective area (Hamamatsu R6836)
   pmtTubeDiameter       = 28.2*mm;  // R6836 tube / faceplate diameter (28.2 ± 0.8 mm)
   pmtLength             = 92.*mm;   // R6836 body length (92 ± 2 mm), faceplate to end of glass
@@ -111,6 +123,67 @@ MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
 
 MyLightTrapConstruction::~MyLightTrapConstruction()
 {}
+
+G4VSolid* MyLightTrapConstruction::BuildRoughPTPSolid(G4double side, G4double thick, G4int cells,
+                                                      G4double rmsAmp, G4int seed)
+{
+  // Local frame of the film: x,y in [-side/2, side/2]; back face (acrylic side)
+  // flat at z = +thick/2; beam-facing front face at z = -thick/2 + h(x,y) with
+  // h ~ Gaussian(0, rmsAmp) per grid vertex, clipped to [-3 rms, min(3 rms,
+  // 0.8 thick)] so the front never crosses the back face (negative h = bump
+  // protruding toward the beam).  Lateral scale of the bumps = one cell.
+  const G4int N = cells;
+  const G4double cell = side / N;
+  std::mt19937 rng(static_cast<unsigned>(seed));
+  std::normal_distribution<double> gauss(0.0, rmsAmp);
+  const G4double hMaxIn = std::min(3.0 * rmsAmp, 0.8 * thick);
+  std::vector<G4ThreeVector> front((N+1)*(N+1)), back((N+1)*(N+1));
+  G4double hmin = 0., hmax = 0.;
+  for (G4int j = 0; j <= N; ++j)
+    for (G4int i = 0; i <= N; ++i) {
+      const G4double x = -side/2. + i * cell, y = -side/2. + j * cell;
+      G4double h = gauss(rng);
+      h = std::max(-3.0 * rmsAmp, std::min(h, hMaxIn));
+      hmin = std::min(hmin, h); hmax = std::max(hmax, h);
+      front[j*(N+1)+i] = G4ThreeVector(x, y, -thick/2. + h);
+      back [j*(N+1)+i] = G4ThreeVector(x, y, +thick/2.);
+    }
+
+  auto* solid = new G4TessellatedSolid("pTPlayerRough");
+  // Adds triangle (a,b,c) oriented so that its normal points along `outward`.
+  auto addTri = [&](const G4ThreeVector& a, const G4ThreeVector& b, const G4ThreeVector& c,
+                    const G4ThreeVector& outward) {
+    if (((b - a).cross(c - a)).dot(outward) >= 0.)
+      solid->AddFacet(new G4TriangularFacet(a, b, c, ABSOLUTE));
+    else
+      solid->AddFacet(new G4TriangularFacet(a, c, b, ABSOLUTE));
+  };
+  const G4ThreeVector mZ(0,0,-1), pZ(0,0,1), mX(-1,0,0), pX(1,0,0), mY(0,-1,0), pY(0,1,0);
+  auto F = [&](G4int i, G4int j) -> const G4ThreeVector& { return front[j*(N+1)+i]; };
+  auto B = [&](G4int i, G4int j) -> const G4ThreeVector& { return back [j*(N+1)+i]; };
+  for (G4int j = 0; j < N; ++j)
+    for (G4int i = 0; i < N; ++i) {
+      // front (rough) face, outward -z ; back (flat) face, outward +z
+      addTri(F(i,j), F(i+1,j), F(i+1,j+1), mZ);  addTri(F(i,j), F(i+1,j+1), F(i,j+1), mZ);
+      addTri(B(i,j), B(i+1,j), B(i+1,j+1), pZ);  addTri(B(i,j), B(i+1,j+1), B(i,j+1), pZ);
+    }
+  for (G4int k = 0; k < N; ++k) {
+    // side walls (planar: x or y constant), outward ±x / ±y
+    addTri(F(0,k), F(0,k+1), B(0,k+1), mX);     addTri(F(0,k), B(0,k+1), B(0,k), mX);
+    addTri(F(N,k), F(N,k+1), B(N,k+1), pX);     addTri(F(N,k), B(N,k+1), B(N,k), pX);
+    addTri(F(k,0), F(k+1,0), B(k+1,0), mY);     addTri(F(k,0), B(k+1,0), B(k,0), mY);
+    addTri(F(k,N), F(k+1,N), B(k+1,N), pY);     addTri(F(k,N), B(k+1,N), B(k,N), pY);
+  }
+  solid->SetSolidClosed(true);
+
+  std::ostringstream os;
+  os << "tessellated: " << N << " x " << N << " cells of " << cell/mm << " mm, RMS bump height "
+     << rmsAmp/mm << " mm (height map " << hmin/mm << " .. " << hmax/mm << " mm, seed " << seed
+     << ", " << solid->GetNumberOfFacets() << " facets)";
+  fPTPFilmDescription = os.str();
+  G4cout << "[Construction] pTP film " << fPTPFilmDescription << G4endl;
+  return solid;
+}
 
 G4double MyLightTrapConstruction::WorldHalfZ() const
 {
@@ -487,8 +560,17 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   // Thin WLS film deposited on the LAr-facing (−z) front surface of the UV
   // acrylic carrier.  Absorbs incoming 128 nm VUV photons and re-emits at
   // 340–430 nm (near-UV / blue).
-  pTPlayer      = new G4Box("pTPlayer",
-      lighttrapsize/2., lighttrapsize/2., pTPlayerthickness/2.);
+  // Flat box by default; with geometric roughness enabled (pTPgeomRoughCells > 0
+  // and pTPgeomRoughAmp > 0) a tessellated film whose beam-facing surface is a
+  // random height map — a visual / facet-level demonstrator (see README).
+  if (pTPgeomRoughCells > 0 && pTPgeomRoughAmp > 0.) {
+    pTPlayer = BuildRoughPTPSolid(lighttrapsize, pTPlayerthickness, pTPgeomRoughCells,
+                                  pTPgeomRoughAmp, pTPgeomRoughSeed);
+  } else {
+    pTPlayer = new G4Box("pTPlayer",
+        lighttrapsize/2., lighttrapsize/2., pTPlayerthickness/2.);
+    fPTPFilmDescription = "flat box";
+  }
   logicpTPlayer = new G4LogicalVolume(pTPlayer, pTP, "logicpTPlayer");
   physpTPlayer  = new G4PVPlacement(0, G4ThreeVector(0., 0., kPTPCenterZ),
       logicpTPlayer, "physpTPlayer", logicWorld, false, 0, true);

@@ -161,6 +161,7 @@ void MyRunAction::EndOfRunAction(const G4Run* run)
   if (det)
     G4cout << "  sample (pTP on acrylic) : " << (det->WithSample() ? "IN the beam (with_sample=on)" : "ABSENT (with_sample=off, reference run)")
            << (det->WithSample() ? "   pTP surface sigmaAlpha " + std::to_string(det->PTPSigmaAlpha()).substr(0, 5) + " rad" : "") << "\n"
+           << (det->WithSample() ? "  pTP film geometry       : " + det->PTPFilmDescription() + "\n" : "")
            << "  world medium            : " << det->WorldMedium()
            << "   gap " << det->GapThickness()/mm << " mm, PMT faceplate " << det->WindowThickness()/mm
            << " mm, photocathode Ø " << det->PMTDiameter()/mm << " mm\n"
