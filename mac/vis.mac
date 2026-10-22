@@ -7,22 +7,15 @@
 # grey glass envelope). The 14 mm circular VUV beam is preloaded: use the Run
 # menu or "/run/beamOn 30" to see trajectories.
 #
-# Driver: TOOLSSG Qt (TSG), the Geant4 11 recommended Qt viewer; it is the
-# on-screen twin of the TSG_OFFSCREEN renderer used by draw_offscreen.mac, so
-# what you see here is what the validated PNGs show.  Do not use Qt3D (it did
-# not draw the WLS secondaries in this build) or OGL (blank window with Qt6 on
-# macOS).  Trajectories are coloured by particle: optical photons blue.
-# Export the current view from the session:  /vis/tsg/export zb_png view.png
-# Cross-check without a display:              ./sim_lighttrap draw_offscreen.mac
+# Driver: OpenGL stored Qt (OGL). The experimental Qt3D driver did not draw the
+# WLS secondaries (the beam appeared to stop at the sample) although the run
+# produced them; if OGL is unavailable in your build, try "/vis/open TSG".
+# Trajectories are coloured by particle: optical photons blue, charged red/green.
+# Cross-check without a display: ./sim_lighttrap draw_offscreen.mac
 # ─────────────────────────────────────────────────────────────────────────────
-/vis/open TSG
+/vis/open OGL
 /vis/drawVolume
-/vis/viewer/set/style surface
-/vis/viewer/set/hiddenEdge true
-/vis/viewer/set/culling global true
-/vis/viewer/set/culling invisible true
 /vis/viewer/set/viewpointVector -1 0 0
-/vis/viewer/set/upVector 0 0 1
 /vis/viewer/set/autoRefresh true
 /vis/viewer/flush
 /vis/scene/add/scale 10 cm
