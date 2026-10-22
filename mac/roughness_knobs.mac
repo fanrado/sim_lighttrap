@@ -20,10 +20,10 @@
 #   seed of the height map (same seed = same surface in every run)
 /detector/pTPgeomRoughSeed 12345
 #
-# Micro-facet roughness of both pTP faces, Geant4 UNIFIED surface model: RMS
-# slope of the facets [rad], acting on the photon directions at the surfaces
-# in addition to the height map above (0 = none)
-/detector/pTPsigmaAlpha 0.1
+# Optional statistical micro-facet slope of the pTP faces [rad] (Geant4
+# UNIFIED model), added on top of the geometric surface variation above.
+# 0 = off: the roughness of the run is the height map alone.
+/detector/pTPsigmaAlpha 0.0
 #
 /run/reinitializeGeometry
 /run/initialize
