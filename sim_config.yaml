@@ -17,30 +17,45 @@
 #   FirstLayerBackplane (4), FirstLayerEdges (5), PMTPhotons (6, pre-QE), PMTHits (7, post-QE)
 
 geometry:
+  # ── Switches ────────────────────────────────────────────────────────────────
   withSample: true                # true: pTP-coated acrylic in the beam; false: bare beam → PMT reference run
                                   #   (command line: with_sample=on|off overrides this)
   worldMedium: gar                # medium of the beam path, gap and counters: gar (argon gas, 1 atm, bench)
                                   #   | lar (liquid argon: Rayleigh scattering, n = 1.45 at 128 nm) | vacuum
                                   #   (command line: world_medium=gar|lar|vacuum overrides this)
-  pTPlayerThickness_mm: 0.002     # pTP WLS film thickness [mm]  (default: 2 µm)
-  uvAcrylicThickness_mm: 3.0      # UV-transparent acrylic carrier [mm]
-  LArThickness_mm: 7.0            # gap (filled with the world medium) between the back of the pTP-deposited acrylic and the PMT faceplate [mm]
-  lightTrapSize_cm: 15.0          # square first-layer side length [cm]
-  worldHalfZ_mm: 0.0              # world box half-length in z [mm]; 0 = automatic (0.6*side + PMT length = 182 mm).
-                                  #   The beam source must be inside the world (a source outside is rejected);
-                                  #   raise this to start the beam farther from the sample.
+
+  # ── Sample: pTP film deposited on a UV-transparent acrylic plate ────────────
+  pTPlayerThickness_mm: 0.002     # pTP film thickness [mm]  (default: 2 µm)
   pTPsigmaAlpha_rad: 0.0          # pTP surface facet-slope RMS [rad]; 0.0 = flat, perfectly smooth (no wiggle)
                                   #   raise to model coating waviness/roughness, e.g. 0.1 rad ≈ 6°
-  # PMT model — Hamamatsu R6836 (datasheet TPMH1264E): 28 mm head-on, MgF2 window,
-  # Cs-Te photocathode Ø 23 mm min. effective area, body 92 ± 2 mm
+  lightTrapSize_cm: 15.0          # acrylic sample side length (square plate) [cm]
+  uvAcrylicThickness_mm: 3.0      # acrylic sample thickness [mm]
+
+  # ── Sample ↔ PMT ────────────────────────────────────────────────────────────
+  LArThickness_mm: 7.0            # distance between the back of the acrylic sample and the PMT faceplate [mm]
+                                  #   (the gap is filled with the world medium; the key name is historical)
+
+  # ── PMT model — Hamamatsu R6836 (datasheet TPMH1264E): 28 mm head-on, MgF2 window,
+  #    Cs-Te photocathode Ø 23 mm min. effective area, body 92 ± 2 mm ───────────
   pmtDiameter_mm: 23.0            # photocathode (sensitive) diameter [mm]
   pmtTubeDiameter_mm: 28.2        # tube / faceplate outer diameter [mm] (28.2 ± 0.8)
   pmtLength_mm: 92.0              # faceplate front → end of the glass body [mm] (92 ± 2)
   pmtWindowThickness_mm: 1.5      # MgF2 faceplate thickness [mm]; NOT on the datasheet — assumption; 0 = bare photocathode
   pmtWallThickness_mm: 1.0        # opaque glass side-wall / end-cap thickness [mm]
+  # PMT quantum efficiency — either a flat band ...
   pmtQE: 1.0                      # flat quantum efficiency inside [pmtQEmin_nm, pmtQEmax_nm]
   pmtQEmin_nm: 110.0              # QE band lower edge [nm]
   pmtQEmax_nm: 500.0              # QE band upper edge [nm]; QE = 0 outside the band
+  # ... or a measured curve from a 2-column text file "<wavelength_nm> <QE>" (fraction or %),
+  # linearly interpolated, QE = 0 outside the table. Overrides the flat band when set.
+  # Path relative to this file or the cwd, or absolute. Command line: pmt_qe=<file>.
+  # pmtQEFile: input/pmt_qe_r6836_example.dat     # illustrative R6836 curve — replace with your measurement
+
+  # ── World ───────────────────────────────────────────────────────────────────
+  # Box of the world medium: half-length 0.6 × lightTrapSize in x and y (9 cm);
+  # in z: worldHalfZ_mm, or automatic = 0.6 × lightTrapSize + pmtLength (182 mm).
+  # The beam source must be inside the world (a source outside is rejected at run time).
+  worldHalfZ_mm: 0.0              # 0 = automatic; raise to start the beam farther from the sample
 
 source:
   particle: opticalphoton         # Geant4 particle name

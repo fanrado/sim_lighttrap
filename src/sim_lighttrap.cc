@@ -62,6 +62,17 @@ static bool parseWorldMediumArg(const std::string& arg, std::string& value)
     std::exit(2);
 }
 
+// Parses "pmt_qe=<file>" (also --pmt_qe=, --pmt-qe=, pmt-qe=): PMT QE table.
+static bool parsePMTQEArg(const std::string& arg, std::string& value)
+{
+    std::string key = arg;
+    while (!key.empty() && key[0] == '-') key.erase(0, 1);
+    const std::string k1 = "pmt_qe=", k2 = "pmt-qe=";
+    if (key.rfind(k1, 0) == 0)      { value = key.substr(k1.size()); return true; }
+    else if (key.rfind(k2, 0) == 0) { value = key.substr(k2.size()); return true; }
+    return false;
+}
+
 static void usage()
 {
     std::cerr <<
@@ -72,7 +83,9 @@ static void usage()
         "                     bare beam -> PMT reference with the identical geometry (off);\n"
         "                     overrides geometry.withSample in the YAML\n"
         "  world_medium=...   medium filling the beam path and the gap: gar (argon gas, 1 atm,\n"
-        "                     default) | lar (liquid argon) | vacuum; overrides geometry.worldMedium\n";
+        "                     default) | lar (liquid argon) | vacuum; overrides geometry.worldMedium\n"
+        "  pmt_qe=<file>      PMT quantum-efficiency table '<wavelength_nm> <QE>' (fraction or %);\n"
+        "                     replaces the flat QE band; overrides geometry.pmtQEFile\n";
 }
 
 static std::string d2s(double v)
@@ -87,12 +100,14 @@ int main(int argc, char** argv)
     // Separate YAML config file, optional Geant4 macro file and with_sample flag
     std::string configFile, macroFile;
     bool withSampleArg = true, hasWithSampleArg = false;
-    std::string worldMediumArg;
+    std::string worldMediumArg, pmtQEArg;
+    bool hasPMTQEArg = false;
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
         if (arg == "-h" || arg == "--help") { usage(); return 0; }
         if (parseWithSampleArg(arg, withSampleArg)) { hasWithSampleArg = true; continue; }
         if (parseWorldMediumArg(arg, worldMediumArg)) continue;
+        if (parsePMTQEArg(arg, pmtQEArg)) { hasPMTQEArg = true; continue; }
         if (isYamlFile(arg))
             configFile = arg;
         else
@@ -109,6 +124,11 @@ int main(int argc, char** argv)
     const bool hasWorldMediumArg = !worldMediumArg.empty();
     if (hasWorldMediumArg)
         cfg.worldMedium = worldMediumArg;        // CLI overrides YAML
+    if (hasPMTQEArg)
+        cfg.pmtQEFile = pmtQEArg;                // CLI overrides YAML ("" = flat band)
+    if (!cfg.pmtQEFile.empty())
+        std::cout << "[sim_lighttrap] pmt_qe = " << cfg.pmtQEFile
+                  << (hasPMTQEArg ? " (command line)" : " (YAML)") << "\n";
     std::cout << "[sim_lighttrap] with_sample = " << (cfg.withSample ? "on" : "off")
               << (hasWithSampleArg ? " (command line)" : hasConfig ? " (YAML)" : " (default)") << "\n";
     std::cout << "[sim_lighttrap] world_medium = " << cfg.worldMedium
@@ -137,10 +157,11 @@ int main(int argc, char** argv)
     // ── Apply YAML settings via the existing messenger commands ──────────────
     // Geometry parameters (/detector/ messenger — DeclareProperty expects G4
     // internal units: mm for length).
-    if (!hasConfig && (hasWithSampleArg || hasWorldMediumArg)) {
+    if (!hasConfig && (hasWithSampleArg || hasWorldMediumArg || hasPMTQEArg)) {
         // No YAML: only the command-line switches change the default geometry.
         UImanager->ApplyCommand(std::string("/detector/withSample ") + (cfg.withSample ? "true" : "false"));
         UImanager->ApplyCommand("/detector/worldMedium " + cfg.worldMedium);
+        UImanager->ApplyCommand("/detector/pmtQEFile " + cfg.pmtQEFile);
         UImanager->ApplyCommand("/run/reinitializeGeometry");
         // /run/reinitializeGeometry only flags the rebuild; force it now so the
         // sample-free geometry is what the viewer / volume dump / first run sees.
@@ -167,6 +188,7 @@ int main(int argc, char** argv)
         UImanager->ApplyCommand("/detector/pmtQE "               + d2s(cfg.pmtQE));
         UImanager->ApplyCommand("/detector/pmtQEmin "            + d2s(cfg.pmtQEmin_nm));
         UImanager->ApplyCommand("/detector/pmtQEmax "            + d2s(cfg.pmtQEmax_nm));
+        UImanager->ApplyCommand("/detector/pmtQEFile "           + cfg.pmtQEFile);
         UImanager->ApplyCommand("/run/reinitializeGeometry");
         // Rebuild immediately (reinitializeGeometry only flags it), so that a
         // macro drawing or dumping the geometry before /run/beamOn sees the

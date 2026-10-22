@@ -73,6 +73,8 @@ MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
       pmtQEmin_nm,          "PMT QE band lower edge [nm, default 110]");
   fMessenger->DeclareProperty("pmtQEmax",
       pmtQEmax_nm,          "PMT QE band upper edge [nm, default 500]");
+  fMessenger->DeclareProperty("pmtQEFile",
+      fPMTQEFile,           "PMT QE table file '<wavelength_nm> <QE>' (overrides the flat band); empty = flat");
 
   // ── Default geometry parameters ─────────────────────────────────────────────
   fWithSample           = true;     // sample in the beam by default
@@ -91,6 +93,7 @@ MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
   pmtQE                 = 1.0;      // ideal PMT: 100 % QE ...
   pmtQEmin_nm           = 110.;     // ... from 110 nm ...
   pmtQEmax_nm           = 500.;     // ... to 500 nm, 0 outside
+  fPMTQEFile            = "";       // no table: ideal flat QE unless a file is given
 
   // ── Photon energy sampling points ───────────────────────────────────────────
   // 13 wavelengths [nm]: { 530, 425, 400, 340, 305, 160, 145, 135, 128, 125, 120, 115, 106 }
@@ -665,8 +668,10 @@ void MyLightTrapConstruction::ConstructSDandField()
 {
   // PMT photocathode: terminal counter, flat QE inside [pmtQEmin, pmtQEmax] nm
   // (default 100 % over 110–500 nm) → ntuples 6 (PMTPhotons) / 7 (PMTHits)
-  MyPMTDetector *pmtDet = new MyPMTDetector("PMTDetector", pmtQE, pmtQEmin_nm, pmtQEmax_nm);
+  // or, when /detector/pmtQEFile is set, the tabulated QE(λ) from that file.
+  MyPMTDetector *pmtDet = new MyPMTDetector("PMTDetector", pmtQE, pmtQEmin_nm, pmtQEmax_nm, fPMTQEFile);
   logicPMTPhotocathode->SetSensitiveDetector(pmtDet);
+  fPMTQEDescription = pmtDet->Description();
 
   // First-layer backplane counter: pass-through counter (killTrack=false) → ntuple 4.
   // Sits 0.01 mm behind the first-layer back face (TIR-aware); records photons that

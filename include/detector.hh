@@ -2,6 +2,8 @@
 #define DETECTOR_HH
 
 #include "G4VSensitiveDetector.hh"
+#include <vector>
+#include <string>
 
 #include "G4RunManager.hh"
 #include "G4SystemOfUnits.hh"
@@ -34,11 +36,22 @@ private:
 class MyPMTDetector : public G4VSensitiveDetector
 {
 public:
-  MyPMTDetector(G4String name, G4double qe, G4double wlMin_nm, G4double wlMax_nm);
+  // Flat QE `qe` inside [wlMin_nm, wlMax_nm] (0 outside).  If `qeFile` is not
+  // empty, a 2-column "<wavelength_nm> <QE>" table is loaded instead and used
+  // with linear interpolation (0 outside the tabulated range; values > 1 are
+  // taken as percent).
+  MyPMTDetector(G4String name, G4double qe, G4double wlMin_nm, G4double wlMax_nm,
+                const G4String& qeFile = "");
   ~MyPMTDetector();
 
-  // Efficiency at a given wavelength [nm]: qe inside the band, 0 outside.
+  // Efficiency at a given wavelength [nm].
   G4double Efficiency(G4double wl_nm) const;
+  G4bool   HasTable() const { return !fTableWl.empty(); }
+  G4String Description() const;   // one-line summary for the run printout
+
+  // Load "<wavelength_nm> <QE>" (comments after '#', blank lines skipped);
+  // returns false if the file cannot be read or has < 2 rows.
+  static G4bool LoadQETable(const G4String& path, std::vector<double>& wl, std::vector<double>& qe);
 
 private:
   virtual G4bool ProcessHits(G4Step *, G4TouchableHistory *);
@@ -46,6 +59,9 @@ private:
   G4double fQE;
   G4double fWlMin;   // nm
   G4double fWlMax;   // nm
+  G4String fQEFile;
+  std::vector<double> fTableWl;  // ascending nm
+  std::vector<double> fTableQE;  // fraction 0..1
 };
 
 #endif

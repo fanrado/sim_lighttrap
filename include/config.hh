@@ -100,6 +100,11 @@ struct SimConfig {
     double pmtQE                    = 1.0;    // flat quantum efficiency inside [pmtQEmin, pmtQEmax]
     double pmtQEmin_nm              = 110.0;  // QE window lower edge [nm]
     double pmtQEmax_nm              = 500.0;  // QE window upper edge [nm]
+    // Optional measured QE curve: 2-column text file "<wavelength_nm> <QE>"
+    // (QE as a fraction 0..1, or in % if any value > 1). When set it replaces
+    // the flat band above; QE = 0 outside the tabulated wavelength range.
+    // Path relative to the YAML file or the cwd, or absolute; stored resolved.
+    std::string pmtQEFile;
 
     // ── Source (messenger: /gps/<param>) ────────────────────────────────────
     std::string particle      = "opticalphoton";

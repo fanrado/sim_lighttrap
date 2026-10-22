@@ -25,7 +25,8 @@ static std::string dirOf(const std::string& path)
 // current working directory, then against the config file's directory.
 static void loadEmissionFile(const std::string& label, const std::string& cfgDir,
                              const std::string& relOrAbs,
-                             std::vector<double>& wl, std::vector<double>& val)
+                             std::vector<double>& wl, std::vector<double>& val,
+                             std::string& usedPath)
 {
     std::vector<std::string> tried;
     std::ifstream in;
@@ -41,7 +42,7 @@ static void loadEmissionFile(const std::string& label, const std::string& cfgDir
         in.clear();
     }
     if (!in) {
-        std::string msg = "SimConfig: cannot open ptp.wlscomponent_file. Tried:";
+        std::string msg = "SimConfig: cannot open " + label + " table. Tried:";
         for (const auto& t : tried) msg += "\n  " + t;
         throw std::runtime_error(msg);
     }
@@ -55,10 +56,24 @@ static void loadEmissionFile(const std::string& label, const std::string& cfgDir
         if (ss >> w >> v) { wl.push_back(w); val.push_back(v); }
     }
     if (wl.size() < 2)
-        throw std::runtime_error("SimConfig: ptp.wlscomponent_file '" + used +
+        throw std::runtime_error("SimConfig: " + label + " table '" + used +
                                  "' needs at least 2 data rows, got " + std::to_string(wl.size()));
-    std::cout << "[SimConfig] " << label << " emission spectrum from " << used
+    std::cout << "[SimConfig] " << label << " table from " << used
               << " (" << wl.size() << " points)\n";
+    usedPath = used;
+}
+
+// Resolve a file given relative to the YAML directory or the cwd (or absolute).
+static std::string resolvePath(const std::string& cfgDir, const std::string& relOrAbs)
+{
+    const bool absolute = !relOrAbs.empty() && (relOrAbs[0] == '/' || relOrAbs[0] == '\\');
+    for (const std::string& c : absolute ? std::vector<std::string>{ relOrAbs }
+                                         : std::vector<std::string>{ relOrAbs, cfgDir + relOrAbs }) {
+        std::ifstream in(c);
+        if (in) return c;
+    }
+    throw std::runtime_error("SimConfig: file not found: " + relOrAbs +
+                             (absolute ? "" : " (tried cwd and " + cfgDir + ")"));
 }
 
 static MaterialsConfig parseMaterials(const YAML::Node& mat, const std::string& cfgDir)
@@ -72,9 +87,11 @@ static MaterialsConfig parseMaterials(const YAML::Node& mat, const std::string& 
         m.ptp.wlscomponent = readVec(n, "wlscomponent");
         if (n["wlstimeconstant_ns"])
             m.ptp.wlstimeconstant_ns = n["wlstimeconstant_ns"].as<double>();
-        if (n["wlscomponent_file"])
-            loadEmissionFile("pTP", cfgDir, n["wlscomponent_file"].as<std::string>(),
-                             m.ptp.emissionWl_nm, m.ptp.emissionIntensity);
+        if (n["wlscomponent_file"]) {
+            std::string used;
+            loadEmissionFile("pTP emission", cfgDir, n["wlscomponent_file"].as<std::string>(),
+                             m.ptp.emissionWl_nm, m.ptp.emissionIntensity, used);
+        }
         validateOpticalArray(m.ptp.rindex,       "ptp.rindex");
         validateOpticalArray(m.ptp.abslen_m,     "ptp.abslen_m");
         validateOpticalArray(m.ptp.wlsabslen_m,  "ptp.wlsabslen_m");
@@ -163,6 +180,17 @@ SimConfig SimConfig::fromFile(const std::string& path)
         if (geo["pmtQE"])                     cfg.pmtQE                    = geo["pmtQE"].as<double>();
         if (geo["pmtQEmin_nm"])               cfg.pmtQEmin_nm              = geo["pmtQEmin_nm"].as<double>();
         if (geo["pmtQEmax_nm"])               cfg.pmtQEmax_nm              = geo["pmtQEmax_nm"].as<double>();
+        if (geo["pmtQEFile"] && !geo["pmtQEFile"].as<std::string>().empty()) {
+            // Validate the table now (clear error at start-up) and store the resolved path.
+            std::vector<double> wl, qe;
+            std::string used;
+            loadEmissionFile("PMT QE", dirOf(path), geo["pmtQEFile"].as<std::string>(), wl, qe, used);
+            for (std::size_t i = 0; i < qe.size(); ++i)
+                if (qe[i] < 0.0 || qe[i] > 100.0)
+                    throw std::runtime_error("SimConfig: pmtQEFile '" + used + "': QE value " +
+                                             std::to_string(qe[i]) + " out of range [0, 1] (or [0, 100] %)");
+            cfg.pmtQEFile = resolvePath(dirOf(path), geo["pmtQEFile"].as<std::string>());
+        }
         if (cfg.pmtDiameter_mm <= 0.0)
             throw std::runtime_error("SimConfig: geometry.pmtDiameter_mm must be > 0");
         if (cfg.pmtWindowThickness_mm < 0.0)

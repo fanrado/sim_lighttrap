@@ -143,7 +143,7 @@ faceplate Ø 28.2 ± 0.8 mm, photocathode Ø 23 mm min. effective area, body
 | Photocathode material | same as the faceplate (MgF2; LAr if the faceplate is disabled), so no Fresnel boundary at its face |
 | Vacuum interior       | G4_Galactic with RINDEX = 1, r < R_tube − wall, from the faceplate to the end cap |
 | Envelope / end cap    | G4_Pyrex_Glass without optical properties → perfectly absorbing; wall ~pmtWallThickness_mm~ (1 mm); length ~pmtLength_mm~ (92 mm) |
-| Sensitive detector    | ~MyPMTDetector~: terminal counter, flat QE ~pmtQE~ inside [~pmtQEmin_nm~, ~pmtQEmax_nm~] (default 1.0 over 110–500 nm), 0 outside |
+| Sensitive detector    | ~MyPMTDetector~: terminal counter, flat QE ~pmtQE~ inside [~pmtQEmin_nm~, ~pmtQEmax_nm~] (default 1.0 over 110–500 nm), 0 outside — or the interpolated table from ~pmtQEFile~ |
 | Output                | ntuple 6 ~PMTPhotons~ (pre-QE), ntuple 7 ~PMTHits~ (post-QE) |
 | Not modelled          | dynodes, pins, photocathode reflectivity, faceplate AR coating, real Cs-Te QE curve |
 
@@ -173,6 +173,8 @@ faceplate Ø 28.2 ± 0.8 mm, photocathode Ø 23 mm min. effective area, body
 /detector/pmtQE              <double> # flat QE inside the band
 /detector/pmtQEmin           <double> # QE band lower edge [nm]
 /detector/pmtQEmax           <double> # QE band upper edge [nm]
+/detector/pmtQEFile          <string> # "<wl_nm> <QE>" table replacing the flat band (empty = flat)
+/detector/worldHalfZ         <double> # world half-length in z [mm], 0 = automatic
 #+END_EXAMPLE
 
 After any messenger command: ~/run/reinitializeGeometry~ then ~/run/beamOn~

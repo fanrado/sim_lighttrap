@@ -326,7 +326,7 @@ def test_first_layer_gap_measured_to_pmt_face(construction_code):
 
 def test_sd_wiring(construction_code):
     sd = construction_code[construction_code.index("ConstructSDandField"):]
-    assert re.search(r'new\s+MyPMTDetector\s*\(\s*"PMTDetector"\s*,\s*pmtQE\s*,\s*pmtQEmin_nm\s*,\s*pmtQEmax_nm\s*\)', sd)
+    assert re.search(r'new\s+MyPMTDetector\s*\(\s*"PMTDetector"\s*,\s*pmtQE\s*,\s*pmtQEmin_nm\s*,\s*pmtQEmax_nm\s*,\s*fPMTQEFile\s*\)', sd)
     assert "logicPMTPhotocathode->SetSensitiveDetector(pmtDet)" in sd
     assert "logicFirstLayerExitDet->SetSensitiveDetector" in sd
     assert "logicFirstLayerEdgeDet->SetSensitiveDetector" in sd
@@ -438,6 +438,49 @@ def test_source_outside_world_is_rejected_and_world_is_resizable():
         assert abs(z) < 182.0, f"{mac_file}: source z = {z} mm is outside the default world"
 
 
+def test_pmt_qe_table_support():
+    """pmtQEFile: YAML key, CLI pmt_qe=, messenger, loader with interpolation, example file."""
+    hh = read(DETECTOR_HH)
+    assert "LoadQETable" in hh and "fTableWl" in hh and "qeFile" in hh
+    cc = strip_comments(read(DETECTOR_CC))
+    body = cc[cc.index("MyPMTDetector::Efficiency"):cc.index("MyPMTDetector::Description")]
+    assert "upper_bound" in body, "table must be linearly interpolated"
+    assert re.search(r"wl_nm\s*<\s*fTableWl\.front\(\)\s*\|\|\s*wl_nm\s*>\s*fTableWl\.back\(\)", body), "QE = 0 outside the table"
+    assert "PMTQEFile" in cc and "FatalException" in cc, "unreadable table must abort"
+    assert re.search(r'DeclareProperty\s*\(\s*"pmtQEFile"\s*,\s*fPMTQEFile', read(CONSTRUCTION_CC))
+    assert re.search(r'new\s+MyPMTDetector\s*\([^;]*fPMTQEFile\s*\)', strip_comments(read(CONSTRUCTION_CC)))
+    main = strip_comments(read(MAIN_CC))
+    assert "parsePMTQEArg" in main and '"pmt_qe="' in main and '"/detector/pmtQEFile "' in main
+    assert 'geo["pmtQEFile"]' in strip_comments(read(CONFIG_CC))
+    assert "std::string pmtQEFile;" in strip_comments(read(CONFIG_HH))
+    # example table: 2 columns, QE in [0,1], covers the R6836 115-320 nm band, 0 beyond it
+    rows = []
+    for line in read("input/pmt_qe_r6836_example.dat").splitlines():
+        line = line.split("#")[0].strip()
+        if line:
+            w, q = line.split()
+            rows.append((float(w), float(q)))
+    assert len(rows) >= 5
+    assert all(0.0 <= q <= 1.0 for _, q in rows)
+    assert min(w for w, _ in rows) <= 115 and max(w for w, _ in rows) >= 320
+    peak_w = max(rows, key=lambda r: r[1])[0]
+    assert 200 <= peak_w <= 260, "Cs-Te solar-blind peak expected around 240 nm"
+    assert dict(rows)[254.0] == pytest.approx(0.137, abs=0.005), "anchored to 28 mA/W at 254 nm"
+    # the shipped YAML keeps the flat ideal QE (file commented out) and documents the key
+    with open(CONFIG_YAML) as fh:
+        g = yaml.safe_load(fh)["geometry"]
+    assert "pmtQEFile" not in g or not g["pmtQEFile"]
+    assert "pmtQEFile" in read(CONFIG_YAML)
+
+
+def test_yaml_geometry_block_covers_requested_items():
+    with open(CONFIG_YAML) as fh:
+        g = yaml.safe_load(fh)["geometry"]
+    for key in ("pTPlayerThickness_mm", "pTPsigmaAlpha_rad", "lightTrapSize_cm", "uvAcrylicThickness_mm",
+                "LArThickness_mm", "worldMedium", "worldHalfZ_mm", "withSample"):
+        assert key in g, f"geometry.{key} missing from sim_config.yaml"
+
+
 def test_scan_script_runs_with_and_without_sample():
     src = read("scripts/scan_wavelength.py")
     assert "with_sample=" in src and '"--sample"' in src
@@ -457,15 +500,14 @@ def test_scan_script_exists_and_uses_pmt_trees():
 def test_pmt_detector_class_declared():
     hh = strip_comments(read(DETECTOR_HH))
     assert re.search(r"class\s+MyPMTDetector\s*:\s*public\s+G4VSensitiveDetector", hh)
-    assert re.search(r"MyPMTDetector\s*\(\s*G4String\s+\w+\s*,\s*G4double\s+\w+\s*,\s*G4double\s+\w+\s*,\s*G4double\s+\w+\s*\)", hh)
+    assert re.search(r"MyPMTDetector\s*\(\s*G4String\s+\w+\s*,\s*G4double\s+\w+\s*,\s*G4double\s+\w+\s*,\s*G4double\s+\w+\s*,\s*const\s+G4String&\s+\w+\s*=\s*\"\"\s*\)", hh)
     assert re.search(r"G4double\s+Efficiency\s*\(\s*G4double", hh)
 
 
 def test_pmt_detector_efficiency_is_flat_inside_band_zero_outside():
     cc = strip_comments(read(DETECTOR_CC))
-    body = re.search(r"G4double\s+MyPMTDetector::Efficiency\s*\([^)]*\)\s*const\s*\{(.*?)\}", cc, re.S)
-    assert body, "MyPMTDetector::Efficiency missing"
-    b = body.group(1)
+    start = cc.index("G4double MyPMTDetector::Efficiency")
+    b = cc[start:cc.index("MyPMTDetector::Description", start)]
     assert re.search(r"wl_nm\s*<\s*fWlMin\s*\|\|\s*wl_nm\s*>\s*fWlMax", b)
     assert "return 0." in b and "return fQE" in b
 

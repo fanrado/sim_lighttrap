@@ -83,6 +83,7 @@ refracts into the vacuum and is absorbed on the envelope.
 | `pmtQE`                  | `/detector/pmtQE`          | 1.0     | flat quantum efficiency inside the QE band |
 | `pmtQEmin_nm`            | `/detector/pmtQEmin`       | 110     | QE band lower edge [nm] |
 | `pmtQEmax_nm`            | `/detector/pmtQEmax`       | 500     | QE band upper edge [nm]; QE = 0 outside |
+| `pmtQEFile`              | `/detector/pmtQEFile`      | *(none)*| 2-column text table `<wavelength_nm> <QE>`; replaces the flat band (CLI `pmt_qe=<file>`) |
 
 The photocathode is a thin disc on the inner faceplate surface whose material
 matches the faceplate (MgF2; LAr if the faceplate is disabled), so it adds no
@@ -140,6 +141,27 @@ face, 0.01 mm behind the acrylic so TIR-trapped light is not counted, and
   aborts with `SourceOutsideWorld` and the world size in the message. To start
   the beam farther away, enlarge the world with `geometry.worldHalfZ_mm`
   (`/detector/worldHalfZ`, in mm, 0 = automatic).
+
+- **PMT quantum efficiency from a text file.** Instead of the flat band, give
+  a two-column table `<wavelength_nm> <QE>` (QE as a fraction, or in % if any
+  value exceeds 1; `#` comments and blank lines allowed, any row order). It is
+  linearly interpolated and QE = 0 outside the tabulated range. Three ways to
+  set it, the command line winning over the YAML:
+
+  ```bash
+  ./sim_lighttrap sim_config.yaml pmt_qe=input/pmt_qe_r6836_example.dat   # command line
+  # sim_config.yaml:   geometry.pmtQEFile: input/pmt_qe_r6836_example.dat  (relative to the YAML or cwd)
+  # macro:             /detector/pmtQEFile pmt_qe_r6836_example.dat  +  /run/reinitializeGeometry
+  ```
+
+  `input/pmt_qe_r6836_example.dat` is an *illustrative* Cs-Te curve anchored
+  only to the datasheet's 28 mA/W at 254 nm (QE 13.7 %); replace it with the
+  measured curve of your tube. The run summary prints which QE is in use
+  (`PMT quantum efficiency : QE table … peak … % at … nm`). Note what the
+  example curve implies: a solar-blind Cs-Te tube is essentially blind above
+  320 nm, i.e. to the pTP emission (340–430 nm); with the sample in the beam it
+  only registers the unshifted light that gets through (1 hit per 2000 beam
+  photons at 128 nm in a test run, against 425 with the ideal flat QE).
 
 - **End-of-run summary.** Every run (batch or Qt session) ends with a block
   like the one below in the terminal / Qt *Output* pane, so the physics can be

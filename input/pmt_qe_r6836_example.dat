@@ -1,0 +1,31 @@
+# PMT quantum efficiency table for sim_lighttrap (geometry.pmtQEFile / /detector/pmtQEFile / pmt_qe=)
+#
+# Format: two columns "<wavelength_nm> <QE>", QE as a fraction (0..1) or in percent
+# (if any value is > 1 the whole table is read as %). Lines starting with '#' and
+# blank lines are ignored; rows may be in any order; QE = 0 outside the tabulated range.
+#
+# ILLUSTRATIVE curve for a Hamamatsu R6836 (Cs-Te, MgF2 window, "200M" response,
+# 115-320 nm). The only datasheet number is the typical cathode radiant sensitivity
+# 28 mA/W at 254 nm -> QE = S * 1239.84 / lambda = 13.7 %. The rest of the shape is a
+# generic Cs-Te solar-blind curve scaled to that point. REPLACE with the measured /
+# vendor QE curve of your tube before using the results quantitatively.
+#
+# wl_nm   QE
+ 110     0.000
+ 115     0.040
+ 120     0.065
+ 130     0.090
+ 140     0.105
+ 160     0.120
+ 180     0.130
+ 200     0.135
+ 220     0.138
+ 240     0.138
+ 254     0.137
+ 270     0.125
+ 290     0.085
+ 300     0.055
+ 310     0.025
+ 320     0.008
+ 330     0.002
+ 340     0.000

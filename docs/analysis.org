@@ -127,6 +127,12 @@ repeats the run over beam wavelengths for the transmission spectrum.
 
 * Input Data
 
+** pmt_qe_r6836_example.dat
+
+Illustrative PMT quantum-efficiency table ("<wavelength_nm> <QE>") for
+~geometry.pmtQEFile~ / ~/detector/pmtQEFile~ / ~pmt_qe=~; replace with the
+measured curve. Linearly interpolated, 0 outside the tabulated range.
+
 ** ptp_emission.dat
 
 Wavelength (nm) vs. relative intensity of the pTP emission spectrum; used when

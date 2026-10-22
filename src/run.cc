@@ -162,7 +162,8 @@ void MyRunAction::EndOfRunAction(const G4Run* run)
     G4cout << "  sample (pTP on acrylic) : " << (det->WithSample() ? "IN the beam (with_sample=on)" : "ABSENT (with_sample=off, reference run)") << "\n"
            << "  world medium            : " << det->WorldMedium()
            << "   gap " << det->GapThickness()/mm << " mm, PMT faceplate " << det->WindowThickness()/mm
-           << " mm, photocathode Ø " << det->PMTDiameter()/mm << " mm\n";
+           << " mm, photocathode Ø " << det->PMTDiameter()/mm << " mm\n"
+           << "  PMT quantum efficiency  : " << det->PMTQEDescription() << "\n";
   G4cout << "  beam photons            : " << std::setw(8) << c.nPrimary << "\n"
          << "  WLS photons born in pTP : " << std::setw(8) << c.nWLSpTP      << "  (" << pct(c.nWLSpTP) << " of beam)";
   if (c.nWLSother) G4cout << "   [+" << c.nWLSother << " born elsewhere]";

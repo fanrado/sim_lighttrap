@@ -33,6 +33,7 @@ public:
   G4double WorldHalfZ()      const;   // effective value (auto resolved)
   G4double PMTDiameter()     const { return pmtDiameter; }
   G4double WindowThickness() const { return pmtWindowThickness; }
+  G4String PMTQEDescription() const { return fPMTQEDescription; }
 
 private:
   virtual void ConstructSDandField();
@@ -54,6 +55,7 @@ private:
   G4double pmtQE;                 // flat QE inside the band              (default 1.0)
   G4double pmtQEmin_nm;           // QE band lower edge [nm]              (default 110)
   G4double pmtQEmax_nm;           // QE band upper edge [nm]              (default 500)
+  G4String fPMTQEFile;            // optional "<wl_nm> <QE>" table; empty = flat band
 
   // ── World ────────────────────────────────────────────────────────────────────
   G4Box             *solidWorld;
@@ -86,6 +88,7 @@ private:
 
   // ── Runtime messenger ────────────────────────────────────────────────────────
   G4GenericMessenger *fMessenger;
+  G4String fPMTQEDescription;     // filled in ConstructSDandField for the run summary
 
   // ── Config snapshot (set at construction, used by DefineMaterials) ───────────
   SimConfig fCfg;
