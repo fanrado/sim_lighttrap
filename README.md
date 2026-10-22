@@ -248,18 +248,14 @@ end-of-run summary.
     nEvents: 100000
   ```
 
-**Transmission spectrum scan.** The bench measurement scans the beam
-wavelength; `scripts/scan_wavelength.py` runs the simulation per wavelength
-with and without the sample (each run in its own scratch directory, so the
-fixed output name is never overwritten), tabulates photocathode hits per beam
-photon split into unshifted (transmitted) and pTP-shifted light, and prints the
-transmission `T = hits(with sample) / hits(without)`:
-
-```bash
-python3.13 scripts/scan_wavelength.py --build build --events 5000 --wl 115 120 128 140 160 200 250 300
-python3.13 scripts/scan_wavelength.py --build build --events 5000 --range 110 320 10   # 110..320 nm in 10 nm steps
-python3.13 scripts/scan_wavelength.py --build build --events 5000 --wl 128 --sample on  # sample runs only
-```
+**Transmission measurement.** Run `main.sh` twice with the same beam and
+macro, once with `WITH_SAMPLE=on` and once with `WITH_SAMPLE=off`; the output
+files are named after the switch (`output_on_gar.root`, `output_off_gar.root`).
+The transmission at that wavelength is `T = PMT hits(on) / PMT hits(off)`, read
+from the end-of-run summary or from the `PMTHits` tree (`primary = 1` selects
+the unshifted beam light, `0` the pTP-shifted light). Change the beam
+wavelength with `source.energy_eV` in the YAML, or use `run_vuv_spectrum.mac` /
+`run_285.mac` for a spectrum.
 
 Output: `output_apexltsim<runID>.root` in the working directory, with trees
 `Energy`, `Primary`, `WLSPhoton`, `OpticalValidation`, `FirstLayerBackplane`,
@@ -344,17 +340,14 @@ python3.13 -m pytest tests/ -v                          # full suite
 python3.13 -m pytest tests/test_pmt_detector_mode.py -v # PMT geometry/readout only
 ```
 
-Tests of the two-layer design that are still present as untracked files are
-excluded from collection in `tests/conftest.py`.
-
 ## Visualization
 
-The `vis.mac` macro provides commands for rendering the simulation:
-
-- It opens an OpenGL viewer.
-- Sets an initial viewpoint (which can be changed using GUI buttons).
-- Draws volumes, trajectories, axes, and displays event IDs.
-- Allows you to capture snapshots if needed.
+`vis.mac` (run with no macro argument, or `MACRO=vis.mac` in `main.sh`) opens
+the Qt3D viewer with the geometry, axes and a 10 cm scale, preloads the 14 mm
+beam and adds Camera / Run menus (beamOn 10 or 1000, redraw). Trajectories
+accumulate across events. `vis_roughness.mac` is the same viewer with the bumpy
+pTP demonstrator film and a 400 nm beam; `draw_offscreen.mac` produces the
+same views headlessly as PNG files.
 
 ---
 

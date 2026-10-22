@@ -553,20 +553,6 @@ def test_main_sh_run_script():
         "cmake must copy main.sh into the build directory"
 
 
-def test_scan_script_runs_with_and_without_sample():
-    src = read("scripts/scan_wavelength.py")
-    assert "with_sample=" in src and '"--sample"' in src
-    assert "T_total" in src and "T_direct" in src and "T_wls" in src
-
-
-def test_scan_script_exists_and_uses_pmt_trees():
-    src = read("scripts/scan_wavelength.py")
-    assert '"PMTHits"' in src and '"Primary"' in src and '"WLSPhoton"' in src
-    assert "/gps/pos/radius 7 mm" in src and "/gps/pos/shape Circle" in src
-    assert "1239.84193" in src
-    assert "cwd=rundir" in src, "each wavelength must run in its own directory (fixed output file name)"
-
-
 # ── MyPMTDetector ────────────────────────────────────────────────────────────
 
 def test_pmt_detector_class_declared():
