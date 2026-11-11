@@ -1,6 +1,6 @@
 #+TITLE: Physics Processes & Primary Generator
 #+AUTHOR: sim_lighttrap team
-#+DATE: 2026-10-21
+#+DATE: 2026-11-11
 #+OPTIONS: toc:t num:t
 
 * Physics List
@@ -22,7 +22,43 @@ The simulation uses a two-component physics list registered in ~src/physics.cc~:
 | G4OpRayleigh         | Rayleigh scattering (relevant in LAr, length ~ 90 cm)             |
 | G4OpBoundaryProcess  | Snell's law refraction / Fresnel reflection at interfaces         |
 | G4OpWLS              | Wavelength shifting: absorption + delayed re-emission             |
+| G4OpMieHG            | Elastic scattering of the shifted light inside the pTP film (~MIEHG~ properties, Henyey-Greenstein; off when the scattering length is 0) |
 | G4Scintillation      | Primary scintillation photon generation in LAr                    |
+
+* pTP Film Optics
+
+Beyond its refractive index and its WLS absorption / emission, the pTP film
+carries three optical options. They are set in ~sim_config.yaml~ under
+~materials.ptp~ / ~geometry~ and as ~/detector/~ commands; the YAML is applied
+first, a macro can override before ~/run/reinitializeGeometry~.
+
+| YAML key                            | Messenger                      | Default | Meaning                                                                                                   |
+|-------------------------------------+--------------------------------+---------+-----------------------------------------------------------------------------------------------------------|
+| materials.ptp.scatteringLength_um   | /detector/pTPscatteringLength (mm) | 4.0 | elastic scattering free path of the emitted light inside the film (~G4OpMieHG~, ~MIEHG~); 0 or null = clear film |
+| materials.ptp.anisotropy_g          | /detector/pTPanisotropy        | 0.8     | Henyey-Greenstein asymmetry of that scattering (0 isotropic, 0.6-0.9 forward)                             |
+| materials.ptp.quantumYield          | /detector/pTPquantumYield      | 0.82    | mean WLS photons per absorbed VUV photon (~WLSMEANNUMBERPHOTONS~, Poisson); null = 1                       |
+| geometry.pTPsigmaAlpha_rad          | /detector/pTPsigmaAlpha        | 0       | 0 = ~polished~ faces (specular Fresnel / TIR); > 0 = ~ground~ faces with ~SPECULARLOBECONSTANT = 1~, reflections specular about random facets of that slope RMS |
+| geometry.pTPsurfaceLambertian       | /detector/pTPsurfaceLambertian | false   | legacy surface: ~ground~ without lobe constants, which in Geant4 makes every reflection Lambertian whatever ~sigmaAlpha~ |
+
+Why these options exist: a smooth film traps about 90 % of the WLS light by
+total internal reflection and collects about 5 % on the photocathode at any
+thickness; a surface roughness changes that number but not its thickness
+dependence; only scattering /inside/ the film (the number of scatterings
+grows as thickness / scattering length) makes the collected fraction rise
+with thickness, as the measured transmittance does. With the default
+scattering (4 um, g 0.8) a 5 um film collects about 15 %.
+
+Before this option the faces were declared ~ground~ without lobe constants,
+which Geant4 treats as Lambertian (~G4OpBoundaryProcess::ChooseReflection~
+falls back to Lambertian when the lobe, spike and backscatter constants are
+all zero): that gave the 23 % "flat film" value quoted in earlier versions
+of the README; the same value is reproduced with ~pTPsurfaceLambertian:
+true~. The scattering length and anisotropy are not measured for these
+films (bracket 2.5-7 um, 0.6-0.9 from the pTP-SD-sim study); the end-of-run
+summary prints the surface model, the scattering parameters and the quantum
+yield in effect. The companion Python package ~wlseff_meas_setup_MC~
+(~docs/GEANT4_COMPARISON.md~ there) compares the two simulations thickness by
+thickness.
 
 * Primary Particle Generator
 
@@ -42,6 +78,13 @@ The generator is implemented via ~G4GeneralParticleSource~ (GPS) in ~src/generat
 The random polarisation is set in C++ code: a random rotation angle is drawn and
 used to construct a polarisation vector that remains strictly perpendicular to the
 photon momentum, as required by Geant4 for ~opticalphoton~.
+
+** Gaussian beam
+
+With ~source.sigmaX_cm~ and ~source.sigmaY_cm~ both > 0 the uniform disk is
+replaced by the GPS ~Beam~ type with those standard deviations (shape
+~Circle~ of radius 0, so that nothing uniform is added to the Gaussian); the
+IFIC beam (FWHM 7 x 5 mm) is ~sigmaX_cm: 0.297~, ~sigmaY_cm: 0.212~.
 
 ** Spectrum runs
 
