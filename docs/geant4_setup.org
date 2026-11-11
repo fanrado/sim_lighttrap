@@ -1,0 +1,84 @@
+#+TITLE: Setting up Geant4 (local PC and dunegpvm)
+#+AUTHOR: sim_lighttrap team
+#+DATE: 2026-11-11
+#+OPTIONS: toc:t num:t
+
+Installation notes for Geant4 itself, moved here from the README appendix.
+Building and running /this/ simulation is in [[file:running.org][Building &
+Running]].
+
+* Set up Geant4 on your local PC (Linux / Mac)
+
+Follow: https://www.youtube.com/playlist?list=PLLybgCU6QCGWgzNYOV0SKen9vqg4KXeVL
+
+** Prerequisites (Linux)
+
+- GCC 9 or higher
+- X11 and OpenGL for visualisation
+
+** Download the source file
+
+#+BEGIN_EXAMPLE
+https://gitlab.cern.ch/geant4/geant4/-/archive/v11.3.2/geant4-v11.3.2.tar.gz
+#+END_EXAMPLE
+
+** Building and installing from source
+
+- Unpack the Geant4 source
+- Configure the build:
+
+#+BEGIN_SRC bash
+cd /path/to
+mkdir geant4-v11.3.0-build
+cmake -DCMAKE_INSTALL_PREFIX=/path/to/geant4-v11.3.0-install -DGEANT4_INSTALL_DATA=ON -DGEANT4_USE_OPENGL_X11=ON /path/to/geant4-v11.3.0
+#+END_SRC
+
+- Build: ~make -jN~
+- Install Geant4 to ~path/to/geant4-v11.3.0-install~: ~make install~
+
+** Post installation
+
+Run ~source path/to/geant4-v11.3.0-install/bin/geant4.sh~, then try to build
+and run one of the Geant4 examples.
+
+On this laptop Geant4 11.3.2 comes from spack instead:
+~export GEANT4_CMAKE_DIR=$(spack location -i geant4)/lib/cmake/Geant4~ and
+~cmake -DGeant4_DIR=$GEANT4_CMAKE_DIR ..~.
+
+* Usage on a PC
+
+#+BEGIN_EXAMPLE
+[everytime]
+cd <local install dir>/share/Geant4/geant4make
+source <local install dir>/geant4make.sh
+
+[work area]
+# copy this <sim_lighttrap> folder to your pc
+cd build
+cmake .. [every time new .cc files are added]
+make     [update changes]
+
+[run]
+./sim_lighttrap                         # interactive (vis.mac)
+./sim_lighttrap run.mac                 # batch via macro
+./sim_lighttrap sim_config.yaml         # batch via YAML config
+./sim_lighttrap sim_config.yaml run.mac # YAML geometry + macro source/run
+./sim_lighttrap det.mac                 # scan detector parameters
+#+END_EXAMPLE
+
+* Set up Geant4 on dunegpvm (Alma 9)
+
+#+BEGIN_SRC bash
+# dunegpvm alma9 binary 11.3.0
+# do this every time
+source /exp/dune/app/users/weishi/G4BinaryAlma9/Geant4-11.3.0-Linux/bin/geant4.sh
+
+cd B1
+cmake .
+make -f Makefile
+./exampleB1
+/run/beamOn 100
+
+# may need to enable OpenGL (on Mac terminal and reboot)
+defaults write org.xquartz.X11 enable_iglx -bool true
+#+END_SRC
