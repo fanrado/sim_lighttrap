@@ -59,7 +59,15 @@ MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
   fMessenger->DeclareProperty("worldHalfZ",
       worldHalfZ,           "World box half-length in z [mm]; 0 = automatic (0.6*side + PMT length)");
   fMessenger->DeclareProperty("pTPsigmaAlpha",
-      pTPsigmaAlpha,        "pTP surface facet-slope RMS [rad]; 0 = perfectly smooth");
+      pTPsigmaAlpha,        "pTP surface facet-slope RMS [rad]; 0 = perfectly smooth (polished); > 0 = specular lobe about random facets");
+  fMessenger->DeclareProperty("pTPsurfaceLambertian",
+      pTPsurfaceLambertian, "legacy surface: 'ground' without lobe constants = Lambertian reflections at both film faces");
+  fMessenger->DeclareProperty("pTPscatteringLength",
+      pTPscatteringLength,  "elastic scattering free path of the emitted light inside the pTP film [mm; e.g. 0.004 = 4 um]; 0 = off");
+  fMessenger->DeclareProperty("pTPanisotropy",
+      pTPanisotropy,        "Henyey-Greenstein asymmetry g of the scattering in the pTP film (0 isotropic, 0.6-0.9 forward)");
+  fMessenger->DeclareProperty("pTPquantumYield",
+      pTPquantumYield,      "mean emitted photons per absorbed VUV photon (WLSMEANNUMBERPHOTONS, Poisson); 1 = one per absorption");
   fMessenger->DeclareProperty("pTPgeomRoughCells",
       pTPgeomRoughCells,    "Geometric pTP roughness: N x N height-map cells on the beam face (0 = flat box)");
   fMessenger->DeclareProperty("pTPgeomRoughAmp",
@@ -94,6 +102,10 @@ MyLightTrapConstruction::MyLightTrapConstruction(const SimConfig& cfg)
   lighttrapsize         = 15.*cm;   // 15 cm × 15 cm first layer (real detector size)
   worldHalfZ            = 0.;       // automatic world z half-length
   pTPsigmaAlpha         = 0.0;      // perfectly smooth pTP surface (no wiggle); rad
+  pTPsurfaceLambertian  = cfg.pTPsurfaceLambertian;
+  pTPscatteringLength   = cfg.materials.ptp.scatteringLength_um.value_or(0.0) * um;
+  pTPanisotropy         = cfg.materials.ptp.anisotropy_g.value_or(0.0);
+  pTPquantumYield       = cfg.materials.ptp.quantumYield.value_or(1.0);
   pTPgeomRoughCells     = 0;        // flat box film by default
   pTPgeomRoughAmp       = 0.*mm;
   pTPgeomRoughSeed      = 12345;
@@ -288,6 +300,43 @@ void MyLightTrapConstruction::DefinePTPMaterial()
   mpt->AddConstProperty("WLSTIMECONSTANT",
       fCfg.materials.ptp.wlstimeconstant_ns.value_or(1.136) * ns);
   pTP->SetMaterialPropertiesTable(mpt);
+  ApplyPTPOpticalOptions();
+}
+
+// Elastic scattering of the emitted light inside the film (G4OpMieHG, part of
+// G4OpticalPhysics) and the quantum yield. Called when the material is
+// defined and again at every Construct(), so that the /detector/ messenger
+// values set in a macro before /run/reinitializeGeometry take effect.
+//
+//   MIEHG                scattering length (mean free path), one value per energy point
+//   MIEHG_FORWARD        Henyey-Greenstein g of the forward lobe
+//   MIEHG_BACKWARD       g of the backward lobe (unused with FORWARD_RATIO = 1)
+//   MIEHG_FORWARD_RATIO  1: a single Henyey-Greenstein phase function with g
+//   WLSMEANNUMBERPHOTONS mean number of WLS photons per absorbed photon (Poisson)
+void MyLightTrapConstruction::ApplyPTPOpticalOptions()
+{
+  if (!pTP) return;
+  G4MaterialPropertiesTable *mpt = pTP->GetMaterialPropertiesTable();
+  if (!mpt) return;
+  if (mpt->ConstPropertyExists("MIEHG_FORWARD"))      mpt->RemoveConstProperty("MIEHG_FORWARD");
+  if (mpt->ConstPropertyExists("MIEHG_BACKWARD"))     mpt->RemoveConstProperty("MIEHG_BACKWARD");
+  if (mpt->ConstPropertyExists("MIEHG_FORWARD_RATIO")) mpt->RemoveConstProperty("MIEHG_FORWARD_RATIO");
+  if (mpt->GetProperty("MIEHG"))                      mpt->RemoveProperty("MIEHG");
+  if (pTPscatteringLength > 0.) {
+    G4double mie[13];
+    for (G4int i = 0; i < 13; ++i) mie[i] = pTPscatteringLength;
+    mpt->AddProperty("MIEHG", energy, mie, 13);
+    mpt->AddConstProperty("MIEHG_FORWARD",       pTPanisotropy);
+    mpt->AddConstProperty("MIEHG_BACKWARD",      pTPanisotropy);
+    mpt->AddConstProperty("MIEHG_FORWARD_RATIO", 1.0);
+  }
+  if (mpt->ConstPropertyExists("WLSMEANNUMBERPHOTONS")) mpt->RemoveConstProperty("WLSMEANNUMBERPHOTONS");
+  if (pTPquantumYield > 0. && pTPquantumYield != 1.0)
+    mpt->AddConstProperty("WLSMEANNUMBERPHOTONS", pTPquantumYield);
+  G4cout << "[Construction] pTP film: scattering "
+         << (pTPscatteringLength > 0. ? ("length " + std::to_string(pTPscatteringLength / um) + " um, g = " + std::to_string(pTPanisotropy))
+                                       : std::string("off (specular film)"))
+         << ", quantum yield " << pTPquantumYield << G4endl;
 }
 
 void MyLightTrapConstruction::DefineUVTransparentAcrylicMaterial()
@@ -496,6 +545,7 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   }
   G4cout << "[Construction] world medium: " << fWorldMedium
          << " (" << worldMat->GetName() << ")" << G4endl;
+  ApplyPTPOpticalOptions();
 
   // ── Fixed component thicknesses ─────────────────────────────────────────────
   const G4double kGapDetThick   = 0.1*mm;   // first-layer backplane counter slab (world medium)
@@ -685,20 +735,43 @@ G4VPhysicalVolume *MyLightTrapConstruction::Construct()
   } // fWithSample
 
   // ══ pTP INTERFACE SURFACES ══════════════════════════════════════════════════
-  // Both pTP faces (outer LAr-facing, inner acrylic-facing) share one ground/
-  // unified optical surface whose facet-slope RMS is pTPsigmaAlpha (radians),
-  // configurable via geometry.pTPsigmaAlpha_rad / "/detector/pTPsigmaAlpha".
-  //   pTPsigmaAlpha = 0   → perfectly smooth, specular Fresnel (no wiggle).
-  //                         Note: a smooth film TIR-traps ~55 % of WLS photons
-  //                         in the 2 µm layer; raise sigmaAlpha to model
-  //                         evaporated-film roughness / coating waviness so those
-  //                         guided modes scatter out (0.1 rad ≈ 6°).
+  // Both pTP faces (outer LAr-facing, inner acrylic-facing) share one unified
+  // optical surface, configurable via geometry.pTPsigmaAlpha_rad /
+  // "/detector/pTPsigmaAlpha":
+  //   pTPsigmaAlpha = 0   → finish 'polished': specular Fresnel / TIR about the
+  //                         global normal. A smooth film TIR-traps most of the
+  //                         WLS light (only the 10 % escape cone leaves forward).
+  //   pTPsigmaAlpha > 0   → finish 'ground' with SPECULARLOBECONSTANT = 1: every
+  //                         reflection and refraction is specular about a facet
+  //                         normal drawn with slope RMS sigmaAlpha (0.1 rad ≈ 6°).
+  // Geant4 note: a 'ground' surface WITHOUT lobe constants makes every reflection
+  // Lambertian whatever sigmaAlpha is (G4OpBoundaryProcess::ChooseReflection);
+  // that was the behaviour of this code before the fix and is kept available as
+  // pTPsurfaceLambertian = true for comparison.
   if (fWithSample) {
     G4OpticalSurface *pTPRoughSurf = new G4OpticalSurface("pTPRoughSurface");
     pTPRoughSurf->SetType(dielectric_dielectric);
-    pTPRoughSurf->SetFinish(ground);
     pTPRoughSurf->SetModel(unified);
-    pTPRoughSurf->SetSigmaAlpha(pTPsigmaAlpha); // facet-slope RMS [rad]; 0 = smooth
+    if (pTPsurfaceLambertian) {
+      pTPRoughSurf->SetFinish(ground);
+      pTPRoughSurf->SetSigmaAlpha(pTPsigmaAlpha);
+      fPTPSurfaceDescription = "ground without lobe constants (Lambertian reflections, legacy)";
+    } else if (pTPsigmaAlpha <= 0.) {
+      pTPRoughSurf->SetFinish(polished);
+      fPTPSurfaceDescription = "polished (specular)";
+    } else {
+      pTPRoughSurf->SetFinish(ground);
+      pTPRoughSurf->SetSigmaAlpha(pTPsigmaAlpha); // facet-slope RMS [rad]
+      G4double e2[2]   = {1.0*eV, 12.0*eV};
+      G4double lobe[2] = {1.0, 1.0}, zero[2] = {0.0, 0.0};
+      auto *smpt = new G4MaterialPropertiesTable();
+      smpt->AddProperty("SPECULARLOBECONSTANT",  e2, lobe, 2);
+      smpt->AddProperty("SPECULARSPIKECONSTANT", e2, zero, 2);
+      smpt->AddProperty("BACKSCATTERCONSTANT",   e2, zero, 2);
+      pTPRoughSurf->SetMaterialPropertiesTable(smpt);
+      fPTPSurfaceDescription = "ground, specular lobe about facets of slope RMS " + std::to_string(pTPsigmaAlpha) + " rad";
+    }
+    G4cout << "[Construction] pTP faces: " << fPTPSurfaceDescription << G4endl;
 
     // pTP ↔ LAr (outer face)
     new G4LogicalBorderSurface("pTP_to_LAr",  physpTPlayer, physWorld,    pTPRoughSurf);
