@@ -1,33 +1,56 @@
 #+TITLE: Building & Running the Simulation
 #+AUTHOR: sim_lighttrap team
-#+DATE: 2026-10-21
+#+DATE: 2026-11-11
 #+OPTIONS: toc:t num:t
 
 * Prerequisites
 
 - Geant4 ≥ 11.x compiled with UI drivers and visualisation (Qt / TOOLSSG);
-  this laptop uses Geant4 11.3.2 from spack.
+  this laptop uses Geant4 11.3.2 from spack. Installing Geant4 itself is
+  described in [[file:geant4_setup.org][Setting up Geant4]].
 - CMake ≥ 3.5, a C++17 compiler.
 - yaml-cpp (found via CMake, or fetched automatically).
 - ROOT (for output file analysis; not a compile-time dependency),
   Python 3 with uproot + matplotlib for ~analysis/plot_pmt_validation.py~.
 
 Point CMake at Geant4 either by sourcing ~geant4.sh~ or via
-~GEANT4_CMAKE_DIR~ / ~-DGeant4_DIR~.
+~GEANT4_CMAKE_DIR~ / ~-DGeant4_DIR~:
+
+#+BEGIN_SRC bash
+source /path/to/geant4-install/bin/geant4.sh
+# or, with spack:  export GEANT4_CMAKE_DIR=$(spack location -i geant4)/lib/cmake/Geant4
+#+END_SRC
 
 * Building
 
 #+BEGIN_SRC bash
 cd sim_lighttrap
 mkdir build && cd build
-cmake ..          # add -DCMAKE_C_COMPILER=/usr/bin/cc -DCMAKE_CXX_COMPILER=/usr/bin/c++ on macOS with miniconda on PATH
+cmake ..          # add -DCMAKE_C_COMPILER=/usr/bin/cc -DCMAKE_CXX_COMPILER=/usr/bin/c++ -DGeant4_DIR=$GEANT4_CMAKE_DIR on macOS with miniconda on PATH
 make -j8
 #+END_SRC
 
-The executable ~sim_lighttrap~, all macros, input data and ~sim_config.yaml~ are
-placed in the build directory by CMake (~file(COPY ...)~ directives).
+The executable ~sim_lighttrap~, all macros (~mac/~), the input data
+(~input/~), ~sim_config.yaml~ and ~main.sh~ are copied into the build
+directory by CMake (~file(COPY ...)~ directives). After editing the source
+YAML, run ~cmake .~ in ~build/~ again, or the build directory keeps its stale
+copy.
+
+Works with CMake 4 (tested 4.3.4): the fetched yaml-cpp 0.8.0 sources still
+declare a CMake 3.4 minimum, which CMake 4 rejects, so ~CMakeLists.txt~ sets
+~CMAKE_POLICY_VERSION_MINIMUM 3.5~ for them. The remaining "Compatibility with
+CMake < 3.10 will be removed" line is a harmless deprecation warning from
+yaml-cpp's own file.
 
 * Running
+
+** main.sh: the simplest way
+
+~./main.sh~ (repository root, or ~build/~). All switches are plain variables
+at the top of the script, each with a one-line comment: sample in/out, world
+medium, rough film on/off, which macro, which YAML, optional PMT QE table,
+and the name the output ROOT file is renamed to. Edit, run, read the
+end-of-run summary.
 
 ** Interactive mode (visualisation)
 
@@ -35,50 +58,183 @@ placed in the build directory by CMake (~file(COPY ...)~ directives).
 ./sim_lighttrap
 #+END_SRC
 
-Loads ~vis.mac~ automatically: Qt viewer with the first layer and the PMT
-photocathode, axes and scale, trajectories accumulated per event, and the
-14 mm VUV beam preloaded (Run menu → beamOn 30).
+Loads ~vis.mac~ automatically: Qt viewer with the first layer and the PMT,
+axes and a 10 cm scale, trajectories accumulated per event, the 14 mm VUV
+beam preloaded, and Camera / Run menus (beamOn 10 or 1000, redraw). The
+viewer opens whenever the macro name contains ~vis~.
 
-** Batch mode (standard run)
+** Batch mode (macro file)
 
 #+BEGIN_SRC bash
-./sim_lighttrap run.mac
+./sim_lighttrap run.mac                 # 10 000 photons, 128 nm, 14 mm beam
+./sim_lighttrap run_vuv_spectrum.mac    # same beam with the LAr scintillation spectrum
+./sim_lighttrap run_285.mac             # measured lamp spectrum (input/spectrum.txt via create_macro.py)
 #+END_SRC
 
-Runs 10 000 events with the default beam (circular plane, radius 7 mm, at
-z = −2 cm, λ = 128 nm, along +z). Output: ~output_apexltsim0.root~.
+Default beam: circular plane, radius 7 mm, at z = −2 cm, λ = 128 nm, along
++z. Output: ~output_apexltsim0.root~.
 
-** World medium
+** YAML configuration
 
 #+BEGIN_SRC bash
-./sim_lighttrap sim_config.yaml world_medium=gar     # argon gas (default)
-./sim_lighttrap sim_config.yaml world_medium=lar     # liquid argon
+./sim_lighttrap sim_config.yaml           # geometry + source + event count from the YAML (batch)
+./sim_lighttrap sim_config.yaml run.mac   # YAML geometry, macro source/run (macro overrides)
+./sim_lighttrap sim_config.yaml vis.mac   # YAML geometry in the interactive Qt viewer
+#+END_SRC
+
+The YAML is only read when it is given on the command line; ~./sim_lighttrap
+run.mac~ or ~./sim_lighttrap~ alone use the C++ defaults.
+
+| Section    | Parameters                                                                                   |
+|------------+----------------------------------------------------------------------------------------------|
+| geometry   | layer thicknesses, first-layer size, pTP roughness and surface model, ~pmt*~ parameters       |
+| source     | particle, energy, GPS position type/shape, ~radius_cm~ (Circle) or half-widths, ~sigmaX_cm~ / ~sigmaY_cm~ (Gaussian beam), direction |
+| run        | number of events                                                                             |
+| materials  | per-material optical properties: ~ptp~ (incl. scattering length, anisotropy, quantum yield), ~uvAcrylic~, ~gar~, ~lar~, ~mgf2~ |
+
+Every key is listed in [[file:geometry.org][Detector Geometry]] (geometry and
+PMT) and [[file:physics.org][Physics Processes]] (film optics, beam).
+Example — larger gap, 2 mm faceplate, 100k events:
+
+#+BEGIN_SRC yaml
+geometry:
+  LArThickness_mm: 10.0
+  pmtWindowThickness_mm: 2.0
+run:
+  nEvents: 100000
 #+END_SRC
 
 ** With / without the sample
 
 #+BEGIN_SRC bash
-./sim_lighttrap sim_config.yaml with_sample=on    # sample in the beam (default)
-./sim_lighttrap sim_config.yaml with_sample=off   # bare beam → PMT reference, identical geometry
+./sim_lighttrap sim_config.yaml with_sample=on      # pTP-coated acrylic in the beam (default)
+./sim_lighttrap sim_config.yaml with_sample=off     # bare beam → PMT reference, identical geometry
+./sim_lighttrap run.mac with_sample=off             # also works macro-only
+./sim_lighttrap --help
 #+END_SRC
 
-~with_sample=off~ removes the pTP film, the UV acrylic and the first-layer edge
-counters; beam, gap, PMT and the ~FirstLayerBackplane~ reference-counter plane
-stay in place. Also ~geometry.withSample~ in the YAML and
-~/detector/withSample true|false~ in a macro.
+~with_sample=off~ removes the pTP film and the UV acrylic (and the
+first-layer edge counters) from the geometry — they are not built at all, so
+they are absent from the viewer, the volume tree and the run — and leaves
+everything else untouched: same beam, same 7 mm gap position, same PMT. The
+~FirstLayerBackplane~ counter stays as a reference plane at the position of
+the acrylic back face. The switch is also available as ~geometry.withSample:
+true|false~ in the YAML (the command line wins) and as ~/detector/withSample
+true|false~ in a macro (followed by ~/run/reinitializeGeometry~).
 
-** YAML configuration
+** World medium
 
 #+BEGIN_SRC bash
-./sim_lighttrap sim_config.yaml           # geometry + source + nEvents from YAML
-./sim_lighttrap sim_config.yaml run.mac   # YAML geometry, macro source/run
+./sim_lighttrap sim_config.yaml world_medium=gar     # argon gas, 1 atm (bench; default)
+./sim_lighttrap sim_config.yaml world_medium=lar     # liquid argon (Rayleigh scattering, n = 1.45 at 128 nm)
+./sim_lighttrap run.mac world_medium=vacuum          # n = 1 everywhere outside the solids
 #+END_SRC
 
-** Headless geometry pictures
+The beam path, the gap, the reference counters and a bare photocathode are
+all made of the selected medium; the PMT interior is always vacuum. Argon
+gas uses the Bideau-Méhu dispersion (n ≈ 1.00044 at 128 nm) with negligible
+absorption and scattering, so a ~with_sample=off~ beam goes straight to the
+faceplate; in liquid argon about 2 % of the beam Rayleigh-scatters over the
+2 cm path (0.9 m scattering length), which is what the stray tracks in a
+~lar~ run are. Also ~geometry.worldMedium~ in the YAML and
+~/detector/worldMedium~ in a macro.
+
+** Film optics and the Gaussian beam
+
+The scattering length and anisotropy of the film, its quantum yield, the
+surface model (~polished~ / ~ground~ + specular lobe / legacy Lambertian) and
+the Gaussian beam are YAML keys and ~/detector/~ commands described in
+[[file:physics.org][Physics Processes]]; the end-of-run summary prints the
+values in effect.
+
+** Rough pTP film (rough=on)
 
 #+BEGIN_SRC bash
-./sim_lighttrap draw_offscreen.mac        # writes pmt_geom_*.png, prints the volume tree
+./sim_lighttrap sim_config.yaml run.mac rough=on     # or ROUGH=on in main.sh
 #+END_SRC
+
+This defines the macro alias ~{ROUGH}~ = 1; every macro then executes
+~mac/roughness_knobs.mac~ in full before the run: the pTP film thickness, the
+random surface height map (bumps per side, RMS bump height, seed) and the
+micro-facet ~sigmaAlpha~, with the values set in that file.
+~vis_roughness.mac~ applies the same file always, so the viewer shows the
+film the runs simulate. With ~rough=off~ the film is exactly what the YAML
+says. The end-of-run summary prints the film geometry and the ~sigmaAlpha~
+in effect.
+
+** The beam source must be inside the world box
+
+The world is a box of half-length ~0.6 × lightTrapSize~ in x and y and
+~0.6 × lightTrapSize + pmtLength~ (18.2 cm) in z. Geant4 gives no warning for
+a primary vertex outside the world; it then tracks the photon with a stale
+navigator state, and the photon crosses the sample without interacting (a
+source at z = −20 cm gave 0 WLS photons and 97 % of the beam on the
+photocathode). The generator therefore aborts with ~SourceOutsideWorld~ and
+the world size in the message. To start the beam farther away, enlarge the
+world with ~geometry.worldHalfZ_mm~ (~/detector/worldHalfZ~, in mm, 0 =
+automatic).
+
+** PMT quantum efficiency from a text file
+
+Instead of the flat band, give a two-column table ~<wavelength_nm> <QE>~ (QE
+as a fraction, or in % if any value exceeds 1; ~#~ comments and blank lines
+allowed, any row order). It is linearly interpolated and QE = 0 outside the
+tabulated range. Three ways to set it, the command line winning over the
+YAML:
+
+#+BEGIN_SRC bash
+./sim_lighttrap sim_config.yaml pmt_qe=input/pmt_qe_r6836_example.dat   # command line
+# sim_config.yaml:   geometry.pmtQEFile: input/pmt_qe_r6836_example.dat  (relative to the YAML or cwd)
+# macro:             /detector/pmtQEFile pmt_qe_r6836_example.dat  +  /run/reinitializeGeometry
+#+END_SRC
+
+~input/pmt_qe_r6836_example.dat~ is an /illustrative/ Cs-Te curve anchored
+only to the datasheet's 28 mA/W at 254 nm (QE 13.7 %); replace it with the
+measured curve of your tube. The run summary prints which QE is in use
+(~PMT quantum efficiency : QE table … peak … % at … nm~). Note what the
+example curve implies: a solar-blind Cs-Te tube is essentially blind above
+320 nm, i.e. to the pTP emission (340–430 nm); with the sample in the beam
+it only registers the unshifted light that gets through (1 hit per 2000
+beam photons at 128 nm in a test run, against 425 with the ideal flat QE).
+
+** End-of-run summary
+
+Every run (batch or Qt session) ends with a block like the one below in the
+terminal / Qt /Output/ pane, so the physics can be validated without opening
+the ROOT file and independently of the viewer:
+
+#+BEGIN_EXAMPLE
+============ sim_lighttrap run 0 summary ============
+  sample (pTP on acrylic) : IN the beam (with_sample=on)
+  world medium            : gar   gap 7 mm, PMT faceplate 1.5 mm, photocathode Ø 23 mm
+  beam photons            :      500
+  WLS photons born in pTP :      466  ( 93.2 % of beam)
+  leaving layer 1 -> PMT  :      287  ( 57.4 %)
+  reaching layer-1 edges  :        0
+  photons on photocathode :      115  ( 23.0 %)  unshifted beam: 0, pTP-shifted: 115
+  PMT hits (after QE)     :      115  ( 23.0 % of beam)
+=====================================================
+#+END_EXAMPLE
+
+The block also prints the surface model, the scattering parameters and the
+quantum yield in effect. The numbers above were produced with the legacy
+Lambertian surface; with polished faces and no scattering the 2 um film
+collects about 5 % of the WLS light, with the default scattering (4 um,
+g 0.8) about 15 % at 5 um. If the sample is in the beam and the WLS line is
+zero, the block prints a warning. In the Qt session the /Run/ menu also has
+/Redraw (rebuild view)/ (~/vis/viewer/rebuild~) in case the viewer has not
+repainted the trajectories of the last run.
+
+** Transmission measurement
+
+Run ~main.sh~ twice with the same beam and macro, once with ~WITH_SAMPLE=on~
+and once with ~WITH_SAMPLE=off~; the output files are named after the switch
+(~output_on_gar.root~, ~output_off_gar.root~). The transmission at that
+wavelength is ~T = PMT hits(on) / PMT hits(off)~, read from the end-of-run
+summary or from the ~PMTHits~ tree (~primary = 1~ selects the unshifted beam
+light, ~0~ the pTP-shifted light). Change the beam wavelength with
+~source.energy_eV~ in the YAML, or use ~run_vuv_spectrum.mac~ /
+~run_285.mac~ for a spectrum.
 
 * Runtime Geometry Configuration
 
@@ -91,31 +247,28 @@ Inside an interactive session or at the top of a custom macro:
 /run/beamOn 10000
 #+END_EXAMPLE
 
-| Command                   | Default | Effect                                        |
-|---------------------------+---------+-----------------------------------------------|
-| /detector/worldMedium     | gar     | argon gas (default) · lar · vacuum            |
-| /detector/withSample      | true    | build the pTP-coated acrylic sample (false = reference) |
-| /detector/pTPlayerthickness | 0.002 mm | pTP film thickness                          |
-| /detector/uvAcrylicThick  | 3 mm    | UV acrylic carrier thickness                  |
-| /detector/LArthickness    | 7 mm    | LAr gap, back of the acrylic → PMT faceplate  |
-| /detector/lighttrapsize   | 150 mm  | first-layer side length                       |
-| /detector/pTPsigmaAlpha   | 0 rad   | pTP surface roughness                         |
-| /detector/pmtDiameter     | 23 mm   | photocathode diameter                         |
-| /detector/pmtTubeDiameter | 28.2 mm | tube / faceplate diameter                     |
-| /detector/pmtLength       | 92 mm   | faceplate front → end of glass body           |
-| /detector/pmtWindowThick  | 1.5 mm  | MgF2 faceplate thickness (0 = none)           |
-| /detector/pmtWallThick    | 1 mm    | envelope wall / end-cap thickness             |
-| /detector/pmtQE           | 1.0     | flat QE inside the band                       |
-| /detector/pmtQEmin        | 110 nm  | QE band lower edge                            |
-| /detector/pmtQEmax        | 500 nm  | QE band upper edge                            |
+The complete list of ~/detector/~ commands, with their YAML keys and
+defaults, is the table in [[file:geometry.org][Detector Geometry]]; the film
+optics commands (~pTPscatteringLength~, ~pTPanisotropy~, ~pTPquantumYield~,
+~pTPsurfaceLambertian~) are explained in [[file:physics.org][Physics
+Processes]]. Note the units: ~/detector/lighttrapsize~ and
+~/detector/pTPscatteringLength~ take mm, while the YAML keys are in cm and
+um respectively.
 
 * Output
 
-ROOT file is written to the working directory:
+ROOT file written to the working directory:
 
 #+BEGIN_EXAMPLE
 output_apexltsim<runID>.root
 #+END_EXAMPLE
+
+Trees: ~Energy~, ~Primary~, ~WLSPhoton~, ~OpticalValidation~,
+~FirstLayerBackplane~, ~FirstLayerEdges~, ~PMTPhotons~, ~PMTHits~ (branch
+reference in [[file:analysis.org][Output Ntuples & Analysis]]). The sim
+always writes that fixed name: run verification jobs in a scratch directory
+so you do not overwrite a long production run (~main.sh~ renames the file
+after the run).
 
 Open with ROOT:
 
@@ -126,7 +279,88 @@ TTree *hits = (TTree*)f->Get("PMTHits");
 hits->Draw("fX:fY","","colz");             // 2D photocathode hit map
 #+END_SRC
 
-See [[file:analysis.org][Output Ntuples & Analysis]] for the full branch reference.
+* Visualising and validating the geometry
+
+#+BEGIN_SRC bash
+cd build
+./sim_lighttrap                       # interactive Qt viewer (vis.mac)
+./sim_lighttrap draw_offscreen.mac    # headless: writes pmt_geom_*.png + prints the volume tree
+#+END_SRC
+
+~draw_offscreen.mac~ renders the geometry with the TOOLSSG offscreen driver
+(no display needed) obliquely, from the PMT side, from the side (whole tube
+and a close-up of the 7 mm gap), with beam events, plus a close-up of the
+pTP film (add ~rough=on~ to draw the bumpy film of ~vis_roughness.mac~), and
+dumps the volume tree with ASCIITree. Reference renders are kept in
+~docs/figures/pmt_mode/~. Two caveats of this Geant4 build: the ~RayTracer~
+driver segfaults, and the offscreen z-buffer renderer skips translucent
+surfaces and needs ~/vis/viewer/set/culling invisible true~ (otherwise the
+invisible world box is drawn and hides everything); the macro handles both.
+
+** Seeing the roughness of the pTP layer
+
+#+BEGIN_SRC bash
+cd build && ./sim_lighttrap vis_roughness.mac
+#+END_SRC
+
+That opens the viewer with an exaggerated, physically bumpy pTP film (random
+height map on the beam-facing face: 1 mm film, 30 × 30 bumps of 5 mm,
+0.3 mm RMS) and sends a 400 nm beam, which pTP does not absorb, through it;
+each ray is deflected by the bump it hits. All roughness settings live in
+one file, ~mac/roughness_knobs.mac~ (film thickness, bumps per side, RMS bump
+height, seed, ~sigmaAlpha~); the same file is applied by ~run.mac~ and the
+other macros with ~rough=on~, so the film you see here is the film the runs
+simulate:
+
+#+BEGIN_SRC bash
+./sim_lighttrap draw_offscreen.mac rough=on    # same bumpy film, PNGs incl. pmt_geom_film_closeup.png
+#+END_SRC
+
+(~ROUGH=1~ in the environment does the same.) The same settings exist in the
+YAML as ~pTPlayerThickness_mm~, ~pTPgeomRoughCells~,
+~pTPgeomRoughAmplitude_mm~, ~pTPgeomRoughSeed~ and ~pTPsigmaAlpha_rad~ for
+runs with ~rough=off~.
+
+Two roughness mechanisms act together: the height map changes the actual
+surface the photons meet (facet by facet), while ~pTPsigmaAlpha_rad~ adds a
+statistical micro-facet slope at every surface interaction (invisible in the
+geometry). Reference renders: ~docs/figures/pmt_mode/roughness_geom_film.png~,
+~roughness_geom_side_tracks.png~ (geometric) and ~roughness_sa0.0.png~ /
+~roughness_sa0.8.png~ (~sigmaAlpha~ 0 vs 0.8 rad on a 400 nm beam).
+
+** Data-side check
+
+Beam footprint on the film, hit map on the photocathode, and the z of every
+recorded photon point against the layer planes:
+
+#+BEGIN_SRC bash
+python3.13 analysis/plot_pmt_validation.py build/output_apexltsim0.root pmt_validation.png
+#+END_SRC
+
+(reference output: ~docs/figures/pmt_mode/pmt_validation_2000evt.png~).
+
+* Analysis
+
+#+BEGIN_SRC bash
+python3 analysis/analyze_efficiency.py build/output_apexltsim0.root   # efficiency chain (PyROOT)
+root -l -b -q 'analysis/Analyze_out.C("build/output_apexltsim0.root")' # per-tree summary PDF
+#+END_SRC
+
+~analyze_efficiency.py~ prints the chain beam → pTP WLS → escape from
+layer 1 → photocathode → photo-electrons, each normalised to the previous
+stage and to the number of primaries. The quantities are defined in
+[[file:analysis.org][Output Ntuples & Analysis]].
+
+* Unit tests
+
+Source-level checks (config parsing, messenger wiring, PMT sensitive
+detector, ntuple layout, macros, docs) run with ~pytest~ and require no
+build:
+
+#+BEGIN_SRC bash
+python3.13 -m pytest tests/ -v                          # full suite
+python3.13 -m pytest tests/test_pmt_detector_mode.py -v # PMT geometry/readout only
+#+END_SRC
 
 * Macro Files Reference
 
@@ -139,18 +373,8 @@ See [[file:analysis.org][Output Ntuples & Analysis]] for the full branch referen
 | mac/spectrum_macro.mac   | Generated by input/create_macro.py from input/spectrum.txt     |
 | mac/draw_offscreen.mac   | Headless PNG renders + ASCIITree volume dump                   |
 | mac/vis_roughness.mac    | Viewer with the exaggerated bumpy pTP film and a 400 nm beam   |
-| mac/roughness_knobs.mac  | All roughness settings; applied with rough=on (see below)      |
+| mac/roughness_knobs.mac  | All roughness settings; applied with rough=on (see above)      |
 | mac/beam_400nm_alias.mac | Helper of draw_offscreen.mac (400 nm beam alias with rough=on) |
-
-** Rough pTP film (rough=on)
-
-~./sim_lighttrap sim_config.yaml run.mac rough=on~ (or ~ROUGH=on~ in
-~main.sh~) defines the macro alias ~{ROUGH}~ = 1; every macro then executes
-~roughness_knobs.mac~ in full before the run: pTP film thickness, random
-surface height map (bumps per side, RMS bump height, seed) and micro-facet
-~sigmaAlpha~. ~vis_roughness.mac~ applies the same file always, so the viewer
-shows the film the runs simulate. With ~rough=off~ the film is what the YAML
-says.
 
 * Tips
 
@@ -160,3 +384,6 @@ says.
   so you do not overwrite a long production run.
 - Physics random seed can be set with ~/random/setSeeds <s1> <s2>~ for
   reproducible results.
+- A specular (polished) film on a large plate is slow: guided photons bounce
+  ~1e5 times before they are absorbed; use a plate no larger than needed
+  (~lightTrapSize_cm~) and fewer photons for checks.
