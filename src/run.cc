@@ -162,6 +162,10 @@ void MyRunAction::EndOfRunAction(const G4Run* run)
     G4cout << "  sample (pTP on acrylic) : " << (det->WithSample() ? "IN the beam (with_sample=on)" : "ABSENT (with_sample=off, reference run)")
            << (det->WithSample() ? "   pTP surface sigmaAlpha " + std::to_string(det->PTPSigmaAlpha()).substr(0, 5) + " rad" : "") << "\n"
            << (det->WithSample() ? "  pTP film geometry       : " + det->PTPFilmDescription() + "\n" : "")
+           << (det->WithSample() ? "  pTP film faces          : " + det->PTPSurfaceDescription() + "\n" : "")
+           << (det->WithSample() ? "  pTP film scattering     : " + (det->PTPScatteringLength() > 0.
+                 ? "length " + std::to_string(det->PTPScatteringLength() / CLHEP::um).substr(0, 5) + " um, g = " + std::to_string(det->PTPAnisotropy()).substr(0, 4)
+                 : std::string("off (specular film)")) + "   quantum yield " + std::to_string(det->PTPQuantumYield()).substr(0, 4) + "\n" : "")
            << "  world medium            : " << det->WorldMedium()
            << "   gap " << det->GapThickness()/mm << " mm, PMT faceplate " << det->WindowThickness()/mm
            << " mm, photocathode Ø " << det->PMTDiameter()/mm << " mm\n"
