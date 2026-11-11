@@ -1,6 +1,6 @@
 #+TITLE: Detector Geometry & Materials (first layer + PMT)
 #+AUTHOR: sim_lighttrap team
-#+DATE: 2026-10-21
+#+DATE: 2026-11-11
 #+OPTIONS: toc:t num:t
 
 * Coordinate Convention
@@ -92,7 +92,9 @@ Absorbs 128 nm VUV photons from LAr and re-emits at 340–430 nm.
 | WLS absorption     | 10 m (530 nm) → 0.5 µm (305–106 nm)     |
 | WLS emission       | file / inline / smooth Gaussian peak 340 nm |
 | WLS time constant  | 1.136 ns                                 |
-| Surface            | ground/unified, σα = pTPsigmaAlpha (0 = smooth) on both faces |
+| Surface            | both faces ~polished~ (specular Fresnel / TIR) for σα = 0; ~ground~ + specular lobe about facets of slope RMS σα = pTPsigmaAlpha otherwise; legacy Lambertian with pTPsurfaceLambertian |
+| Scattering         | G4OpMieHG inside the film: free path scatteringLength_um (4 µm), Henyey-Greenstein g (0.8); 0 = clear film |
+| Quantum yield      | 0.82 WLS photons per absorbed VUV photon (Poisson); null = 1 |
 
 ** UV-Transparent Acrylic Carrier
 
@@ -157,25 +159,38 @@ faceplate Ø 28.2 ± 0.8 mm, photocathode Ø 23 mm min. effective area, body
 
 * Geometry Messenger Commands
 
-#+BEGIN_EXAMPLE
-/detector/worldMedium        <string> # gar (argon gas, default) | lar | vacuum
-/detector/withSample         <bool>   # build the pTP-coated acrylic sample (false = bare beam → PMT reference)
-/detector/pTPlayerthickness  <double> # pTP film thickness [mm]
-/detector/uvAcrylicThick     <double> # UV acrylic carrier thickness [mm]
-/detector/LArthickness       <double> # LAr gap: back of the acrylic → PMT faceplate [mm] (7)
-/detector/lighttrapsize      <double> # first-layer side length [mm]
-/detector/pTPsigmaAlpha      <double> # pTP surface facet-slope RMS [rad]
-/detector/pmtDiameter        <double> # photocathode diameter [mm] (23)
-/detector/pmtTubeDiameter    <double> # tube / faceplate diameter [mm] (28.2)
-/detector/pmtLength          <double> # faceplate front → end of glass body [mm] (92)
-/detector/pmtWindowThick     <double> # MgF2 faceplate thickness [mm] (1.5), 0 = none
-/detector/pmtWallThick       <double> # envelope wall / end-cap thickness [mm] (1)
-/detector/pmtQE              <double> # flat QE inside the band
-/detector/pmtQEmin           <double> # QE band lower edge [nm]
-/detector/pmtQEmax           <double> # QE band upper edge [nm]
-/detector/pmtQEFile          <string> # "<wl_nm> <QE>" table replacing the flat band (empty = flat)
-/detector/worldHalfZ         <double> # world half-length in z [mm], 0 = automatic
-#+END_EXAMPLE
+Every geometry parameter has a YAML key (section ~geometry:~ of
+~sim_config.yaml~, read only when the YAML is given on the command line) and
+a ~/detector/~ command for macros and the interactive session. The film
+optics keys (~materials.ptp.*~, ~pTPsigmaAlpha_rad~, ~pTPsurfaceLambertian~)
+are described in [[file:physics.org][Physics Processes]].
+
+| YAML key (~geometry:~)   | Messenger                   | Default  | Meaning                                                                                           |
+|--------------------------+-----------------------------+----------+---------------------------------------------------------------------------------------------------|
+| worldMedium              | /detector/worldMedium       | gar      | medium of the beam path, gap and counters: ~gar~ (argon gas, 1 atm), ~lar~ (liquid argon), ~vacuum~ |
+| withSample               | /detector/withSample        | true     | build the pTP-coated acrylic sample (~false~ = reference run)                                       |
+| pTPlayerThickness_mm     | /detector/pTPlayerthickness | 0.002    | pTP WLS film thickness [mm]                                                                        |
+| uvAcrylicThickness_mm    | /detector/uvAcrylicThick    | 3.0      | UV-transparent acrylic carrier [mm]                                                               |
+| LArThickness_mm          | /detector/LArthickness      | 7.0      | gap (world medium), back of the acrylic → PMT faceplate [mm]                                       |
+| lightTrapSize_cm         | /detector/lighttrapsize     | 15.0     | square first-layer side (YAML in cm, messenger in mm)                                              |
+| worldHalfZ_mm            | /detector/worldHalfZ        | 0        | world half-length in z [mm]; 0 = automatic (18.2 cm); the source must be inside                    |
+| pTPsigmaAlpha_rad        | /detector/pTPsigmaAlpha     | 0.0      | pTP surface facet-slope RMS [rad] (0 = polished)                                                   |
+| pTPsurfaceLambertian     | /detector/pTPsurfaceLambertian | false | legacy Lambertian faces                                                                            |
+| pTPgeomRoughCells, pTPgeomRoughAmplitude_mm, pTPgeomRoughSeed | /detector/pTPgeomRoughCells, pTPgeomRoughAmp, pTPgeomRoughSeed | 0 | random surface height map on the beam-facing face (bumps per side, RMS height, seed); 0 = flat |
+| pmtDiameter_mm           | /detector/pmtDiameter       | 23       | photocathode (sensitive) diameter [mm]                                                             |
+| pmtTubeDiameter_mm       | /detector/pmtTubeDiameter   | 28.2     | tube / faceplate outer diameter [mm]                                                               |
+| pmtLength_mm             | /detector/pmtLength         | 92       | faceplate front → end of the glass body [mm]                                                       |
+| pmtWindowThickness_mm    | /detector/pmtWindowThick    | 1.5      | MgF2 faceplate thickness [mm] (assumption, not on the datasheet); 0 = bare photocathode            |
+| pmtWallThickness_mm      | /detector/pmtWallThick      | 1.0      | opaque envelope side wall / end cap [mm]                                                          |
+| pmtQE                    | /detector/pmtQE             | 1.0      | flat quantum efficiency inside the QE band                                                         |
+| pmtQEmin_nm              | /detector/pmtQEmin          | 110      | QE band lower edge [nm]                                                                            |
+| pmtQEmax_nm              | /detector/pmtQEmax          | 500      | QE band upper edge [nm]; QE = 0 outside                                                            |
+| pmtQEFile                | /detector/pmtQEFile         | (none)   | 2-column text table ~<wavelength_nm> <QE>~; replaces the flat band (CLI ~pmt_qe=<file>~)           |
+| (materials.ptp) scatteringLength_um | /detector/pTPscatteringLength | 4.0 | film scattering free path (YAML in um, messenger in mm); 0 or null = clear                        |
+| (materials.ptp) anisotropy_g | /detector/pTPanisotropy  | 0.8      | Henyey-Greenstein asymmetry                                                                        |
+| (materials.ptp) quantumYield | /detector/pTPquantumYield | 0.82    | mean WLS photons per absorbed VUV photon                                                           |
+| (source) sigmaX_cm, sigmaY_cm | —                      | 0        | > 0 (both): Gaussian beam (GPS ~Beam~) with these standard deviations                             |
+
 
 After any messenger command: ~/run/reinitializeGeometry~ then ~/run/beamOn~
 (or ~/run/initialize~ if you only want to redraw the geometry in the viewer —
