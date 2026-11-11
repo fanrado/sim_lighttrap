@@ -1,6 +1,6 @@
 #+TITLE: LightTrapSimulation — Project Overview (first layer + PMT)
 #+AUTHOR: sim_lighttrap team
-#+DATE: 2026-10-21
+#+DATE: 2026-11-11
 #+OPTIONS: toc:t num:t
 
 * Purpose
@@ -35,7 +35,7 @@ sim_lighttrap/
 ├── tests/            # pytest source-level checks
 ├── sim_config.yaml   # YAML run configuration (geometry, source, materials)
 ├── CMakeLists.txt    # Build configuration
-└── README.md         # Quick-start guide
+└── README.md         # Essentials only: build, run, tests, pointers to this folder
 #+END_EXAMPLE
 
 * Simulation Flow
@@ -48,7 +48,8 @@ Primary photon beam (9.68 eV, λ = 128 nm, Ø 14 mm, parallel along +z)
         │  (Rayleigh scattering / absorption only significant in LAr)
         ▼
   pTP film (2 µm)  on  UV-transparent acrylic (3 mm)
-        │  WLS absorption → isotropic re-emission (λ ~ 340–430 nm)
+        │  WLS absorption → isotropic re-emission (λ ~ 340–430 nm), quantum yield 0.82
+        │  elastic scattering inside the film (G4OpMieHG), Fresnel / TIR at polished faces
         │  ← FirstLayerBackplane / FirstLayerEdges pass-through counters
         ▼
   7 mm gap (world medium)
@@ -67,3 +68,4 @@ Primary photon beam (9.68 eV, λ = 128 nm, Ø 14 mm, parallel along +z)
 - [[file:physics.org][Physics Processes & Primary Generator]]
 - [[file:analysis.org][Output Ntuples & Analysis]]
 - [[file:running.org][Building & Running the Simulation]]
+- [[file:geant4_setup.org][Setting up Geant4 (local PC and dunegpvm)]]
