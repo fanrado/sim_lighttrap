@@ -102,6 +102,11 @@ pass-through counters on the first layer (`FirstLayerBackplane` on its back
 face, 0.01 mm behind the acrylic so TIR-trapped light is not counted, and
 `FirstLayerEdges` on its ±x edges) record where the WLS light leaves layer 1.
 
+Note on the summary numbers quoted below: they were produced with the
+legacy Lambertian surface (see *Film optics*); with polished faces and no
+scattering the 2 um film collects about 5 % of the WLS light, with the
+default scattering (4 um, g 0.8) about 15 % at 5 um.
+
 ## Running the Simulation
 
 **Simplest way: `./main.sh`** (repository root). All switches are plain
@@ -127,6 +132,40 @@ end-of-run summary.
   ./sim_lighttrap run_vuv_spectrum.mac    # same beam with the LAr scintillation spectrum
   ./sim_lighttrap run_285.mac             # measured lamp spectrum (input/spectrum.txt via create_macro.py)
   ```
+
+- **Film optics: scattering, quantum yield, surface model.** The pTP film
+  carries three optical options beyond its index and absorption, all in
+  `sim_config.yaml` under `materials.ptp` / `geometry` and as `/detector/`
+  commands (the YAML is applied first, a macro can override before
+  `/run/reinitializeGeometry`):
+
+  | YAML key | messenger | default | meaning |
+  |---|---|---|---|
+  | `materials.ptp.scatteringLength_um` | `/detector/pTPscatteringLength` (mm) | 4.0 | elastic scattering free path of the emitted light inside the film (`G4OpMieHG`, `MIEHG`); 0 or null = clear film |
+  | `materials.ptp.anisotropy_g` | `/detector/pTPanisotropy` | 0.8 | Henyey-Greenstein asymmetry of that scattering (0 isotropic, 0.6-0.9 forward) |
+  | `materials.ptp.quantumYield` | `/detector/pTPquantumYield` | 0.82 | mean WLS photons per absorbed VUV photon (`WLSMEANNUMBERPHOTONS`, Poisson); null = 1 |
+  | `geometry.pTPsigmaAlpha_rad` | `/detector/pTPsigmaAlpha` | 0 | 0 = `polished` faces (specular Fresnel / TIR); > 0 = `ground` faces with `SPECULARLOBECONSTANT = 1`, reflections specular about random facets of that slope RMS |
+  | `geometry.pTPsurfaceLambertian` | `/detector/pTPsurfaceLambertian` | false | legacy surface: `ground` without lobe constants, which in Geant4 makes every reflection Lambertian whatever `sigmaAlpha` |
+
+  Why: a smooth film traps about 90 % of the WLS light by total internal
+  reflection and collects about 5 % on the photocathode at any thickness; a
+  surface roughness changes that number but not its thickness dependence;
+  only scattering *inside* the film (the number of scatterings grows as
+  thickness / scattering length) makes the collected fraction rise with
+  thickness, as the measured transmittance does. Before this option the
+  faces were declared `ground` without lobe constants, which Geant4 treats
+  as Lambertian: that gave the 23 % "flat film" value quoted in earlier
+  versions of this README; the same value is reproduced with
+  `pTPsurfaceLambertian: true`. The scattering length and anisotropy are
+  not measured for these films (bracket 2.5-7 um, 0.6-0.9 from the
+  pTP-SD-sim study); the end-of-run summary prints the surface model, the
+  scattering parameters and the quantum yield in effect. The companion
+  Python package `wlseff_meas_setup_MC` (`docs/GEANT4_COMPARISON.md`)
+  compares the two simulations thickness by thickness.
+
+- **Gaussian beam (`source.sigmaX_cm`, `sigmaY_cm` > 0):** replaces the
+  uniform disk by the GPS `Beam` type with those standard deviations; the
+  IFIC beam (FWHM 7 x 5 mm) is `sigmaX_cm: 0.297`, `sigmaY_cm: 0.212`.
 
 - **World medium (`world_medium=gar|lar|vacuum`):**
 
