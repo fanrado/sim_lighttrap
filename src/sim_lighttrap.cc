@@ -207,6 +207,11 @@ int main(int argc, char** argv)
         UImanager->ApplyCommand("/detector/worldHalfZ "          + d2s(cfg.worldHalfZ_mm));
         // pTP surface facet-slope RMS [rad]; 0 = perfectly smooth (no wiggle)
         UImanager->ApplyCommand("/detector/pTPsigmaAlpha "       + d2s(cfg.pTPsigmaAlpha_rad));
+        UImanager->ApplyCommand(std::string("/detector/pTPsurfaceLambertian ") + (cfg.pTPsurfaceLambertian ? "true" : "false"));
+        // film optics from materials.ptp (scattering length in um in the YAML, mm for the messenger)
+        UImanager->ApplyCommand("/detector/pTPscatteringLength " + d2s(cfg.materials.ptp.scatteringLength_um.value_or(0.0) * 1e-3));
+        UImanager->ApplyCommand("/detector/pTPanisotropy "       + d2s(cfg.materials.ptp.anisotropy_g.value_or(0.0)));
+        UImanager->ApplyCommand("/detector/pTPquantumYield "     + d2s(cfg.materials.ptp.quantumYield.value_or(1.0)));
         UImanager->ApplyCommand("/detector/pTPgeomRoughCells "   + std::to_string(cfg.pTPgeomRoughCells));
         UImanager->ApplyCommand("/detector/pTPgeomRoughAmp "     + d2s(cfg.pTPgeomRoughAmplitude_mm));
         UImanager->ApplyCommand("/detector/pTPgeomRoughSeed "    + std::to_string(cfg.pTPgeomRoughSeed));
@@ -229,15 +234,26 @@ int main(int argc, char** argv)
         // Source — GPS commands accept explicit unit tokens
         UImanager->ApplyCommand("/gps/particle "   + cfg.particle);
         UImanager->ApplyCommand("/gps/energy "     + d2s(cfg.energy_eV) + " eV");
-        UImanager->ApplyCommand("/gps/pos/type "   + cfg.positionType);
-        UImanager->ApplyCommand("/gps/pos/shape "  + cfg.positionShape);
+        if (cfg.sigmaX_cm > 0.0 && cfg.sigmaY_cm > 0.0) {
+            // Gaussian beam profile: GPS 'Beam' type with sigma_x / sigma_y
+            UImanager->ApplyCommand("/gps/pos/type Beam");
+            // GPS samples a pure 2-D Gaussian only for shape Circle; any other
+            // shape adds a uniform spread over halfx/halfy to the Gaussian.
+            UImanager->ApplyCommand("/gps/pos/shape Circle");
+            UImanager->ApplyCommand("/gps/pos/sigma_x " + d2s(cfg.sigmaX_cm) + " cm");
+            UImanager->ApplyCommand("/gps/pos/sigma_y " + d2s(cfg.sigmaY_cm) + " cm");
+        } else {
+            UImanager->ApplyCommand("/gps/pos/type "   + cfg.positionType);
+            UImanager->ApplyCommand("/gps/pos/shape "  + cfg.positionShape);
+        }
         UImanager->ApplyCommand("/gps/pos/centre " + d2s(cfg.centerX_cm) + " "
                                                    + d2s(cfg.centerY_cm) + " "
                                                    + d2s(cfg.centerZ_cm) + " cm");
         UImanager->ApplyCommand("/gps/pos/halfx "  + d2s(cfg.halfX_cm) + " cm");
         UImanager->ApplyCommand("/gps/pos/halfy "  + d2s(cfg.halfY_cm) + " cm");
         // Circle shape (e.g. the 14 mm lab beam) uses the radius instead of halfx/halfy
-        UImanager->ApplyCommand("/gps/pos/radius " + d2s(cfg.radius_cm) + " cm");
+        if (!(cfg.sigmaX_cm > 0.0 && cfg.sigmaY_cm > 0.0))
+            UImanager->ApplyCommand("/gps/pos/radius " + d2s(cfg.radius_cm) + " cm");
         UImanager->ApplyCommand("/gps/direction "  + d2s(cfg.directionX) + " "
                                                    + d2s(cfg.directionY) + " "
                                                    + d2s(cfg.directionZ));
