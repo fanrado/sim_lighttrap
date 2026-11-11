@@ -87,6 +87,18 @@ static MaterialsConfig parseMaterials(const YAML::Node& mat, const std::string& 
         m.ptp.wlscomponent = readVec(n, "wlscomponent");
         if (n["wlstimeconstant_ns"])
             m.ptp.wlstimeconstant_ns = n["wlstimeconstant_ns"].as<double>();
+        if (n["scatteringLength_um"] && !n["scatteringLength_um"].IsNull())
+            m.ptp.scatteringLength_um = n["scatteringLength_um"].as<double>();
+        if (n["anisotropy_g"] && !n["anisotropy_g"].IsNull())
+            m.ptp.anisotropy_g = n["anisotropy_g"].as<double>();
+        if (n["quantumYield"] && !n["quantumYield"].IsNull())
+            m.ptp.quantumYield = n["quantumYield"].as<double>();
+        if (m.ptp.scatteringLength_um && *m.ptp.scatteringLength_um < 0.0)
+            throw std::runtime_error("SimConfig: materials.ptp.scatteringLength_um must be >= 0 (0 = off)");
+        if (m.ptp.anisotropy_g && (*m.ptp.anisotropy_g <= -1.0 || *m.ptp.anisotropy_g >= 1.0))
+            throw std::runtime_error("SimConfig: materials.ptp.anisotropy_g must be in (-1, 1)");
+        if (m.ptp.quantumYield && (*m.ptp.quantumYield <= 0.0 || *m.ptp.quantumYield > 1.0))
+            throw std::runtime_error("SimConfig: materials.ptp.quantumYield must be in (0, 1]");
         if (n["wlscomponent_file"]) {
             std::string used;
             loadEmissionFile("pTP emission", cfgDir, n["wlscomponent_file"].as<std::string>(),
@@ -172,6 +184,7 @@ SimConfig SimConfig::fromFile(const std::string& path)
         if (cfg.worldHalfZ_mm < 0.0)
             throw std::runtime_error("SimConfig: geometry.worldHalfZ_mm must be >= 0 (0 = automatic)");
         if (geo["pTPsigmaAlpha_rad"])         cfg.pTPsigmaAlpha_rad        = geo["pTPsigmaAlpha_rad"].as<double>();
+        if (geo["pTPsurfaceLambertian"])      cfg.pTPsurfaceLambertian     = geo["pTPsurfaceLambertian"].as<bool>();
         if (geo["pTPgeomRoughCells"])         cfg.pTPgeomRoughCells        = geo["pTPgeomRoughCells"].as<int>();
         if (geo["pTPgeomRoughAmplitude_mm"])  cfg.pTPgeomRoughAmplitude_mm = geo["pTPgeomRoughAmplitude_mm"].as<double>();
         if (geo["pTPgeomRoughSeed"])          cfg.pTPgeomRoughSeed         = geo["pTPgeomRoughSeed"].as<int>();
@@ -225,6 +238,8 @@ SimConfig SimConfig::fromFile(const std::string& path)
         if (src["halfX_cm"])       cfg.halfX_cm      = src["halfX_cm"].as<double>();
         if (src["halfY_cm"])       cfg.halfY_cm      = src["halfY_cm"].as<double>();
         if (src["radius_cm"])      cfg.radius_cm     = src["radius_cm"].as<double>();
+        if (src["sigmaX_cm"])      cfg.sigmaX_cm     = src["sigmaX_cm"].as<double>();
+        if (src["sigmaY_cm"])      cfg.sigmaY_cm     = src["sigmaY_cm"].as<double>();
         if (src["directionX"])     cfg.directionX    = src["directionX"].as<double>();
         if (src["directionY"])     cfg.directionY    = src["directionY"].as<double>();
         if (src["directionZ"])     cfg.directionZ    = src["directionZ"].as<double>();
