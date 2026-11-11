@@ -26,9 +26,13 @@ geometry:
 
   # ── Sample: pTP film deposited on a UV-transparent acrylic plate ────────────
   pTPlayerThickness_mm: 0.002     # pTP film thickness [mm]  (default: 2 µm)
-  pTPsigmaAlpha_rad: 0.0          # pTP surface facet-slope RMS [rad]; 0.0 = flat, perfectly smooth (no wiggle)
-                                  #   raise to model coating waviness/roughness, e.g. 0.1 rad ≈ 6°
+  pTPsigmaAlpha_rad: 0.0          # pTP surface facet-slope RMS [rad]; 0.0 = polished, specular Fresnel / TIR
+                                  #   > 0 = every reflection/refraction specular about a random facet of that
+                                  #   slope RMS (e.g. 0.1 rad ≈ 6°); a surface roughness gives NO thickness
+                                  #   dependence of the collected light (see the pmt_lightsim docs)
                                   #   (rough=on / main.sh ROUGH=on overrides it with mac/roughness_knobs.mac)
+  pTPsurfaceLambertian: false     # true = legacy model: 'ground' faces without lobe constants, i.e. every
+                                  #   reflection Lambertian whatever sigmaAlpha (gives K ≈ 24 % at any thickness)
   # Random surface height map on the film (see vis_roughness.mac); 0 = flat film.
   # (rough=on / main.sh ROUGH=on overrides these with mac/roughness_knobs.mac)
   pTPgeomRoughCells: 0            # bumps per side (lateral size = side / cells)
@@ -69,6 +73,8 @@ source:
   positionType: Plane             # GPS type: Point | Plane | Surface | Volume
   positionShape: Circle           # GPS shape: Circle (beam spot) | Square | Ellipse | Rectangle
   radius_cm: 0.7                  # source radius [cm] for Circle: 14 mm beam diameter
+  sigmaX_cm: 0.0                  # > 0 (both): Gaussian beam profile instead of the shape above (GPS type Beam);
+  sigmaY_cm: 0.0                  #   the IFIC beam, FWHM 7 x 5 mm, is sigmaX_cm 0.297, sigmaY_cm 0.212
   centerX_cm: 0.0                 # beam centre x [cm]  (centred on the PMT axis)
   centerY_cm: 0.0                 # beam centre y [cm]
   centerZ_cm: -2.0                # beam start z [cm]  (10 mm in front of the pTP film, which sits at z ≈ -10 mm)
@@ -114,6 +120,18 @@ materials:
     #  3) neither set (default): construction.cc generates a smooth asymmetric
     #     Gaussian emission (peak 340 nm) on a dedicated fine grid.
     wlstimeconstant_ns: 1.136
+    # Elastic scattering of the emitted light inside the polycrystalline film
+    # (G4OpMieHG: MIEHG = mean free path, MIEHG_FORWARD = Henyey-Greenstein g).
+    # This is the process that makes the collected light grow with the film
+    # thickness (t / scatteringLength scatterings per pass); a surface roughness
+    # (pTPsigmaAlpha_rad) does not. Not measured for these films: brackets from
+    # the pTP-SD-sim study are 2.5-7 um and g 0.6-0.9. null or 0 = no scattering.
+    scatteringLength_um: 4.0
+    anisotropy_g: 0.8
+    # Photoluminescence quantum yield: mean number of emitted photons per absorbed
+    # VUV photon (WLSMEANNUMBERPHOTONS, Poisson-distributed per absorption).
+    # 0.82: Kuzniak & Szelc, Instruments 5 (2021) 4, Table 1 (254 nm). null = 1.
+    quantumYield: 0.82
 
   uvAcrylic:
     # UV-transparent PMMA carrier for pTP film
