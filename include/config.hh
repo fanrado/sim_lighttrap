@@ -24,6 +24,14 @@ struct PTPConfig {
     // from materials.ptp.wlscomponent_file. Parallel arrays; empty if no file.
     std::vector<double>   emissionWl_nm;         // wavelength [nm]
     std::vector<double>   emissionIntensity;     // relative intensity (auto-normalized)
+    // Elastic (Mie / Henyey-Greenstein) scattering of the emitted light inside
+    // the polycrystalline film (G4OpMieHG): mean free path and asymmetry g.
+    // Absent or 0 = no scattering (specular film).
+    std::optional<double> scatteringLength_um;
+    std::optional<double> anisotropy_g;
+    // Photoluminescence quantum yield: mean number of emitted photons per
+    // absorbed VUV photon (WLSMEANNUMBERPHOTONS, Poisson). Absent = 1.
+    std::optional<double> quantumYield;
 };
 
 struct UVAcrylicConfig {
@@ -87,7 +95,11 @@ struct SimConfig {
     // + PMT length, i.e. 18.2 cm by default).  Raise it to place the beam source
     // farther away: a source outside the world is rejected at run time.
     double worldHalfZ_mm            = 0.0;
-    double pTPsigmaAlpha_rad        = 0.0;    // pTP surface facet-slope RMS; 0 = smooth
+    double pTPsigmaAlpha_rad        = 0.0;    // pTP surface facet-slope RMS; 0 = smooth (polished)
+    // Legacy surface model: finish 'ground' without lobe constants, which in
+    // Geant4 makes every reflection at the film faces Lambertian whatever
+    // sigmaAlpha is (the behaviour of the code before the surface fix).
+    bool   pTPsurfaceLambertian     = false;
     // Optional GEOMETRIC roughness of the pTP film (visual / facet demonstrator):
     // the film becomes a tessellated solid whose beam-facing (-z) face carries a
     // Gaussian random height map on an N x N grid (flat back face on the acrylic).
@@ -126,6 +138,10 @@ struct SimConfig {
     double halfX_cm           = 7.5;
     double halfY_cm           = 7.5;
     double radius_cm          = 0.7;    // Circle shape only (14 mm beam): /gps/pos/radius
+    // Gaussian beam profile (GPS type Beam): standard deviations in x and y.
+    // Both > 0 replace positionType/positionShape by a 2-D Gaussian spot.
+    double sigmaX_cm          = 0.0;
+    double sigmaY_cm          = 0.0;
     double directionX         = 0.0;
     double directionY         = 0.0;
     double directionZ         = 1.0;
