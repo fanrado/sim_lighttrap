@@ -32,6 +32,10 @@ public:
   G4double GapThickness()    const { return LArthickness; }
   G4double PTPSigmaAlpha()   const { return pTPsigmaAlpha; }
   G4String PTPFilmDescription() const { return fPTPFilmDescription; }
+  G4String PTPSurfaceDescription() const { return fPTPSurfaceDescription; }
+  G4double PTPScatteringLength() const { return pTPscatteringLength; }
+  G4double PTPAnisotropy()       const { return pTPanisotropy; }
+  G4double PTPQuantumYield()     const { return pTPquantumYield; }
   G4double WorldHalfZ()      const;   // effective value (auto resolved)
   G4double PMTDiameter()     const { return pmtDiameter; }
   G4double WindowThickness() const { return pmtWindowThickness; }
@@ -49,6 +53,11 @@ private:
   G4double lighttrapsize;         // square first-layer side length    (default 15 cm)
   G4double worldHalfZ;            // world half-length in z; 0 = auto   (default 0)
   G4double pTPsigmaAlpha;         // pTP surface facet-slope RMS [rad]  (default 0 = smooth)
+  G4bool   pTPsurfaceLambertian;  // legacy: ground surface without lobe constants (Lambertian reflections)
+  G4double pTPscatteringLength;   // elastic scattering free path of the emitted light in the film [mm]; 0 = off
+  G4double pTPanisotropy;         // Henyey-Greenstein g of that scattering
+  G4double pTPquantumYield;       // mean emitted photons per absorbed VUV photon (WLSMEANNUMBERPHOTONS)
+  void ApplyPTPOpticalOptions();  // (re)writes MIEHG / WLSMEANNUMBERPHOTONS on the pTP material from the members
   G4int    pTPgeomRoughCells;     // geometric roughness grid (0 = flat box)
   G4double pTPgeomRoughAmp;       // geometric roughness RMS height
   G4int    pTPgeomRoughSeed;      // height-map seed
@@ -97,6 +106,7 @@ private:
   G4GenericMessenger *fMessenger;
   G4String fPMTQEDescription;     // filled in ConstructSDandField for the run summary
   G4String fPTPFilmDescription;   // "flat box" or the tessellated height-map parameters
+  G4String fPTPSurfaceDescription; // optical model of the film faces, for the run summary
 
   // Builds the pTP film as a closed tessellated solid: flat back face at
   // +thick/2, random Gaussian height map on the -z (beam-facing) face.
